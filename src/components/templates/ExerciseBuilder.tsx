@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
 import { exercises, Exercise } from '@/lib/mockData'
+import { getCustomExercises } from '@/lib/db'
 import { formatTimeInput } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -89,9 +90,10 @@ const inputStyle: React.CSSProperties = {
 // ─── Exercise autocomplete search ─────────────────────────────────────────────
 
 function ExerciseSearch({ value, onSelect }: { value: string; onSelect: (ex: Exercise) => void }) {
-  const [query, setQuery] = useState(value)
-  const [open, setOpen]   = useState(false)
-  const ref               = useRef<HTMLDivElement>(null)
+  const [query, setQuery]         = useState(value)
+  const [open, setOpen]           = useState(false)
+  const [customExs, setCustomExs] = useState<Exercise[]>([])
+  const ref                       = useRef<HTMLDivElement>(null)
 
   useEffect(() => { setQuery(value) }, [value])
   useEffect(() => {
@@ -99,10 +101,21 @@ function ExerciseSearch({ value, onSelect }: { value: string; onSelect: (ex: Exe
     document.addEventListener('mousedown', h)
     return () => document.removeEventListener('mousedown', h)
   }, [])
+  useEffect(() => {
+    getCustomExercises()
+      .then(data => setCustomExs(data as Exercise[]))
+      .catch(() => {
+        try {
+          const stored = localStorage.getItem('thhl_custom_library_exercises')
+          if (stored) setCustomExs(JSON.parse(stored))
+        } catch { /* ignore */ }
+      })
+  }, [])
 
+  const allExercises = [...exercises, ...customExs]
   const filtered = query.length < 1
-    ? exercises.filter(e => e.category !== 'run-drill' && e.category !== 'mobility')
-    : exercises.filter(e =>
+    ? allExercises.filter(e => e.category !== 'run-drill' && e.category !== 'mobility')
+    : allExercises.filter(e =>
         e.name.toLowerCase().includes(query.toLowerCase()) ||
         e.category.toLowerCase().includes(query.toLowerCase()) ||
         e.primaryMuscles.some(m => m.toLowerCase().includes(query.toLowerCase()))
@@ -183,11 +196,12 @@ function PlateCalc({ totalKg }: { totalKg: number }) {
 // ─── Single set row ────────────────────────────────────────────────────────────
 
 function SetRowItem({
-  set, index, isBarbell, stored1RM, onUpdate, onDelete,
+  set, index, isBarbell, isBodyweight, stored1RM, onUpdate, onDelete,
 }: {
   set: SetRow
   index: number
   isBarbell: boolean
+  isBodyweight: boolean
   stored1RM: number | null
   canDelete: boolean
   onUpdate: (partial: Partial<SetRow>) => void
@@ -216,14 +230,16 @@ function SetRowItem({
           className="px-2 py-1.5 rounded-lg text-sm text-center" style={{ ...inputStyle, width: 'auto' }} />
       </div>
 
-      {/* kg */}
-      <div className="flex items-center gap-1">
-        <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>kg</label>
-        <input type="text" inputMode="decimal" placeholder="—"
-          value={set.weight} onChange={e => onUpdate({ weight: e.target.value })}
-          size={Math.max(2, (set.weight || '—').length)}
-          className="px-2 py-1.5 rounded-lg text-sm text-center" style={{ ...inputStyle, width: 'auto' }} />
-      </div>
+      {/* kg — hidden for bodyweight exercises */}
+      {!isBodyweight && (
+        <div className="flex items-center gap-1">
+          <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>kg</label>
+          <input type="text" inputMode="decimal" placeholder="—"
+            value={set.weight} onChange={e => onUpdate({ weight: e.target.value })}
+            size={Math.max(2, (set.weight || '—').length)}
+            className="px-2 py-1.5 rounded-lg text-sm text-center" style={{ ...inputStyle, width: 'auto' }} />
+        </div>
+      )}
 
       {/* 1RM */}
       {isBarbell && (
@@ -277,8 +293,9 @@ function ExerciseBlock({
   onUpdate: (partial: Partial<ExRow>) => void
   onRemove: () => void
 }) {
-  const isBarbell  = row.category === 'barbell'
-  const stored1RM  = STORED_1RM[row.exerciseId] ?? null
+  const isBarbell    = row.category === 'barbell'
+  const isBodyweight = row.category === 'bodyweight'
+  const stored1RM    = STORED_1RM[row.exerciseId] ?? null
 
   function updateSet(si: number, partial: Partial<SetRow>) {
     const next = row.sets.map((s, i) => i === si ? { ...s, ...partial } : s)
@@ -346,6 +363,7 @@ function ExerciseBlock({
             set={set}
             index={si}
             isBarbell={isBarbell}
+            isBodyweight={isBodyweight}
             stored1RM={stored1RM}
             canDelete={row.sets.length > 1}
             onUpdate={partial => updateSet(si, partial)}
