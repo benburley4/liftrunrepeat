@@ -9,7 +9,7 @@ import { signOut, getUsername } from '@/lib/auth'
 
 const navLinks = [
   { href: '/programmes', label: 'Programmes' },
-  { href: '/programme-review', label: 'Review' },
+  { href: '/programme-review', label: 'AI Coach' },
   { href: '/templates', label: 'Templates' },
   { href: '/log/session', label: 'Today' },
   { href: '/analytics', label: 'Analytics' },
