@@ -241,7 +241,7 @@ const hybridTemplates = [
 
 // ─── Custom template types ───────────────────────────────────────────────────
 
-type TemplateType = 'lift' | 'run' | 'hybrid'
+type TemplateType = 'lift' | 'run' | 'hike' | 'hybrid'
 
 interface CustomTemplate {
   id: string
@@ -429,6 +429,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
   const TYPE_OPTIONS: { value: TemplateType; label: string; color: string; bg: string }[] = [
     { value: 'lift',   label: 'Lifting',      color: '#00BFA5', bg: '#00BFA520' },
     { value: 'run',    label: 'Running',       color: '#C8102E', bg: '#C8102E20' },
+    { value: 'hike',   label: 'Hiking',        color: '#84CC16', bg: '#84CC1620' },
     { value: 'hybrid', label: 'Hybrid Combo',  color: '#A78BFA', bg: '#A78BFA20' },
   ]
 
@@ -443,7 +444,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
       notes: '',
       tags: '',
       exerciseRows: (type === 'lift' || type === 'hybrid') ? exerciseRows : undefined,
-      runRows: (type === 'run' || type === 'hybrid') ? runRows : undefined,
+      runRows: (type === 'run' || type === 'hike' || type === 'hybrid') ? runRows : undefined,
     })
   }
 
@@ -481,7 +482,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
           </Field>
 
           <Field label="Type">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {TYPE_OPTIONS.map(opt => (
                 <button
                   key={opt.value}
@@ -507,9 +508,9 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
             </Field>
           )}
 
-          {/* Run builder for run / hybrid */}
-          {(type === 'run' || type === 'hybrid') && (
-            <Field label="Run Structure">
+          {/* Run/Hike builder */}
+          {(type === 'run' || type === 'hike' || type === 'hybrid') && (
+            <Field label={type === 'hike' ? 'Hike Structure' : 'Run Structure'}>
               <RunBuilder entries={runRows} onChange={setRunRows} />
             </Field>
           )}
