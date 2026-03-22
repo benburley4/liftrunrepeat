@@ -7,7 +7,7 @@ import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RepeatBlock, RunSegment, 
 import { programmes as staticProgrammes, exercises as libraryExercises } from '@/lib/mockData'
 import { getTemplates, upsertTemplate, deleteTemplate } from '@/lib/db'
 
-type TabId = 'lifting' | 'running' | 'hybrid' | 'mine'
+type TabId = 'lifting' | 'running' | 'hike' | 'hybrid' | 'mine'
 
 // ─── Static template data ────────────────────────────────────────────────────
 
@@ -210,6 +210,25 @@ const runTemplates: { id: string; name: string; effort: string; effortColor: str
     runRows: [
       { id: 'rh-1', segmentType: 'easy', metric: 'time', value: '50' },
     ] },
+]
+
+const hikeTemplates = [
+  // ── Day Hikes ─────────────────────────────────────────────────────────────
+  { id: 'hike-easy-day', name: 'Easy Day Hike', terrain: 'Flat–Rolling', distance: '8–12 km', elevation: '< 300 m', duration: '2–3 hrs', difficulty: 'Easy', difficultyColor: '#4CAF50', description: 'Comfortable paced hike on gentle terrain. Great active recovery or aerobic base work. Stay conversational pace throughout.', tip: 'Ideal after a hard training week. Focus on breathing and enjoying the movement.' },
+  { id: 'hike-rolling', name: 'Rolling Hills Hike', terrain: 'Rolling', distance: '12–18 km', elevation: '300–600 m', duration: '3–5 hrs', difficulty: 'Moderate', difficultyColor: '#F59E0B', description: 'Mix of ascents and descents on varied terrain. Builds aerobic capacity and leg endurance. Good training stimulus without high injury risk.', tip: 'Use trekking poles on descents to protect knees. Keep effort easy on climbs.' },
+  { id: 'hike-summit', name: 'Summit Day Hike', terrain: 'Mountainous', distance: '14–22 km', elevation: '800–1500 m', duration: '5–8 hrs', difficulty: 'Hard', difficultyColor: '#EF4444', description: 'Significant elevation gain to a summit. High cardiovascular and muscular demand. Excellent training for hybrid athletes — combines aerobic endurance with loaded leg strength.', tip: 'Fuel every 45–60 min. Descents are harder on the legs than ascents — budget recovery time.' },
+  { id: 'hike-night', name: 'Night / Headtorch Hike', terrain: 'Any', distance: '10–20 km', elevation: 'Varies', duration: '3–5 hrs', difficulty: 'Moderate', difficultyColor: '#F59E0B', description: 'Hiking in low-light or darkness. Builds mental resilience, navigation skills, and simulates race-day conditions for events like ultra-marathons.', tip: 'Test your headtorch battery. Wear bright/reflective layers. Brief a contact on your route.' },
+
+  // ── Multi-Day ──────────────────────────────────────────────────────────────
+  { id: 'hike-multiday-2', name: '2-Day Backpacking', terrain: 'Varied', distance: '25–40 km total', elevation: '600–1200 m total', duration: '2 days', difficulty: 'Moderate', difficultyColor: '#F59E0B', description: 'Overnight backpacking with a loaded pack. Sustained aerobic effort over two days builds base fitness and mental toughness. Pack weight adds training stimulus.', tip: 'Keep pack weight under 20% of bodyweight. Prioritise sleep quality — bring a good mat.' },
+  { id: 'hike-multiday-long', name: 'Long Distance Backpack', terrain: 'Mountainous', distance: '50–100 km total', elevation: '2000–4000 m total', duration: '3–5 days', difficulty: 'Very Hard', difficultyColor: '#C8102E', description: 'Multi-day expedition hiking. Peak physical and mental challenge. Excellent base-building for ultra-endurance events. Requires thorough preparation.', tip: 'Plan nutrition at 400–500 kcal/hr on the move. Foot care is critical — treat blisters early.' },
+
+  // ── Hike + Strength Combos ─────────────────────────────────────────────────
+  { id: 'hike-weighted', name: 'Weighted Rucksack Hike', terrain: 'Flat–Rolling', distance: '8–15 km', elevation: '< 400 m', duration: '2–4 hrs', difficulty: 'Moderate', difficultyColor: '#F59E0B', description: 'Rucking — hiking with a weighted pack. Combines cardiovascular training with loaded carry. Builds posterior chain, grip, and aerobic capacity simultaneously.', tip: 'Start with 10 kg. Progress pack weight by 2 kg per week. Keep pace brisk but controlled.' },
+  { id: 'hike-run-combo', name: 'Hike–Run Combo', terrain: 'Trail', distance: '15–25 km', elevation: '400–900 m', duration: '3–5 hrs', difficulty: 'Hard', difficultyColor: '#EF4444', description: 'Run the flats and descents, hike the climbs. Classic ultra-marathon strategy. Trains both running economy and power-hiking efficiency in one session.', tip: 'Power-hike when gradient exceeds ~10%. Keep running effort easy. Poles optional.' },
+
+  // ── Recovery & Wellness ────────────────────────────────────────────────────
+  { id: 'hike-recovery', name: 'Recovery Walk / Hike', terrain: 'Flat', distance: '4–8 km', elevation: '< 100 m', duration: '1–1.5 hrs', difficulty: 'Easy', difficultyColor: '#4CAF50', description: 'Very easy movement on flat ground. Promotes blood flow, reduces DOMS, and supports mental wellbeing after hard training days.', tip: 'Should feel effortless. Leave your watch at home. Focus on breathing and scenery.' },
 ]
 
 const hybridTemplates = [
@@ -781,6 +800,7 @@ export default function TemplatesPage() {
     { id: 'mine',    label: 'My Templates', count: customTemplates.length || undefined },
     { id: 'lifting', label: 'Lifting' },
     { id: 'running', label: 'Running' },
+    { id: 'hike',    label: 'Hiking' },
     { id: 'hybrid',  label: 'Hybrid Combos' },
   ]
 
@@ -1023,6 +1043,41 @@ export default function TemplatesPage() {
         )}
 
         {/* HYBRID COMBOS TAB */}
+        {/* HIKING TAB */}
+        {activeTab === 'hike' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {hikeTemplates.map(t => (
+              <div key={t.id} className="rounded-xl overflow-hidden flex flex-col" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <div className="p-5 flex-1">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{t.name}</h3>
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ml-2" style={{ background: `${t.difficultyColor}18`, color: t.difficultyColor, border: `1px solid ${t.difficultyColor}33`, fontFamily: 'Inter, sans-serif' }}>
+                      {t.difficulty}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5 mb-3">
+                    {[
+                      { label: 'Distance', value: t.distance },
+                      { label: 'Elevation', value: t.elevation },
+                      { label: 'Duration', value: t.duration },
+                      { label: 'Terrain', value: t.terrain },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="px-2 py-1.5 rounded" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
+                        <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{label}</p>
+                        <p className="text-xs font-semibold" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm mb-3 leading-relaxed" style={{ color: '#A0A0A0' }}>{t.description}</p>
+                  <div className="rounded p-2.5 text-xs" style={{ background: '#242424', color: '#A0A0A0', fontStyle: 'italic', border: '1px solid #2E2E2E' }}>
+                    💡 {t.tip}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {activeTab === 'hybrid' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {hybridTemplates.map(t => (
