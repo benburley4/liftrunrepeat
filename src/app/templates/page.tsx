@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronUp, Copy, Share2, Plus, Check, X, Pencil, Trash2, BookmarkPlus, ChevronRight } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RepeatBlock, RunSegment, SEGMENT_TYPES, METRIC_CONFIG } from '@/components/templates/ExerciseBuilder'
+import HikeBuilder, { HikeSection, HikeSettings } from '@/components/templates/HikeBuilder'
 import { programmes as staticProgrammes, exercises as libraryExercises } from '@/lib/mockData'
 import { getTemplates, upsertTemplate, deleteTemplate } from '@/lib/db'
 
@@ -253,6 +254,8 @@ interface CustomTemplate {
   tags: string
   exerciseRows?: ExRow[]
   runRows?: RunEntry[]
+  hikeRows?: HikeSection[]
+  hikeSettings?: HikeSettings
 }
 
 const LS_KEY = 'thhl_custom_templates'
@@ -421,10 +424,12 @@ interface TemplateModalProps {
 
 function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
   const isEditing = !!initialData
-  const [name, setName]             = useState(initialData?.name ?? '')
-  const [type, setType]             = useState<TemplateType>(initialData?.type ?? 'lift')
-  const [exerciseRows, setExRows]   = useState<ExRow[]>(initialData?.exerciseRows ?? [])
-  const [runRows, setRunRows]       = useState<RunEntry[]>(initialData?.runRows ?? [])
+  const [name, setName]               = useState(initialData?.name ?? '')
+  const [type, setType]               = useState<TemplateType>(initialData?.type ?? 'lift')
+  const [exerciseRows, setExRows]     = useState<ExRow[]>(initialData?.exerciseRows ?? [])
+  const [runRows, setRunRows]         = useState<RunEntry[]>(initialData?.runRows ?? [])
+  const [hikeRows, setHikeRows]       = useState<HikeSection[]>(initialData?.hikeRows ?? [])
+  const [hikeSettings, setHikeSettings] = useState<HikeSettings>(initialData?.hikeSettings ?? { pace: 'normal', surface: 'good', packWeight: 'light' })
 
   const TYPE_OPTIONS: { value: TemplateType; label: string; color: string; bg: string }[] = [
     { value: 'lift',   label: 'Lifting',      color: '#00BFA5', bg: '#00BFA520' },
@@ -444,7 +449,9 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
       notes: '',
       tags: '',
       exerciseRows: (type === 'lift' || type === 'hybrid') ? exerciseRows : undefined,
-      runRows: (type === 'run' || type === 'hike' || type === 'hybrid') ? runRows : undefined,
+      runRows: (type === 'run' || type === 'hybrid') ? runRows : undefined,
+      hikeRows: type === 'hike' ? hikeRows : undefined,
+      hikeSettings: type === 'hike' ? hikeSettings : undefined,
     })
   }
 
@@ -508,9 +515,21 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
             </Field>
           )}
 
-          {/* Run/Hike builder */}
-          {(type === 'run' || type === 'hike' || type === 'hybrid') && (
-            <Field label={type === 'hike' ? 'Hike Structure' : 'Run Structure'}>
+          {/* Hike builder */}
+          {type === 'hike' && (
+            <Field label="Hike Structure">
+              <HikeBuilder
+                sections={hikeRows}
+                settings={hikeSettings}
+                onChangeSections={setHikeRows}
+                onChangeSettings={setHikeSettings}
+              />
+            </Field>
+          )}
+
+          {/* Run builder */}
+          {(type === 'run' || type === 'hybrid') && (
+            <Field label="Run Structure">
               <RunBuilder entries={runRows} onChange={setRunRows} />
             </Field>
           )}
