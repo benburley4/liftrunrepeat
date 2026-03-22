@@ -55,6 +55,10 @@ End with a short "Recommended Next Steps" bullet list.
 Be honest but constructive. Use professional but encouraging language. If something is already excellent, say so clearly. If data is missing, note it and give your best recommendation based on typical assumptions.`
 
 export async function POST(req: Request) {
+  if (!process.env.DEEPSEEK_API_KEY) {
+    return new Response('DEEPSEEK_API_KEY is not configured', { status: 500 })
+  }
+
   const { programmeText, context } = await req.json()
 
   if (!programmeText) {
@@ -63,28 +67,34 @@ export async function POST(req: Request) {
 
   const userMessage = `Here is my current training programme:\n\n${programmeText}${context ? `\n\nAdditional context:\n${context}` : ''}`
 
-  const stream = await client.chat.completions.create({
-    model: 'deepseek-chat',
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userMessage },
-    ],
-    stream: true,
-    max_tokens: 4000,
-  })
+  try {
+    const stream = await client.chat.completions.create({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+      stream: true,
+      max_tokens: 4000,
+    })
 
-  const encoder = new TextEncoder()
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const chunk of stream) {
-        const text = chunk.choices[0]?.delta?.content ?? ''
-        if (text) controller.enqueue(encoder.encode(text))
-      }
-      controller.close()
-    },
-  })
+    const encoder = new TextEncoder()
+    const readable = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of stream) {
+          const text = chunk.choices[0]?.delta?.content ?? ''
+          if (text) controller.enqueue(encoder.encode(text))
+        }
+        controller.close()
+      },
+    })
 
-  return new Response(readable, {
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-  })
+    return new Response(readable, {
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error('DeepSeek API error:', message)
+    return new Response(`DeepSeek error: ${message}`, { status: 500 })
+  }
 }
