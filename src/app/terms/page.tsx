@@ -10,7 +10,7 @@ export default function TermsPage() {
           Terms &amp; Conditions
         </h1>
         <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'Inter, sans-serif', marginBottom: '48px' }}>
-          Last updated: 21 March 2026
+          Last updated: 22 March 2026
         </p>
 
         {/* Health Warning Banner */}
@@ -31,7 +31,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="2. Description of Service">
-            <P>LiftRunRepeat is a fitness tracking and planning platform designed for hybrid athletes. The Service includes workout logging, programme building, exercise libraries, calculators, and analytics tools. The Service is provided for informational and personal organisational purposes only.</P>
+            <P>LiftRunRepeat is a fitness tracking and planning platform designed for hybrid athletes. The Service includes workout logging, programme building, exercise libraries, calculators, analytics tools, and an AI-powered programme review feature ("AI Coach"). The Service is provided for informational and personal organisational purposes only.</P>
             <P>We reserve the right to modify, suspend, or discontinue any part of the Service at any time, with or without notice, and without liability to you.</P>
           </Section>
 
@@ -97,6 +97,19 @@ export default function TermsPage() {
 
           <Section title="11. Third-Party Links and Services">
             <P>The Service may contain links to third-party websites or services. These links are provided for convenience only. We have no control over and accept no responsibility for the content, privacy policies, or practices of any third-party sites or services. We encourage you to review the terms and privacy policies of any third-party sites you visit.</P>
+          </Section>
+
+          <Section title="11a. AI Coach — Third-Party AI Processing">
+            <P>The AI Coach feature uses DeepSeek, a third-party artificial intelligence provider, to generate programme reviews. By using the AI Coach feature you acknowledge and agree that:</P>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+              <li>Your programme data and any additional context you provide will be transmitted to DeepSeek&apos;s API for processing</li>
+              <li>This transmission is necessary to provide the AI Coach functionality and cannot be avoided if you choose to use the feature</li>
+              <li>DeepSeek processes this data in accordance with its own terms of service and privacy policy, over which we have no control</li>
+              <li>AI-generated reviews are produced by an automated model and are for informational purposes only — they do not constitute professional coaching, medical, or physiotherapy advice</li>
+              <li>We do not guarantee the accuracy, completeness, or suitability of any AI-generated content for your individual circumstances</li>
+              <li>You use the AI Coach feature entirely at your own risk</li>
+            </ul>
+            <P>If you do not consent to your programme data being shared with a third-party AI provider, you must not use the AI Coach feature. All other features of the Service remain available without using the AI Coach.</P>
           </Section>
 
           <Section title="12. Termination">
