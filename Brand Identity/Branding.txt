@@ -1,0 +1,58 @@
+Core Brand Identity
+
+Brand Name: LiftRunRepeat
+(Primary usage: all one word, camel case for readability in logos/headings. Tagline option: "Lift. Run. Repeat." or "Build Strength. Build Stamina. Repeat Daily.")
+Positioning: The go-to resource for hybrid athletes — people who refuse to choose between getting strong and getting fast. Programs blend lifting heavy with smart running/endurance work for real-world performance, longevity, and results.
+Tone & Voice: Direct, encouraging, no-BS. Motivational without hype. Speak like a knowledgeable training partner: "You've got the plan — now execute. Lift heavy today, run smart tomorrow, repeat forever."
+
+Color Palette
+Energetic yet balanced for hybrid (strength = bold/powerful, endurance = fresh/enduring). Inspired by common fitness palettes but tuned for your dual focus.
+
+Primary: Charcoal Black (#1A1A1A or #000000) — for backgrounds, text, strength vibe.
+Accent 1 (Strength/Power): Deep Crimson Red (#C8102E or similar fire-engine red) — energy, lifts, calls-to-action.
+Accent 2 (Endurance/Flow): Electric Teal/Cyan (#00BFA5 or vibrant turquoise) — running, recovery, progress tracking.
+Neutral/Support: Cool Gray (#4A4A4A to #A0A0A0) — secondary text, borders.
+Background/Base: Crisp White (#FFFFFF) or very light gray (#F5F5F5) — clean site feel.
+Highlight/Warning: Bright Yellow-Orange (#FF9500) — sparingly for progress badges or urgency (e.g., "New Program Drop").
+
+This creates contrast: black/red for heavy lifts sections, teal for run/endurance, blending in hybrid program pages.
+Typography
+
+Primary Font (Headings/Logo): Bold sans-serif like Montserrat ExtraBold, Bebas Neue, or Impact-style condensed — strong, uppercase for "LIFT RUN REPEAT" impact.
+Secondary Font (Body/Text): Clean readable sans-serif like Inter, Roboto, or Open Sans — for program descriptions, blogs, ease on mobile.
+Style Rules:
+Headings: UPPERCASE or title case, bold, large tracking (letter spacing).
+Body: 16–18px base, line height 1.6 for readability during long workouts.
+
+
+Logo Concepts (Descriptions — Easy to Brief a Designer)
+
+Primary Logo (Recommended):
+Stacked or horizontal: "LIFT" in bold red, "RUN" in teal, "REPEAT" in black/gray below or looping.
+Icon: Minimal barbell fused into a running stride/arrow (e.g., barbell plates morph into motion lines). Or a simple cycle arrow ∞ integrated with dumbbell + shoe print.
+Keep it scalable: Works in black/white too for merch.
+
+Wordmark Only: Just "LiftRunRepeat" in a custom condensed font, with "Lift" and "Run" slightly bolder/larger, "Repeat" italicized or looped for motion.
+Monogram/Icon Variant: "LRR" monogram where the two R's connect in a loop, one stylized as a barbell, one as a running path.
+
+Avoid: Overly cartoonish icons, too many elements — keep it clean for apparel, site favicons, social.
+Visual Style & Imagery Guidelines
+
+Photography: Real people mid-lift (squat/deadlift) and mid-run (trail/road), sweaty but determined. Mix gym + outdoor shots. High contrast, dynamic angles.
+Graphics: Progress charts (lift PRs + run paces), cycle icons (weekly repeat calendars), split-screen before/after or lift vs run.
+UI Elements: Rounded buttons with red/teal gradients, progress bars blending colors, icons of dumbbell + running figure.
+Mood Board Vibes: Think Nike Training Club meets Strava — functional, aspirational, community-focused.
+
+Sample Taglines / Copy Snippets
+
+Hero: "Lift heavy. Run far. Repeat stronger."
+Program titles: "LiftRunRepeat: 12-Week Hybrid Builder"
+CTA: "Start Repeating Today" → button in red.
+Footer: "No excuses. Just lift, run, repeat."
+
+Next Steps to Bring It to Life
+
+Check domain: liftrunrepeat.com (appears available/unclaimed based on current info — grab it quick via Namecheap/GoDaddy).
+Mock it up: Use Canva (search "fitness logo"), Looka.com, or Hatchful for quick logo variants.
+Hire if needed: Brief a designer with this template — budget $50–300 for logo + basic kit (social templates, color guide).
+Social handles: Secure @liftrunrepeat on Instagram, TikTok, YouTube — post teaser content like "Day 1: Lift. Day 2: Run. Day 3: Repeat
