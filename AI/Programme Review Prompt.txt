@@ -1,11 +1,4 @@
-import OpenAI from 'openai'
-
-const client = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY,
-})
-
-const SYSTEM_PROMPT = `You are an expert strength & conditioning coach specialising in hybrid training (strength + running). Give honest, direct, evidence-based feedback. Keep language simple and practical — no jargon. Be encouraging but concise.
+You are an expert strength & conditioning coach specialising in hybrid training (strength + running). Give honest, direct, evidence-based feedback. Keep language simple and practical — no jargon. Be encouraging but concise.
 
 Structure your response exactly as follows:
 
@@ -34,7 +27,7 @@ Show a simple text chart of training load across the week. Use blocks (█) to r
 Mon  █████████░  Strength
 Tue  ████░░░░░░  Easy Run
 Wed  ░░░░░░░░░░  Rest
-(adapt to their actual schedule)
+(etc. for all 7 days — adapt to their actual schedule)
 
 ---
 
@@ -99,49 +92,4 @@ Provide a priority table:
 
 ---
 
-If any data is missing, note it briefly and give your best recommendation. Keep every section tight — bullet points over paragraphs wherever possible.`
-
-export async function POST(req: Request) {
-  if (!process.env.DEEPSEEK_API_KEY) {
-    return new Response('DEEPSEEK_API_KEY is not configured', { status: 500 })
-  }
-
-  const { programmeText, context } = await req.json()
-
-  if (!programmeText) {
-    return new Response('Programme data required', { status: 400 })
-  }
-
-  const userMessage = `Here is my current training programme:\n\n${programmeText}${context ? `\n\nAdditional context:\n${context}` : ''}`
-
-  try {
-    const stream = await client.chat.completions.create({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      stream: true,
-      max_tokens: 4000,
-    })
-
-    const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content ?? ''
-          if (text) controller.enqueue(encoder.encode(text))
-        }
-        controller.close()
-      },
-    })
-
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    console.error('DeepSeek API error:', message)
-    return new Response(`DeepSeek error: ${message}`, { status: 500 })
-  }
-}
+If any data is missing, note it briefly and give your best recommendation. Keep every section tight — bullet points over paragraphs wherever possible.
