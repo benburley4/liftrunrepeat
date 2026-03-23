@@ -169,8 +169,8 @@ export default function AnalyticsPage() {
       return row
     })
     const prs = Object.entries(exStats)
-      .filter(([, v]) => v.totalSets > 10)
-      .sort((a, b) => b[1].totalSets - a[1].totalSets)
+      .filter(([, v]) => v.rm > 0)
+      .sort((a, b) => b[1].date.localeCompare(a[1].date))
       .map(([exercise, { totalSets, rm, weight, reps, date }]) => ({
         exercise,
         totalSets,
@@ -533,26 +533,31 @@ export default function AnalyticsPage() {
         {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <>
-            {/* PR Banner */}
-            <div
-              className="rounded-xl px-5 py-4 flex items-center gap-3"
-              style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)' }}
-            >
-              <Trophy size={20} style={{ color: '#C8102E' }} />
-              <div>
-                <span className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '16px' }}>
-                  NEW PR:
-                </span>
-                <span className="text-sm ml-2" style={{ color: '#F5F5F5' }}>Squat 143 kg</span>
-                <span className="text-xs ml-2" style={{ color: '#606060' }}>3 days ago · +2 kg from previous</span>
-              </div>
-              <div
-                className="ml-auto px-2 py-1 rounded text-xs font-bold"
-                style={{ background: '#C8102E', color: '#0D0D0D' }}
-              >
-                PR
-              </div>
-            </div>
+            {/* PR Banner — most recent lift PR */}
+            {strengthData && strengthData.prs.length > 0 && (() => {
+              const latest = strengthData.prs[0]
+              return (
+                <div
+                  className="rounded-xl px-5 py-4 flex items-center gap-3"
+                  style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)' }}
+                >
+                  <Trophy size={20} style={{ color: '#C8102E' }} />
+                  <div>
+                    <span className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '16px' }}>
+                      BEST LIFT:
+                    </span>
+                    <span className="text-sm ml-2" style={{ color: '#F5F5F5' }}>{latest.exercise} — {latest.pr}</span>
+                    <span className="text-xs ml-2" style={{ color: '#606060' }}>{latest.date} · {latest.rm.replace(' est. 1RM', '')} est. 1RM</span>
+                  </div>
+                  <div
+                    className="ml-auto px-2 py-1 rounded text-xs font-bold"
+                    style={{ background: '#C8102E', color: '#0D0D0D' }}
+                  >
+                    PR
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* Heatmap */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
