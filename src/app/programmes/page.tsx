@@ -121,6 +121,14 @@ function nextMonday(): string {
   return d.toISOString().split('T')[0]
 }
 
+function thisOrNextMonday(): string {
+  const d = new Date()
+  const day = d.getDay()
+  const daysUntil = day === 1 ? 0 : (8 - day) % 7 || 7
+  d.setDate(d.getDate() + daysUntil)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function calcVolume(t: StoredTemplate): { weight: number; distance: number } {
   let weight = 0, distance = 0
   for (const row of t.exerciseRows ?? []) {
@@ -1046,7 +1054,7 @@ export default function ProgrammesPage() {
         id: `prog-${Date.now()}`,
         name: data.name ?? `${genWeeks}-Week AI Programme`,
         weeks: data.weeks ?? genWeeks,
-        startDate: nextMonday(),
+        startDate: thisOrNextMonday(),
         cells,
       }
       setSavedList(prev => {
