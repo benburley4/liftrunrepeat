@@ -970,7 +970,9 @@ export default function ProgrammesPage() {
           const runMult    = isDeload ? 0.7 : 1
 
           for (const [dayKey, session] of Object.entries(phase.sessions)) {
-            const cellKey = `w${w}${dayKey}`
+            // Grid uses 0-based keys (w0d0 = Week 1 Monday); AI outputs 1-based (w1, d1)
+            const dayNum = parseInt(dayKey.replace('d', '')) - 1
+            const cellKey = `w${w - 1}d${dayNum}`
             cells[cellKey] = {
               rpe: isDeload ? Math.max(5, session.rpe - 2) : session.rpe,
               template: {
