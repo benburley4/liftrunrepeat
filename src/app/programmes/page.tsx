@@ -61,6 +61,40 @@ function addDays(date: Date, n: number): Date {
   return d
 }
 
+// ─── Run pace helpers ─────────────────────────────────────────────────────────
+
+function parseMmSs(t: string): number {
+  // Parse mm:ss or h:mm:ss → total seconds
+  const parts = t.split(':').map(Number)
+  if (parts.length === 2) return (parts[0] || 0) * 60 + (parts[1] || 0)
+  if (parts.length === 3) return (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0)
+  return 0
+}
+
+function secsToMmSs(secs: number): string {
+  const m = Math.floor(secs / 60)
+  const s = Math.round(secs % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+// Returns pace string (mm:ss/km) for a given segment type based on race standards
+function paceForSegment(segType: string, run5k: string, run10k: string): string {
+  const pace5k  = parseMmSs(run5k)  > 0 ? parseMmSs(run5k)  / 5  : 0 // sec/km
+  const pace10k = parseMmSs(run10k) > 0 ? parseMmSs(run10k) / 10 : 0
+  if (!pace5k && !pace10k) return ''
+  const base5k  = pace5k  || pace10k * 1.3
+  const base10k = pace10k || pace5k  * 1.1
+  switch (segType) {
+    case 'easy':
+    case 'warm-up':
+    case 'cool-down':
+    case 'long':    return secsToMmSs(base5k * 1.35)
+    case 'tempo':   return secsToMmSs(base10k)
+    case 'interval':return secsToMmSs(base5k * 0.97)
+    default:        return secsToMmSs(base5k * 1.25)
+  }
+}
+
 // Auto-format time inputs
 function fmtMmSs(raw: string): string {
   const d = raw.replace(/\D/g, '').slice(0, 4)
@@ -961,6 +995,9 @@ export default function ProgrammesPage() {
       const runProgress    = data.runProgressMinPerWeek   ?? 2
       const ts             = Date.now()
       const cells: Record<string, CellData> = {}
+      // Pace reference: prefer target, fall back to current
+      const ref5k  = genTarget.run5k  || genCurrent.run5k
+      const ref10k = genTarget.run10k || genCurrent.run10k
 
       for (const phase of (data.phases ?? []) as AIPhase[]) {
         for (let w = phase.startWeek; w <= phase.endWeek; w++) {
@@ -996,7 +1033,8 @@ export default function ProgrammesPage() {
                     const mins = (parseFloat(r.value) || 0) + weekOffset * runProgress
                     val = String(Math.round(mins * runMult))
                   }
-                  return { id: `run-${cellKey}-${ri}`, segmentType: r.segmentType, metric: r.metric as 'time' | 'distance', value: val }
+                  const pace = r.segmentType !== 'rest' ? paceForSegment(r.segmentType, ref5k, ref10k) : undefined
+                  return { id: `run-${cellKey}-${ri}`, segmentType: r.segmentType, metric: r.metric as 'time' | 'distance', value: val, ...(pace ? { pace } : {}) }
                 }),
               },
             }
