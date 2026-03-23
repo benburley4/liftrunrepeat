@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Sparkles, ChevronDown, ChevronUp, AlertCircle, Clock } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
-import { getProgrammes, getAIReports, upsertAIReport, deleteAIReport } from '@/lib/db'
+import { getProgrammes, getAIReports, upsertAIReport, deleteAIReport, getSetting } from '@/lib/db'
 
 // ─── Types (mirrored from programmes page) ────────────────────────────────────
 
@@ -256,18 +256,25 @@ export default function ProgrammeReviewPage() {
   const reviewRef                      = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    getProgrammes()
-      .then(data => {
+    Promise.all([getProgrammes(), getSetting('current_programme_id'), getAIReports()])
+      .then(([data, dbCurrentId, reports]) => {
         const list = data as Programme[]
         setProgs(list)
-        const currentId = localStorage.getItem('lrr_current_programme_id')
+        const currentId = dbCurrentId ?? localStorage.getItem('lrr_current_programme_id')
         const match = list.find(p => p.id === currentId)
         setSelectedId(match?.id ?? list[0]?.id ?? '')
+        setSavedReports(reports as SavedReport[])
       })
-      .catch(() => {})
-    getAIReports()
-      .then(data => setSavedReports(data as SavedReport[]))
-      .catch(() => {})
+      .catch(() => {
+        getProgrammes().then(data => {
+          const list = data as Programme[]
+          setProgs(list)
+          const currentId = localStorage.getItem('lrr_current_programme_id')
+          const match = list.find(p => p.id === currentId)
+          setSelectedId(match?.id ?? list[0]?.id ?? '')
+        }).catch(() => {})
+        getAIReports().then(data => setSavedReports(data as SavedReport[])).catch(() => {})
+      })
   }, [])
 
   const selectedProg = programmes.find(p => p.id === selectedId)
