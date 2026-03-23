@@ -60,7 +60,7 @@ Key rules:
 - Weight values are strings in kg; reps are strings (e.g. "5", "8-12", "max")
 - Phases must be contiguous: startWeek of first phase = 1, endWeek of last phase = total weeks
 - Every 4th week is a deload — list in deloadWeeks
-- KEEP OUTPUT COMPACT: max 5 exercises per lift session (3 sets each), max 3 run segments per run session, max 3 phases total
+- KEEP OUTPUT COMPACT: max 6 exercises per lift session (3 sets each), max 3 run segments per run session, max 3 phases total
 
 Coaching rules:
 - Use only exercises from the library provided
