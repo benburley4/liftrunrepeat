@@ -45,10 +45,15 @@ function formatProgramme(prog: Programme): string {
   lines.push(`Start date: ${prog.startDate}`)
   lines.push('')
 
-  // Find the typical weekly schedule (use week 1 as representative)
+  // Detect whether cells use 0-based (w0d0) or 1-based (w1d1) week keys
+  const cellKeys = Object.keys(prog.cells)
+  const hasW0 = cellKeys.some(k => k.startsWith('w0'))
+  const weekBase = hasW0 ? 0 : 1
+  const dayBase  = hasW0 ? 0 : 1
+
   lines.push('Weekly Schedule (Week 1 as representative):')
   for (let d = 0; d < 7; d++) {
-    const key = `w0d${d}`
+    const key = `w${weekBase}d${dayBase + d}`
     const cell = prog.cells[key]
     if (!cell) {
       lines.push(`  ${DAYS[d]}: Rest`)
@@ -84,8 +89,8 @@ function formatProgramme(prog: Programme): string {
   }
 
   // Check if there are variations across weeks
-  const hasVariations = prog.weeks > 1 && Object.keys(prog.cells).some(k => k.startsWith('w1'))
-  if (hasVariations) {
+  const nextWeekPrefix = `w${weekBase + 1}`
+  if (prog.weeks > 1 && cellKeys.some(k => k.startsWith(nextWeekPrefix))) {
     lines.push('')
     lines.push('Note: Programme has week-by-week variations across ' + prog.weeks + ' weeks.')
   }
