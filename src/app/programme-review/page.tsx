@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Sparkles, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react'
+import { Sparkles, ChevronDown, ChevronUp, AlertCircle, Clock } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
-import { getProgrammes } from '@/lib/db'
+import { getProgrammes, getAIReports, upsertAIReport, deleteAIReport } from '@/lib/db'
 
 // ─── Types (mirrored from programmes page) ────────────────────────────────────
 
@@ -29,6 +29,12 @@ interface Programme {
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+interface SavedReport {
+  id: string
+  programmeName: string
+  date: string  // ISO
+  review: string
+}
 
 // ─── Format programme into readable text for AI ───────────────────────────────
 
@@ -238,14 +244,16 @@ function MarkdownBlock({ text }: { text: string }) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ProgrammeReviewPage() {
-  const [programmes, setProgs]       = useState<Programme[]>([])
-  const [selectedId, setSelectedId]  = useState<string>('')
-  const [context, setContext]        = useState('')
-  const [showContext, setShowContext] = useState(false)
-  const [review, setReview]          = useState('')
-  const [loading, setLoading]        = useState(false)
-  const [error, setError]            = useState<string | null>(null)
-  const reviewRef                    = useRef<HTMLDivElement>(null)
+  const [programmes, setProgs]         = useState<Programme[]>([])
+  const [selectedId, setSelectedId]    = useState<string>('')
+  const [context, setContext]          = useState('')
+  const [showContext, setShowContext]   = useState(false)
+  const [review, setReview]            = useState('')
+  const [loading, setLoading]          = useState(false)
+  const [error, setError]              = useState<string | null>(null)
+  const [savedReports, setSavedReports] = useState<SavedReport[]>([])
+  const [selectedReport, setSelectedReport] = useState<string>('') // id of report being viewed
+  const reviewRef                      = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     getProgrammes()
@@ -257,6 +265,9 @@ export default function ProgrammeReviewPage() {
         setSelectedId(match?.id ?? list[0]?.id ?? '')
       })
       .catch(() => {})
+    getAIReports()
+      .then(data => setSavedReports(data as SavedReport[]))
+      .catch(() => {})
   }, [])
 
   const selectedProg = programmes.find(p => p.id === selectedId)
@@ -265,9 +276,11 @@ export default function ProgrammeReviewPage() {
     if (!selectedProg) return
     setLoading(true)
     setReview('')
+    setSelectedReport('')
     setError(null)
 
     const programmeText = formatProgramme(selectedProg)
+    let fullReview = ''
 
     try {
       const res = await fetch('/api/programme-review', {
@@ -288,14 +301,44 @@ export default function ProgrammeReviewPage() {
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        setReview(prev => prev + decoder.decode(value))
+        const chunk = decoder.decode(value)
+        fullReview += chunk
+        setReview(prev => prev + chunk)
         reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+      }
+
+      // Auto-save completed report
+      if (fullReview) {
+        const report: SavedReport = {
+          id: `report-${Date.now()}`,
+          programmeName: selectedProg.name,
+          date: new Date().toISOString(),
+          review: fullReview,
+        }
+        setSavedReports(prev => [report, ...prev].slice(0, 10))
+        setSelectedReport(report.id)
+        upsertAIReport(report.id, report).catch(console.error)
       }
     } catch (err) {
       setError((err as Error).message)
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleSelectReport(id: string) {
+    const report = savedReports.find(r => r.id === id)
+    if (!report) return
+    setSelectedReport(id)
+    setReview(report.review)
+    setError(null)
+    setTimeout(() => reviewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
+  function handleDeleteReport(id: string) {
+    setSavedReports(prev => prev.filter(r => r.id !== id))
+    if (selectedReport === id) { setSelectedReport(''); setReview('') }
+    deleteAIReport(id).catch(console.error)
   }
 
   return (
@@ -339,6 +382,40 @@ export default function ProgrammeReviewPage() {
             </select>
           )}
         </div>
+
+        {/* Previous reports */}
+        {savedReports.length > 0 && (
+          <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+            <label className="text-xs uppercase tracking-wider block mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+              <Clock size={11} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
+              Previous AI Coach Reports
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={selectedReport}
+                onChange={e => handleSelectReport(e.target.value)}
+                className="flex-1 px-4 py-3 rounded-xl text-sm outline-none"
+                style={{ background: '#242424', border: '1px solid #2E2E2E', color: selectedReport ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif' }}
+              >
+                <option value="">— select a saved report —</option>
+                {savedReports.map(r => (
+                  <option key={r.id} value={r.id}>
+                    {r.programmeName} · {new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </option>
+                ))}
+              </select>
+              {selectedReport && (
+                <button
+                  onClick={() => handleDeleteReport(selectedReport)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold"
+                  style={{ background: '#C8102E18', border: '1px solid #C8102E44', color: '#C8102E', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Additional context (optional) */}
         <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
@@ -396,7 +473,10 @@ export default function ProgrammeReviewPage() {
             <div className="flex items-center gap-2 mb-4 pb-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
               <Sparkles size={14} style={{ color: '#00BFA5' }} />
               <span className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>AI Coach Review</span>
-              {loading && <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Analysing…</span>}
+              {loading
+                ? <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Analysing…</span>
+                : selectedReport && (() => { const r = savedReports.find(x => x.id === selectedReport); return r ? <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{r.programmeName} · {new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span> : null })()
+              }
             </div>
             <MarkdownBlock text={review} />
             {loading && (

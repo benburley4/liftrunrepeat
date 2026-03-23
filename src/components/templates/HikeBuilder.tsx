@@ -1,253 +1,224 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type HikeSectionType = 'ascent' | 'descent' | 'flat' | 'rest'
-
-export interface HikeSection {
-  id: string
-  type: HikeSectionType
-  name: string
-  distanceKm: string   // km — used for ascent, descent, flat
-  elevationM: string   // metres gain (ascent) or loss (descent)
-  restMins: string     // minutes — used for rest only
-}
-
 export interface HikeSettings {
-  pace:       'slow' | 'normal' | 'fast'
+  pace:       'slow' | 'normal' | 'fast' | 'run'
   surface:    'easy' | 'good' | 'rough' | 'tough'
   packWeight: 'light' | 'regular' | 'heavy' | 'very-heavy'
 }
 
-// ─── Naismith's Rule (metric) ─────────────────────────────────────────────────
-// Base: 12 min/km (5 km/hr)
-// Ascent: +1 min per 10 m elevation gain
-// Descent: +0.5 min per 10 m elevation loss (Tranter's correction for steep ground)
-
-const PACE_MULT:    Record<HikeSettings['pace'],       number> = { slow: 1.35, normal: 1.0, fast: 0.8 }
-const SURFACE_MULT: Record<HikeSettings['surface'],    number> = { easy: 1.0, good: 1.1, rough: 1.25, tough: 1.5 }
-const PACK_MULT:    Record<HikeSettings['packWeight'], number> = { light: 1.0, regular: 1.05, heavy: 1.15, 'very-heavy': 1.3 }
-
-function calcSectionMins(section: HikeSection, settings: HikeSettings): number {
-  const mult = PACE_MULT[settings.pace] * SURFACE_MULT[settings.surface] * PACK_MULT[settings.packWeight]
-  if (section.type === 'rest') return parseFloat(section.restMins) || 0
-  const km  = parseFloat(section.distanceKm) || 0
-  const elv = parseFloat(section.elevationM) || 0
-  const base = km * 12
-  const elvMins = section.type === 'ascent'  ? (elv / 10)
-                : section.type === 'descent' ? (elv / 20)
-                : 0
-  return (base + elvMins) * mult
+export interface HikeData {
+  distanceKm:    string
+  elevationGainM: string
+  settings:      HikeSettings
 }
 
-function fmtMins(total: number): string {
-  if (total <= 0) return '—'
-  const h = Math.floor(total / 60)
-  const m = Math.round(total % 60)
+// ─── Naismith's Rule (metric) ─────────────────────────────────────────────────
+// Base:    12 min/km  (5 km/hr)
+// Ascent:  +1 min per 10 m elevation gain
+// Book:    18.64 min/km (30 min/mile) + 1 min per 10 m elevation gain
+
+// TrailsNH correction multipliers
+const PACE_MULT:    Record<HikeSettings['pace'],       number> = { slow: 1.25, normal: 1.0, fast: 0.82, run: 0.65 }
+const SURFACE_MULT: Record<HikeSettings['surface'],    number> = { easy: 1.0, good: 1.08, rough: 1.22, tough: 1.48 }
+const PACK_MULT:    Record<HikeSettings['packWeight'], number> = { light: 1.0, regular: 1.04, heavy: 1.14, 'very-heavy': 1.28 }
+
+function naismith(km: number, elevM: number): number {
+  return km * 12 + (elevM / 10)
+}
+
+function correctionFactor(settings: HikeSettings): number {
+  return PACE_MULT[settings.pace] * SURFACE_MULT[settings.surface] * PACK_MULT[settings.packWeight]
+}
+
+function fmtMins(mins: number): string {
+  if (mins <= 0) return '—'
+  const h = Math.floor(mins / 60)
+  const m = Math.round(mins % 60)
   if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`
   return `${m}m`
 }
 
-function uid() { return `${Date.now()}-${Math.random()}` }
-
-function makeSection(type: HikeSectionType = 'ascent'): HikeSection {
-  return { id: uid(), type, name: '', distanceKm: '', elevationM: '', restMins: '' }
+function fmtSpeed(km: number, mins: number): string {
+  if (mins <= 0 || km <= 0) return '—'
+  return (km / (mins / 60)).toFixed(1) + ' km/h'
 }
 
-// ─── Colours ──────────────────────────────────────────────────────────────────
-
-const TYPE_CONFIG: Record<HikeSectionType, { label: string; color: string }> = {
-  ascent:  { label: 'Ascent',  color: '#EF4444' },
-  descent: { label: 'Descent', color: '#3B82F6' },
-  flat:    { label: 'Flat',    color: '#A0A0A0' },
-  rest:    { label: 'Rest',    color: '#F59E0B' },
+function fmtPace(km: number, mins: number): string {
+  if (mins <= 0 || km <= 0) return '—'
+  const minsPerKm = mins / km
+  const m = Math.floor(minsPerKm)
+  const s = Math.round((minsPerKm - m) * 60)
+  return `${m}:${s.toString().padStart(2, '0')} /km`
 }
 
-const inputStyle: React.CSSProperties = {
-  background: '#0D0D0D', border: '1px solid #2E2E2E',
-  color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace', outline: 'none',
-}
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-const selectStyle: React.CSSProperties = {
-  ...inputStyle, cursor: 'pointer',
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
-interface HikeBuilderProps {
-  sections: HikeSection[]
-  settings: HikeSettings
-  onChangeSections: (s: HikeSection[]) => void
-  onChangeSettings: (s: HikeSettings) => void
-}
-
-export default function HikeBuilder({ sections, settings, onChangeSections, onChangeSettings }: HikeBuilderProps) {
-  function addSection(type: HikeSectionType) {
-    onChangeSections([...sections, makeSection(type)])
-  }
-
-  function updateSection(id: string, patch: Partial<HikeSection>) {
-    onChangeSections(sections.map(s => s.id === id ? { ...s, ...patch } : s))
-  }
-
-  function removeSection(id: string) {
-    onChangeSections(sections.filter(s => s.id !== id))
-  }
-
-  const totalMins = sections.reduce((sum, s) => sum + calcSectionMins(s, settings), 0)
-  const totalKm   = sections.filter(s => s.type !== 'rest').reduce((sum, s) => sum + (parseFloat(s.distanceKm) || 0), 0)
-  const totalGain = sections.filter(s => s.type === 'ascent').reduce((sum, s)  => sum + (parseFloat(s.elevationM) || 0), 0)
-  const totalLoss = sections.filter(s => s.type === 'descent').reduce((sum, s) => sum + (parseFloat(s.elevationM) || 0), 0)
-
+function ToggleGroup<T extends string>({
+  label, options, value, onChange,
+}: {
+  label: string
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+}) {
   return (
-    <div className="space-y-3">
-
-      {/* ── Settings ── */}
-      <div className="grid grid-cols-3 gap-2 p-3 rounded-xl" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
-        {([
-          { key: 'pace' as const,       label: 'Pace',         opts: [['slow','Slow'],['normal','Normal'],['fast','Fast']] },
-          { key: 'surface' as const,    label: 'Trail Surface', opts: [['easy','Easy'],['good','Good'],['rough','Rough'],['tough','Tough']] },
-          { key: 'packWeight' as const, label: 'Pack Weight',   opts: [['light','Light'],['regular','Regular'],['heavy','Heavy'],['very-heavy','Very Heavy']] },
-        ] as const).map(({ key, label, opts }) => (
-          <div key={key}>
-            <label className="text-xs block mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{label}</label>
-            <select
-              value={settings[key]}
-              onChange={e => onChangeSettings({ ...settings, [key]: e.target.value })}
-              className="w-full px-2 py-1.5 rounded-lg text-xs"
-              style={selectStyle}
-            >
-              {opts.map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
-            </select>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Sections ── */}
-      {sections.length === 0 && (
-        <p className="text-xs text-center py-4" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>
-          Add sections below to build your hike
-        </p>
-      )}
-
-      {sections.map(section => {
-        const cfg     = TYPE_CONFIG[section.type]
-        const mins    = calcSectionMins(section, settings)
-        const isRest  = section.type === 'rest'
-        const hasElev = section.type === 'ascent' || section.type === 'descent'
-
-        return (
-          <div key={section.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${cfg.color}33`, background: `${cfg.color}08` }}>
-            {/* Header row */}
-            <div className="flex items-center gap-2 px-3 py-2" style={{ borderBottom: `1px solid ${cfg.color}22` }}>
-              <select
-                value={section.type}
-                onChange={e => updateSection(section.id, { type: e.target.value as HikeSectionType })}
-                className="px-2 py-1 rounded text-xs font-bold"
-                style={{ background: `${cfg.color}20`, color: cfg.color, border: `1px solid ${cfg.color}44`, fontFamily: 'Inter, sans-serif', outline: 'none', cursor: 'pointer' }}
-              >
-                {Object.entries(TYPE_CONFIG).map(([val, { label }]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="Section name (optional)"
-                value={section.name}
-                onChange={e => updateSection(section.id, { name: e.target.value })}
-                className="flex-1 px-2 py-1 rounded text-xs"
-                style={{ ...inputStyle, background: 'transparent', border: '1px solid #2E2E2E' }}
-              />
-              {mins > 0 && (
-                <span className="text-xs font-bold flex-shrink-0" style={{ color: cfg.color, fontFamily: 'JetBrains Mono, monospace' }}>
-                  {fmtMins(mins)}
-                </span>
-              )}
-              <button onClick={() => removeSection(section.id)} className="p-1 rounded" style={{ color: '#606060' }}>
-                <Trash2 size={12} />
-              </button>
-            </div>
-
-            {/* Inputs */}
-            <div className="flex flex-wrap gap-3 px-3 py-2.5">
-              {isRest ? (
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Duration</label>
-                  <input
-                    type="number" inputMode="numeric" placeholder="—" min="0"
-                    value={section.restMins}
-                    onChange={e => updateSection(section.id, { restMins: e.target.value })}
-                    className="px-2 py-1.5 rounded-lg text-sm text-center"
-                    style={{ ...inputStyle, width: '64px' }}
-                  />
-                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>min</span>
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Distance</label>
-                    <input
-                      type="number" inputMode="decimal" placeholder="—" min="0" step="0.1"
-                      value={section.distanceKm}
-                      onChange={e => updateSection(section.id, { distanceKm: e.target.value })}
-                      className="px-2 py-1.5 rounded-lg text-sm text-center"
-                      style={{ ...inputStyle, width: '72px' }}
-                    />
-                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>km</span>
-                  </div>
-                  {hasElev && (
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
-                        {section.type === 'ascent' ? 'Gain' : 'Loss'}
-                      </label>
-                      <input
-                        type="number" inputMode="numeric" placeholder="—" min="0"
-                        value={section.elevationM}
-                        onChange={e => updateSection(section.id, { elevationM: e.target.value })}
-                        className="px-2 py-1.5 rounded-lg text-sm text-center"
-                        style={{ ...inputStyle, width: '72px' }}
-                      />
-                      <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>m</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )
-      })}
-
-      {/* ── Add buttons ── */}
-      <div className="grid grid-cols-4 gap-2">
-        {(Object.entries(TYPE_CONFIG) as [HikeSectionType, { label: string; color: string }][]).map(([type, { label, color }]) => (
+    <div className="space-y-1.5">
+      <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+        {label}
+      </label>
+      <div className="flex gap-1.5 flex-wrap">
+        {options.map(opt => (
           <button
-            key={type}
-            onClick={() => addSection(type)}
-            className="flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-            style={{ background: `${color}15`, color, border: `1px dashed ${color}44`, fontFamily: 'Inter, sans-serif' }}
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+            style={{
+              background: value === opt.value ? '#84CC1625' : '#242424',
+              color:      value === opt.value ? '#84CC16'   : '#606060',
+              border:     value === opt.value ? '1px solid #84CC1655' : '1px solid #2E2E2E',
+              fontFamily: 'Inter, sans-serif',
+            }}
           >
-            <Plus size={10} /> {label}
+            {opt.label}
           </button>
         ))}
       </div>
+    </div>
+  )
+}
 
-      {/* ── Totals ── */}
-      {sections.length > 0 && (
-        <div className="grid grid-cols-4 gap-2 px-1 pt-1" style={{ borderTop: '1px solid #2E2E2E' }}>
-          {[
-            { label: 'Est. Time',  value: fmtMins(totalMins), color: totalMins > 0 ? '#C8102E' : '#3E3E3E' },
-            { label: 'Distance',   value: totalKm > 0 ? `${totalKm % 1 === 0 ? totalKm : totalKm.toFixed(1)} km` : '—', color: totalKm > 0 ? '#C8102E' : '#3E3E3E' },
-            { label: 'Elev Gain',  value: totalGain > 0 ? `${totalGain} m` : '—', color: totalGain > 0 ? '#EF4444' : '#3E3E3E' },
-            { label: 'Elev Loss',  value: totalLoss > 0 ? `${totalLoss} m` : '—', color: totalLoss > 0 ? '#3B82F6' : '#3E3E3E' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="flex flex-col items-center gap-0.5">
-              <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>{label}</span>
-              <span className="text-xs font-bold" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>{value}</span>
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+interface HikeBuilderProps {
+  data: HikeData
+  onChange: (d: HikeData) => void
+}
+
+export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
+  const km   = parseFloat(data.distanceKm) || 0
+  const elev = parseFloat(data.elevationGainM) || 0
+
+  const naismithMins = naismith(km, elev)
+  const factor       = correctionFactor(data.settings)
+  const correctedMins = naismithMins * factor
+  const correctionPct   = Math.round((factor - 1) * 100)
+  const correctionLabel = correctionPct >= 0 ? `+${correctionPct}%` : `${correctionPct}%`
+
+  const hasData = km > 0 || elev > 0
+
+  function updateSettings(patch: Partial<HikeSettings>) {
+    onChange({ ...data, settings: { ...data.settings, ...patch } })
+  }
+
+  const inputCls = "w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+  const inputSty: React.CSSProperties = {
+    background: '#242424', border: '1px solid #2E2E2E',
+    color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace',
+  }
+
+  return (
+    <div className="space-y-5">
+
+      {/* ── Distance & Elevation inputs ── */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+            Distance
+          </label>
+          <div className="relative">
+            <input
+              type="number" inputMode="decimal" placeholder="0" min="0" step="0.1"
+              value={data.distanceKm}
+              onChange={e => onChange({ ...data, distanceKm: e.target.value })}
+              className={inputCls}
+              style={{ ...inputSty, paddingRight: '40px' }}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>km</span>
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+            Elevation Gain
+          </label>
+          <div className="relative">
+            <input
+              type="number" inputMode="numeric" placeholder="0" min="0"
+              value={data.elevationGainM}
+              onChange={e => onChange({ ...data, elevationGainM: e.target.value })}
+              className={inputCls}
+              style={{ ...inputSty, paddingRight: '36px' }}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>m</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── TrailsNH-style settings ── */}
+      <div className="space-y-3 p-4 rounded-xl" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#84CC16', fontFamily: 'Inter, sans-serif' }}>
+          TrailsNH Correction
+        </p>
+        <ToggleGroup
+          label="Intended Pace"
+          value={data.settings.pace}
+          onChange={v => updateSettings({ pace: v })}
+          options={[
+            { value: 'slow',   label: 'Slow'   },
+            { value: 'normal', label: 'Normal' },
+            { value: 'fast',   label: 'Fast'   },
+            { value: 'run',    label: 'Run'    },
+          ]}
+        />
+        <ToggleGroup
+          label="Trail Surface"
+          value={data.settings.surface}
+          onChange={v => updateSettings({ surface: v })}
+          options={[
+            { value: 'easy',  label: 'Easy'  },
+            { value: 'good',  label: 'Good'  },
+            { value: 'rough', label: 'Rough' },
+            { value: 'tough', label: 'Tough' },
+          ]}
+        />
+        <ToggleGroup
+          label="Pack Weight"
+          value={data.settings.packWeight}
+          onChange={v => updateSettings({ packWeight: v })}
+          options={[
+            { value: 'light',      label: 'Light'      },
+            { value: 'regular',    label: 'Regular'    },
+            { value: 'heavy',      label: 'Heavy'      },
+            { value: 'very-heavy', label: 'Very Heavy' },
+          ]}
+        />
+        <p className="text-xs" style={{ color: '#84CC16', fontFamily: 'Inter, sans-serif' }}>
+          Correction Factor: <strong>{correctionLabel}</strong>
+        </p>
+      </div>
+
+      {/* ── Estimates ── */}
+      {hasData && (
+        <div className="space-y-3">
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>
+            Estimates
+          </p>
+          <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+            Hike: <strong style={{ color: '#A0A0A0' }}>{data.distanceKm || '0'} km</strong>,{' '}
+            <strong style={{ color: '#A0A0A0' }}>{data.elevationGainM || '0'} m</strong> vertical gain
+          </p>
+
+          {/* Naismith */}
+          <div className="p-4 rounded-xl space-y-1" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Naismith&apos;s Rule</span>
+              <span className="text-lg font-black ml-auto" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{fmtMins(correctedMins)}</span>
             </div>
-          ))}
+            <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Pace: <span style={{ color: '#A0A0A0' }}>{fmtPace(km, correctedMins)}</span></p>
+            <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Speed: <span style={{ color: '#A0A0A0' }}>{fmtSpeed(km, correctedMins)}</span></p>
+          </div>
         </div>
       )}
     </div>

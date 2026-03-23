@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronUp, Copy, Share2, Plus, Check, X, Pencil, Trash2, BookmarkPlus, ChevronRight } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RepeatBlock, RunSegment, SEGMENT_TYPES, METRIC_CONFIG } from '@/components/templates/ExerciseBuilder'
-import HikeBuilder, { HikeSection, HikeSettings } from '@/components/templates/HikeBuilder'
+import HikeBuilder, { HikeData } from '@/components/templates/HikeBuilder'
 import { programmes as staticProgrammes, exercises as libraryExercises } from '@/lib/mockData'
 import { getTemplates, upsertTemplate, deleteTemplate } from '@/lib/db'
 
@@ -254,8 +254,7 @@ interface CustomTemplate {
   tags: string
   exerciseRows?: ExRow[]
   runRows?: RunEntry[]
-  hikeRows?: HikeSection[]
-  hikeSettings?: HikeSettings
+  hikeData?: HikeData
 }
 
 const LS_KEY = 'thhl_custom_templates'
@@ -428,8 +427,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
   const [type, setType]               = useState<TemplateType>(initialData?.type ?? 'lift')
   const [exerciseRows, setExRows]     = useState<ExRow[]>(initialData?.exerciseRows ?? [])
   const [runRows, setRunRows]         = useState<RunEntry[]>(initialData?.runRows ?? [])
-  const [hikeRows, setHikeRows]       = useState<HikeSection[]>(initialData?.hikeRows ?? [])
-  const [hikeSettings, setHikeSettings] = useState<HikeSettings>(initialData?.hikeSettings ?? { pace: 'normal', surface: 'good', packWeight: 'light' })
+  const [hikeData, setHikeData]       = useState<HikeData>(initialData?.hikeData ?? { distanceKm: '', elevationGainM: '', settings: { pace: 'normal', surface: 'good', packWeight: 'light' } })
 
   const TYPE_OPTIONS: { value: TemplateType; label: string; color: string; bg: string }[] = [
     { value: 'lift',   label: 'Lifting',      color: '#00BFA5', bg: '#00BFA520' },
@@ -450,8 +448,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
       tags: '',
       exerciseRows: (type === 'lift' || type === 'hybrid') ? exerciseRows : undefined,
       runRows: (type === 'run' || type === 'hybrid') ? runRows : undefined,
-      hikeRows: type === 'hike' ? hikeRows : undefined,
-      hikeSettings: type === 'hike' ? hikeSettings : undefined,
+      hikeData: type === 'hike' ? hikeData : undefined,
     })
   }
 
@@ -519,10 +516,8 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
           {type === 'hike' && (
             <Field label="Hike Structure">
               <HikeBuilder
-                sections={hikeRows}
-                settings={hikeSettings}
-                onChangeSections={setHikeRows}
-                onChangeSettings={setHikeSettings}
+                data={hikeData}
+                onChange={setHikeData}
               />
             </Field>
           )}
@@ -570,8 +565,8 @@ function CustomTemplateCard({
   onDelete: () => void
   onToast: (msg: string) => void
 }) {
-  const typeColor = template.type === 'lift' ? '#00BFA5' : template.type === 'run' ? '#C8102E' : '#A78BFA'
-  const typeLabel = template.type === 'lift' ? 'Lifting' : template.type === 'run' ? 'Running' : 'Hybrid'
+  const typeColor = template.type === 'lift' ? '#00BFA5' : template.type === 'run' ? '#C8102E' : template.type === 'hike' ? '#84CC16' : '#A78BFA'
+  const typeLabel = template.type === 'lift' ? 'Lifting' : template.type === 'run' ? 'Running' : template.type === 'hike' ? 'Hike' : 'Hybrid'
   const [expanded, setExpanded] = useState(false)
 
   return (

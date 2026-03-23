@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { Check, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
-import { upsertSession, getSessions, getProgrammes } from '@/lib/db'
+import { upsertSession, getProgrammes, getTemplates, getCustomExercises } from '@/lib/db'
+import { exercises as staticExercises } from '@/lib/mockData'
 import { formatTimeInput } from '@/lib/utils'
 
 type SessionType = 'lift' | 'run' | 'hybrid'
@@ -226,7 +227,11 @@ export default function LogSessionPage() {
   const [loggedExercises, setLoggedExercises] = useState<LoggedExercise[]>([])
   const [loggedRun, setLoggedRun] = useState<LoggedRunEntry[]>([])
   const [showAddEx, setShowAddEx] = useState(false)
-  const [addExName, setAddExName] = useState('')
+  const [addExSearch, setAddExSearch] = useState('')
+  const [allExercises, setAllExercises] = useState<{ id: string; name: string }[]>(staticExercises.map(e => ({ id: e.id, name: e.name })))
+  const [library, setLibrary] = useState<StoredTemplate[]>([])
+  const [showPicker, setShowPicker] = useState(false)
+  const [pickerType, setPickerType] = useState<'lift' | 'run'>('lift')
 
   const now = new Date()
   const selectedDate = new Date(now)
@@ -235,6 +240,17 @@ export default function LogSessionPage() {
   const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   const dateIso = selectedDate.toISOString().split('T')[0]
   const isToday = dayOffset === 0
+
+  useEffect(() => {
+    getTemplates().then(data => setLibrary(data as StoredTemplate[])).catch(() => {})
+    getCustomExercises().then(data => {
+      const custom = (data as { id: string; name: string }[]).map(e => ({ id: e.id, name: e.name }))
+      setAllExercises(prev => {
+        const ids = new Set(prev.map(e => e.id))
+        return [...prev, ...custom.filter(e => !ids.has(e.id))]
+      })
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     loadCurrentProgramme().then(prog => {
@@ -298,13 +314,34 @@ export default function LogSessionPage() {
     }))
   }
 
-  function addManualExercise() {
-    if (!addExName.trim()) return
+  function openPicker(type: 'lift' | 'run') {
+    setPickerType(type)
+    setShowPicker(true)
+  }
+
+  function loadFromTemplate(tpl: StoredTemplate) {
+    if (tpl.exerciseRows?.length) {
+      setLoggedExercises(prev => [...prev, ...initExercises(tpl.exerciseRows!)])
+    }
+    if (tpl.runRows?.length) {
+      setLoggedRun(prev => [...prev, ...initRunEntries(tpl.runRows!)])
+    }
+    if (!sessionName) setSessionName(tpl.name)
+    setSessionType(tpl.type as SessionType)
+    setShowPicker(false)
+  }
+
+  function removeExercise(exId: string) {
+    setLoggedExercises(prev => prev.filter(ex => ex.id !== exId))
+  }
+
+  function addExerciseFromLibrary(name: string) {
+    if (!name.trim()) return
     setLoggedExercises(prev => [...prev, {
-      id: `ex-${Date.now()}`, exerciseName: addExName.trim(),
+      id: `ex-${Date.now()}`, exerciseName: name.trim(),
       plannedSets: [], actualSets: [{ reps: '', weight: '', rpe: '' }],
     }])
-    setAddExName(''); setShowAddEx(false)
+    setAddExSearch(''); setShowAddEx(false)
   }
 
   function addManualRunSegment() {
@@ -322,13 +359,6 @@ export default function LogSessionPage() {
       savedAt: now.toISOString(),
       exercises: loggedExercises,
       run: loggedRun,
-    }
-    // If a session for this date already exists, delete it first then upsert the new one
-    const existing = await getSessions()
-    const prev = existing.find(s => s.date === dateIso)
-    if (prev && prev.savedAt !== session.savedAt) {
-      const { deleteSession } = await import('@/lib/db')
-      await deleteSession(prev.savedAt).catch(console.error)
     }
     await upsertSession(session)
     setSaved(true)
@@ -413,12 +443,12 @@ export default function LogSessionPage() {
             <p className="text-sm font-semibold mb-1" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>No session planned</p>
             <p className="text-xs mb-5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Log a manual session for this day</p>
             <div className="flex gap-3 flex-wrap">
-              <button onClick={() => setShowAddEx(true)}
+              <button onClick={() => openPicker('lift')}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
                 style={{ background: 'rgba(0,191,165,0.08)', color: '#00BFA5', border: '1px solid rgba(0,191,165,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
                 <Plus size={14} /> Add Lifting
               </button>
-              <button onClick={addManualRunSegment}
+              <button onClick={() => openPicker('run')}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
                 style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
                 <Plus size={14} /> Add Run
@@ -450,9 +480,18 @@ export default function LogSessionPage() {
                       <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
                       <span className="font-bold text-sm uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.05em' }}>{ex.exerciseName}</span>
                     </div>
-                    {maxRM > 0 && (
-                      <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>Est. 1RM: {maxRM} kg</span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {maxRM > 0 && (
+                        <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>Est. 1RM: {maxRM} kg</span>
+                      )}
+                      <button onClick={() => removeExercise(ex.id)}
+                        style={{ background: 'none', border: 'none', color: '#3E3E3E', cursor: 'pointer', padding: '2px', lineHeight: 1, fontSize: 18 }}
+                        onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
+                        onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}
+                        title="Remove exercise">
+                        ×
+                      </button>
+                    </div>
                   </div>
 
                   {/* Sets */}
@@ -505,23 +544,35 @@ export default function LogSessionPage() {
 
             {/* Add exercise */}
             {showAddEx ? (
-              <div className="flex items-center gap-2">
+              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #00BFA544', background: '#1A1A1A' }}>
                 <input
                   autoFocus
-                  type="text" value={addExName} onChange={e => setAddExName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') addManualExercise(); if (e.key === 'Escape') { setShowAddEx(false); setAddExName('') } }}
-                  placeholder="Exercise name…"
-                  className="flex-1 px-3 py-2 rounded-lg text-sm outline-none"
-                  style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'Inter, sans-serif' }}
+                  type="text" value={addExSearch} onChange={e => setAddExSearch(e.target.value)}
+                  onKeyDown={e => e.key === 'Escape' && (setShowAddEx(false), setAddExSearch(''))}
+                  placeholder="Search exercises…"
+                  className="w-full px-3 py-2.5 text-sm outline-none"
+                  style={{ background: '#242424', color: '#F5F5F5', border: 'none', borderBottom: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
                 />
-                <button onClick={addManualExercise}
-                  className="px-3 py-2 rounded-lg text-sm font-semibold"
-                  style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                  Add
-                </button>
-                <button onClick={() => { setShowAddEx(false); setAddExName('') }}
-                  className="px-3 py-2 rounded-lg text-sm"
-                  style={{ color: '#606060', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+                  {allExercises
+                    .filter(e => e.name.toLowerCase().includes(addExSearch.toLowerCase()))
+                    .slice(0, 20)
+                    .map(e => (
+                      <button key={e.id} onClick={() => addExerciseFromLibrary(e.name)}
+                        className="w-full text-left px-3 py-2 text-sm"
+                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #2E2E2E', color: '#D0D0D0', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                        onMouseEnter={el => (el.currentTarget.style.background = '#00BFA510', el.currentTarget.style.color = '#00BFA5')}
+                        onMouseLeave={el => (el.currentTarget.style.background = 'transparent', el.currentTarget.style.color = '#D0D0D0')}>
+                        {e.name}
+                      </button>
+                    ))}
+                  {allExercises.filter(e => e.name.toLowerCase().includes(addExSearch.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-3 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No exercises found</p>
+                  )}
+                </div>
+                <button onClick={() => { setShowAddEx(false); setAddExSearch('') }}
+                  className="w-full py-2 text-xs text-center"
+                  style={{ color: '#606060', fontFamily: 'Inter, sans-serif', cursor: 'pointer', background: '#141414', border: 'none', borderTop: '1px solid #2E2E2E' }}>
                   Cancel
                 </button>
               </div>
@@ -622,6 +673,74 @@ export default function LogSessionPage() {
           </button>
         </div>
       </div>
+
+      {/* Library picker modal */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setShowPicker(false)}>
+          <div className="w-full max-w-lg rounded-2xl overflow-hidden"
+            style={{ background: '#141414', border: '1px solid #2E2E2E', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            onClick={e => e.stopPropagation()}>
+
+            {/* Modal header */}
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #2E2E2E' }}>
+              <span className="text-sm font-bold uppercase tracking-wider"
+                style={{ color: pickerType === 'lift' ? '#00BFA5' : '#C8102E', fontFamily: 'Montserrat, sans-serif' }}>
+                {pickerType === 'lift' ? 'Choose Lifting Template' : 'Choose Run Template'}
+              </span>
+              <button onClick={() => setShowPicker(false)} style={{ color: '#606060', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+
+            {/* Template list */}
+            <div className="overflow-y-auto p-3 space-y-2">
+              {library
+                .filter(t => pickerType === 'lift' ? (t.type === 'lift' || t.type === 'hybrid') : (t.type === 'run' || t.type === 'hybrid'))
+                .length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                  No {pickerType} templates in your library yet.
+                </p>
+              )}
+              {library
+                .filter(t => pickerType === 'lift' ? (t.type === 'lift' || t.type === 'hybrid') : (t.type === 'run' || t.type === 'hybrid'))
+                .map(tpl => (
+                  <button key={tpl.id} onClick={() => loadFromTemplate(tpl)}
+                    className="w-full text-left px-4 py-3 rounded-xl transition-all"
+                    style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = pickerType === 'lift' ? '#00BFA544' : '#C8102E44')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#2E2E2E')}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{tpl.name}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: `${typeColor(tpl.type as TemplateKind)}20`, color: typeColor(tpl.type as TemplateKind), fontFamily: 'Inter, sans-serif' }}>
+                        {typeLabel(tpl.type as TemplateKind)}
+                      </span>
+                    </div>
+                    {tpl.exerciseRows && tpl.exerciseRows.length > 0 && (
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                        {tpl.exerciseRows.slice(0, 4).map(e => e.exerciseName).join(' · ')}{tpl.exerciseRows.length > 4 ? ` +${tpl.exerciseRows.length - 4} more` : ''}
+                      </p>
+                    )}
+                    {tpl.runRows && tpl.runRows.length > 0 && (
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                        {tpl.runRows.length} segment{tpl.runRows.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </button>
+                ))}
+
+              {/* Blank entry fallback */}
+              <button onClick={() => { pickerType === 'lift' ? setShowAddEx(true) : addManualRunSegment(); setShowPicker(false) }}
+                className="w-full text-left px-4 py-3 rounded-xl"
+                style={{ background: 'transparent', border: '1px dashed #2E2E2E', cursor: 'pointer' }}>
+                <span className="text-sm flex items-center gap-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                  <Plus size={13} /> Start blank
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, X, Pencil } from 'lucide-react'
+import { Check, X, Pencil, Sparkles, Loader2 } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, segDerivedKm } from '@/components/templates/ExerciseBuilder'
-import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTemplate } from '@/lib/db'
+import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTemplate, getSetting, upsertSetting } from '@/lib/db'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -59,6 +59,20 @@ function addDays(date: Date, n: number): Date {
   const d = new Date(date)
   d.setDate(d.getDate() + n)
   return d
+}
+
+// Auto-format time inputs
+function fmtMmSs(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 4)
+  if (d.length <= 2) return d
+  return d.slice(0, 2) + ':' + d.slice(2)
+}
+
+function fmtHMmSs(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 6)
+  if (d.length <= 1) return d
+  if (d.length <= 3) return d[0] + ':' + d.slice(1)
+  return d[0] + ':' + d.slice(1, 3) + ':' + d.slice(3)
 }
 
 function fmtDate(d: Date): string {
@@ -805,20 +819,44 @@ export default function ProgrammesPage() {
   const [currentProgId, setCurrentProgIdState] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+
+  // Generate form
+  const emptyStandards = { squat: '', deadlift: '', bench: '', pullups: '', run5k: '', run10k: '', runHalf: '', runFull: '' }
+  const [genCurrent, setGenCurrent]     = useState(() => {
+    try { const s = localStorage.getItem('lrr_standards'); return s ? { ...emptyStandards, ...JSON.parse(s) } : { ...emptyStandards } }
+    catch { return { ...emptyStandards } }
+  })
+  const [genTarget,  setGenTarget]      = useState({ ...emptyStandards })
+  const [genWeeks, setGenWeeks]         = useState(12)
+  const [genDays, setGenDays]           = useState<number[]>([1, 3, 5, 6]) // Mon Wed Fri Sat
+  const [genBalance, setGenBalance]         = useState(50) // 0 = 100% lift, 100 = 100% run
+  const [genConstraints, setGenConstraints] = useState('')
+  const [genLoading, setGenLoading]     = useState(false)
+  const [genError, setGenError]         = useState('')
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    getProgrammes()
-      .then(progs => {
+    Promise.all([getProgrammes(), getSetting('current_programme_id'), getSetting('gen_form_state')])
+      .then(([progs, dbCurrentId, genFormRaw]) => {
         const list = progs as Programme[]
         setSavedList(list)
-        let currentId = loadCurrentProgId()
-        // Auto-set current if only one programme, or stored ID no longer exists
+        let currentId = dbCurrentId ?? loadCurrentProgId()
         if (list.length === 1 || (currentId && !list.find(p => p.id === currentId))) {
           currentId = list[0]?.id ?? null
-          setCurrentProgId(currentId)
         }
+        if (currentId) setCurrentProgId(currentId)
         setCurrentProgIdState(currentId)
+        if (genFormRaw) {
+          try {
+            const f = JSON.parse(genFormRaw)
+            if (f.weeks)       setGenWeeks(f.weeks)
+            if (f.days)        setGenDays(f.days)
+            if (f.balance != null) setGenBalance(f.balance)
+            if (f.constraints) setGenConstraints(f.constraints)
+            if (f.target)      setGenTarget(t => ({ ...t, ...f.target }))
+            if (f.current)     setGenCurrent(t => ({ ...t, ...f.current }))
+          } catch { /* ignore */ }
+        }
         setReady(true)
       })
       .catch(() => {
@@ -834,10 +872,15 @@ export default function ProgrammesPage() {
       })
   }, [])
 
+  useEffect(() => {
+    try { localStorage.setItem('lrr_standards', JSON.stringify(genCurrent)) } catch {}
+  }, [genCurrent])
+
   function handleSetCurrent(id: string) {
     const next = currentProgId === id ? null : id
     setCurrentProgId(next)
     setCurrentProgIdState(next)
+    upsertSetting('current_programme_id', next).catch(console.error)
   }
 
   function handleGenerate(p: Programme) {
@@ -847,11 +890,137 @@ export default function ProgrammesPage() {
       if (next.length === 1) {
         setCurrentProgId(withId.id)
         setCurrentProgIdState(withId.id)
+        upsertSetting('current_programme_id', withId.id).catch(console.error)
       }
       return next
     })
     setProgramme(withId)
     upsertProgramme(withId.id, withId).catch(console.error)
+  }
+
+  async function handleAIGenerate() {
+    if (!genDays.length) return
+    setGenLoading(true)
+    setGenError('')
+    upsertSetting('gen_form_state', JSON.stringify({
+      weeks: genWeeks, days: genDays, balance: genBalance,
+      constraints: genConstraints, target: genTarget, current: genCurrent,
+    })).catch(console.error)
+    try {
+      const templates = await getTemplates()
+      const library = (templates as { name: string; type: string }[]).map(t => ({ name: t.name, type: t.type }))
+
+      const fmt = (label: string, curr: string, tgt: string, unit = '') =>
+        tgt ? `- ${label}: current ${curr || 'unknown'}${unit}  →  target ${tgt}${unit}` : ''
+      const goalLines = [
+        fmt('Squat 1RM',       genCurrent.squat,    genTarget.squat,    ' kg'),
+        fmt('Deadlift 1RM',    genCurrent.deadlift,  genTarget.deadlift,  ' kg'),
+        fmt('Bench Press 1RM', genCurrent.bench,     genTarget.bench,     ' kg'),
+        fmt('Pull Ups',        genCurrent.pullups,   genTarget.pullups,   ' reps'),
+        fmt('5 km time',       genCurrent.run5k,     genTarget.run5k),
+        fmt('10 km time',      genCurrent.run10k,    genTarget.run10k),
+        fmt('Half Marathon',   genCurrent.runHalf,   genTarget.runHalf),
+        fmt('Full Marathon',   genCurrent.runFull,   genTarget.runFull),
+      ].filter(Boolean).join('\n')
+      const balanceDesc = genBalance === 50
+        ? 'Equal balance between lifting and running'
+        : genBalance < 50
+          ? `Training split: ${100 - genBalance}% Lifting / ${genBalance}% Running (strength focused)`
+          : `Training split: ${100 - genBalance}% Lifting / ${genBalance}% Running (endurance focused)`
+      const goal = [goalLines, balanceDesc].filter(Boolean).join('\n')
+
+      const res = await fetch('/api/generate-programme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal, weeks: genWeeks, trainingDays: genDays, constraints: genConstraints, library }),
+      })
+      if (!res.ok) { setGenError(await res.text()); return }
+
+      // Stream the response and accumulate
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      let raw = ''
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          raw += decoder.decode(value, { stream: true })
+        }
+      }
+
+      // Extract JSON (strip any accidental markdown fences)
+      const jsonMatch = raw.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) { setGenError('Could not parse AI response — please try again'); return }
+      const data = JSON.parse(jsonMatch[0])
+
+      // Expand phase templates into full week-by-week cells with progressive overload
+      type AISession = { rpe: number; template: { name: string; type: string; exerciseRows?: { exerciseName: string; category: string; sets: { reps: string; weight: string }[] }[]; runRows?: { segmentType: string; metric: string; value: string }[] } }
+      type AIPhase  = { name: string; startWeek: number; endWeek: number; deloadWeeks?: number[]; sessions: Record<string, AISession> }
+
+      const weightProgress = data.weightProgressKgPerWeek ?? 2.5
+      const runProgress    = data.runProgressMinPerWeek   ?? 2
+      const ts             = Date.now()
+      const cells: Record<string, CellData> = {}
+
+      for (const phase of (data.phases ?? []) as AIPhase[]) {
+        for (let w = phase.startWeek; w <= phase.endWeek; w++) {
+          const weekOffset = w - phase.startWeek
+          const isDeload   = (phase.deloadWeeks ?? []).includes(w)
+          const liftMult   = isDeload ? 0.7 : 1
+          const runMult    = isDeload ? 0.7 : 1
+
+          for (const [dayKey, session] of Object.entries(phase.sessions)) {
+            const cellKey = `w${w}${dayKey}`
+            cells[cellKey] = {
+              rpe: isDeload ? Math.max(5, session.rpe - 2) : session.rpe,
+              template: {
+                id: `ai-${cellKey}-${ts}`,
+                name: session.template.name + (isDeload ? ' (Deload)' : ''),
+                type: session.template.type as TemplateKind,
+                exerciseRows: (session.template.exerciseRows ?? []).map((ex, ei) => ({
+                  id: `ex-${cellKey}-${ei}`,
+                  exerciseId: '',
+                  exerciseName: ex.exerciseName,
+                  category: ex.category ?? 'barbell',
+                  sets: (ex.sets ?? []).map((s, si) => {
+                    const base   = parseFloat(s.weight) || 0
+                    const added  = base > 0 ? Math.round((base + weekOffset * weightProgress) * liftMult / 2.5) * 2.5 : 0
+                    return { id: `s-${cellKey}-${ei}-${si}`, reps: s.reps, weight: added > 0 ? String(added) : s.weight }
+                  }),
+                })),
+                runRows: (session.template.runRows ?? []).map((r, ri) => {
+                  let val = r.value
+                  if (r.metric === 'time' && r.segmentType === 'easy') {
+                    const mins = (parseFloat(r.value) || 0) + weekOffset * runProgress
+                    val = String(Math.round(mins * runMult))
+                  }
+                  return { id: `run-${cellKey}-${ri}`, segmentType: r.segmentType, metric: r.metric as 'time' | 'distance', value: val }
+                }),
+              },
+            }
+          }
+        }
+      }
+
+      const prog: Programme = {
+        id: `prog-${Date.now()}`,
+        name: data.name ?? `${genWeeks}-Week AI Programme`,
+        weeks: data.weeks ?? genWeeks,
+        startDate: nextMonday(),
+        cells,
+      }
+      setSavedList(prev => {
+        const next = [...prev, prog]
+        if (next.length === 1) { setCurrentProgId(prog.id); setCurrentProgIdState(prog.id); upsertSetting('current_programme_id', prog.id).catch(console.error) }
+        return next
+      })
+      setProgramme(prog)
+      upsertProgramme(prog.id, prog).catch(console.error)
+    } catch (err) {
+      setGenError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setGenLoading(false)
+    }
   }
 
   function handleUpdate(cells: Record<string, CellData>) {
@@ -896,10 +1065,9 @@ export default function ProgrammesPage() {
         ? <CalendarGrid programme={programme} onUpdate={handleUpdate} onSave={handleSave} onReset={handleReset} onRename={name => handleRenameProg(programme.id, name)} />
         : (
           <div style={{ maxWidth: '720px', margin: '0 auto' }}>
-            <CreationForm onGenerate={handleGenerate} />
             {/* Saved programmes */}
             {savedList.length > 0 && (
-              <div style={{ marginTop: '40px' }}>
+              <div style={{ marginBottom: '40px' }}>
                 <p style={{ fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', fontFamily: 'Inter, sans-serif' }}>Saved Programmes</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {savedList.map(p => {
@@ -966,6 +1134,138 @@ export default function ProgrammesPage() {
                 </div>
               </div>
             )}
+
+            <CreationForm onGenerate={handleGenerate} />
+
+            {/* Generate Training Block */}
+            <div style={{ marginTop: '32px', padding: '28px', borderRadius: '18px', background: '#141414', border: '1px solid #2E2E2E' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '100px', background: '#A78BFA15', border: '1px solid #A78BFA30', marginBottom: '16px' }}>
+                <Sparkles size={12} color="#A78BFA" />
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#A78BFA' }}>AI Powered</span>
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#fff', margin: '0 0 8px' }}>Generate Training Block</h2>
+              <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 24px' }}>Describe your goal and schedule — AI will build a complete, periodised programme using your exercise library.</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Standards */}
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0', marginBottom: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Metric</span>
+                    <span style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>Current</span>
+                    <span style={{ fontSize: '11px', color: '#A78BFA', textTransform: 'uppercase', letterSpacing: '0.06em', textAlign: 'center' }}>Target</span>
+                  </div>
+                  {([
+                    { key: 'squat',    label: 'Squat 1RM',       unit: 'kg',      placeholder: '100',  fmt: null },
+                    { key: 'deadlift', label: 'Deadlift 1RM',    unit: 'kg',      placeholder: '140',  fmt: null },
+                    { key: 'bench',    label: 'Bench Press 1RM', unit: 'kg',      placeholder: '80',   fmt: null },
+                    { key: 'pullups',  label: 'Pull Ups',        unit: 'reps',    placeholder: '8',    fmt: null },
+                    { key: 'run5k',    label: '5 km',            unit: 'mm:ss',   placeholder: '25:00', fmt: fmtMmSs },
+                    { key: 'run10k',   label: '10 km',           unit: 'mm:ss',   placeholder: '52:00', fmt: fmtMmSs },
+                    { key: 'runHalf',  label: 'Half Marathon',   unit: 'h:mm:ss', placeholder: '2:00:00', fmt: fmtHMmSs },
+                    { key: 'runFull',  label: 'Full Marathon',   unit: 'h:mm:ss', placeholder: '4:15:00', fmt: fmtHMmSs },
+                  ] as { key: string; label: string; unit: string; placeholder: string; fmt: ((v: string) => string) | null }[]).map(row => {
+                    const cur = (genCurrent as Record<string, string>)
+                    const tgt = (genTarget  as Record<string, string>)
+                    return (
+                    <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: '13px', color: '#F5F5F5', fontWeight: 600 }}>{row.label}</div>
+                        <div style={{ fontSize: '11px', color: '#6B7280' }}>{row.unit}</div>
+                      </div>
+                      <input
+                        type="text" placeholder={row.placeholder}
+                        value={cur[row.key]}
+                        onChange={e => { const v = row.fmt ? row.fmt(e.target.value) : e.target.value; setGenCurrent((p: Record<string, string>) => ({ ...p, [row.key]: v })) }}
+                        style={{ padding: '8px 10px', borderRadius: '10px', background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5', fontSize: '13px', outline: 'none', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
+                      />
+                      <input
+                        type="text" placeholder={row.placeholder}
+                        value={tgt[row.key]}
+                        onChange={e => { const v = row.fmt ? row.fmt(e.target.value) : e.target.value; setGenTarget(p => ({ ...p, [row.key]: v })) }}
+                        style={{ padding: '8px 10px', borderRadius: '10px', background: '#1E1E1E', border: '1px solid #A78BFA33', color: '#A78BFA', fontSize: '13px', outline: 'none', textAlign: 'center', width: '100%', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    )
+                  })}
+                </div>
+
+                {/* Balance */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <label style={{ fontSize: '11px', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Training Balance</label>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#F5F5F5' }}>
+                      {genBalance === 50 ? '50 / 50' : `${100 - genBalance}% Lift · ${genBalance}% Run`}
+                    </span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="range" min={0} max={100} step={5} value={genBalance}
+                      onChange={e => setGenBalance(Number(e.target.value))}
+                      style={{ width: '100%', accentColor: genBalance < 50 ? '#00BFA5' : genBalance > 50 ? '#C8102E' : '#A78BFA', cursor: 'pointer' }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                      <span style={{ fontSize: '11px', color: '#00BFA5', fontWeight: 600 }}>100% Lifting</span>
+                      <span style={{ fontSize: '11px', color: '#C8102E', fontWeight: 600 }}>100% Running</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Weeks */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Programme Length</label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {WEEKS_OPTIONS.map(w => (
+                      <button key={w} onClick={() => setGenWeeks(w)}
+                        style={{ padding: '8px 16px', borderRadius: '10px', border: `1px solid ${genWeeks === w ? '#A78BFA55' : '#2E2E2E'}`, background: genWeeks === w ? '#A78BFA20' : '#1E1E1E', color: genWeeks === w ? '#A78BFA' : '#6B7280', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}>
+                        {w}w
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Training days */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Training Days</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {['M','T','W','T','F','S','S'].map((label, i) => {
+                      const day = i + 1
+                      const active = genDays.includes(day)
+                      return (
+                        <button key={day} onClick={() => setGenDays(prev => active ? prev.filter(d => d !== day) : [...prev, day].sort())}
+                          style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${active ? '#A78BFA55' : '#2E2E2E'}`, background: active ? '#A78BFA20' : '#1E1E1E', color: active ? '#A78BFA' : '#6B7280', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Constraints */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Constraints & Preferences <span style={{ textTransform: 'none', fontWeight: 400 }}>(optional)</span></label>
+                  <textarea
+                    value={genConstraints}
+                    onChange={e => setGenConstraints(e.target.value)}
+                    placeholder="e.g. Max 90 min per session. Old knee injury — no heavy leg work in week 1. Long run must be Sunday."
+                    rows={2}
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#fff', fontSize: '14px', boxSizing: 'border-box', outline: 'none', resize: 'vertical', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                {genError && (
+                  <p style={{ fontSize: '13px', color: '#C8102E', margin: 0 }}>{genError}</p>
+                )}
+
+                <button
+                  onClick={handleAIGenerate}
+                  disabled={genLoading || !genDays.length}
+                  style={{ width: '100%', padding: '16px', borderRadius: '14px', background: (genLoading || !genDays.length) ? '#1A1527' : '#A78BFA', color: (genLoading || !genDays.length) ? '#6B7280' : '#0D0D0D', fontWeight: 800, fontSize: '15px', border: 'none', cursor: (genLoading || !genDays.length) ? 'not-allowed' : 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  {genLoading
+                    ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Building your programme…</>
+                    : <><Sparkles size={16} /> Generate Programme</>}
+                </button>
+              </div>
+            </div>
 
           </div>
         )

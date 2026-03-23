@@ -103,6 +103,67 @@ export async function deleteTemplate(id: string): Promise<void> {
   throwIfError(error)
 }
 
+// ─── User Settings ────────────────────────────────────────────────────────────
+
+export async function getSetting(key: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('user_settings')
+    .select('value')
+    .eq('key', key)
+    .maybeSingle()
+  return data?.value ?? null
+}
+
+export async function upsertSetting(key: string, value: string | null): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  if (value === null) {
+    await supabase.from('user_settings').delete().eq('key', key).eq('user_id', user.id)
+    return
+  }
+  const { error } = await supabase
+    .from('user_settings')
+    .upsert({ key, user_id: user.id, value }, { onConflict: 'key,user_id' })
+  throwIfError(error)
+}
+
+// ─── AI Reports ───────────────────────────────────────────────────────────────
+
+export async function getAIReports(): Promise<unknown[]> {
+  const { data, error } = await supabase
+    .from('ai_reports')
+    .select('id, data')
+    .order('created_at', { ascending: false })
+    .limit(10)
+  throwIfError(error)
+  return (data ?? []).map(row => row.data)
+}
+
+export async function upsertAIReport(id: string, report: unknown): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('ai_reports')
+    .upsert({ id, data: report, user_id: user?.id, created_at: new Date().toISOString() }, { onConflict: 'id' })
+  throwIfError(error)
+  // Trim to last 10 — delete oldest beyond the limit
+  const { data: rows } = await supabase
+    .from('ai_reports')
+    .select('id')
+    .order('created_at', { ascending: false })
+  if (rows && rows.length > 10) {
+    const toDelete = rows.slice(10).map((r: { id: string }) => r.id)
+    await supabase.from('ai_reports').delete().in('id', toDelete)
+  }
+}
+
+export async function deleteAIReport(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('ai_reports')
+    .delete()
+    .eq('id', id)
+  throwIfError(error)
+}
+
 // ─── Custom Exercises ─────────────────────────────────────────────────────────
 
 export async function getCustomExercises(): Promise<unknown[]> {
