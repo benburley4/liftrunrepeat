@@ -238,7 +238,7 @@ export default function LogSessionPage() {
   selectedDate.setDate(now.getDate() + dayOffset)
 
   const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  const dateIso = selectedDate.toISOString().split('T')[0]
+  const dateIso = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
   const isToday = dayOffset === 0
 
   useEffect(() => {
