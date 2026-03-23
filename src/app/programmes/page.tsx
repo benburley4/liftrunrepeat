@@ -853,8 +853,8 @@ export default function ProgrammesPage() {
             if (f.days)        setGenDays(f.days)
             if (f.balance != null) setGenBalance(f.balance)
             if (f.constraints) setGenConstraints(f.constraints)
-            if (f.target)      setGenTarget(t => ({ ...t, ...f.target }))
-            if (f.current)     setGenCurrent(t => ({ ...t, ...f.current }))
+            if (f.target)      setGenTarget((t: Record<string, string>) => ({ ...t, ...f.target }))
+            if (f.current)     setGenCurrent((t: Record<string, string>) => ({ ...t, ...f.current }))
           } catch { /* ignore */ }
         }
         setReady(true)
