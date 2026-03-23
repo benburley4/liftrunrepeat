@@ -16,11 +16,15 @@ interface Props {
 
 export default function ConsistencyHeatmap({ sessions }: Props) {
   const data = useMemo(() => {
-    // Build a lookup: date string → session type
+    // Build a lookup: date string → session type (multiple sessions → hybrid)
     const byDate: Record<string, string> = {}
     for (const s of sessions) {
-      // If multiple sessions on same day, last one wins
-      byDate[s.date] = s.type
+      const existing = byDate[s.date]
+      if (!existing) {
+        byDate[s.date] = s.type
+      } else if (existing !== s.type) {
+        byDate[s.date] = 'hybrid'
+      }
     }
 
     const today = new Date()
