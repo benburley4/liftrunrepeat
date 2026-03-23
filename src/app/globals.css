@@ -36,6 +36,8 @@
 
 html {
   background: #0F0F0F;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
 }
 
 body {
@@ -43,6 +45,7 @@ body {
   color: #F5F5F5;
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -71,4 +74,51 @@ h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #404040;
+}
+
+/* ─── Analytics tab bar — scrollable on mobile ───────────────────────── */
+.analytics-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.analytics-tabs::-webkit-scrollbar {
+  display: none;
+}
+.analytics-tabs button {
+  flex-shrink: 0;
+}
+
+/* ─── Session log: set row grid ───────────────────────────────────────── */
+.set-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 28px 72px 1fr 1fr 50px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+/* On small screens: hide Planned column, tighten spacing */
+@media (max-width: 480px) {
+  .set-grid {
+    grid-template-columns: 26px 1fr 1fr 46px;
+  }
+  .set-planned {
+    display: none !important;
+  }
+  .gen-block {
+    padding: 16px !important;
+  }
+  /* Reduce large headings on mobile */
+  .mobile-h1 {
+    font-size: 22px !important;
+  }
+  /* Make modals full-screen on mobile */
+  .modal-card {
+    border-radius: 0 !important;
+    max-height: 100vh !important;
+    height: 100% !important;
+  }
 }

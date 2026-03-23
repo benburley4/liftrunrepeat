@@ -1062,7 +1062,7 @@ export default function ProgrammesPage() {
   if (!ready) return null
 
   return (
-    <div style={{ minHeight: '100vh', padding: '32px 24px', background: '#0D0D0D' }}>
+    <div style={{ minHeight: '100vh', padding: 'clamp(16px, 4vw, 32px) clamp(12px, 4vw, 24px)', background: '#0D0D0D' }}>
       {programme
         ? <CalendarGrid programme={programme} onUpdate={handleUpdate} onSave={handleSave} onReset={handleReset} onRename={name => handleRenameProg(programme.id, name)} />
         : (
@@ -1076,7 +1076,7 @@ export default function ProgrammesPage() {
                     const monday = getMonday(p.startDate)
                     const isCurrent = currentProgId === p.id
                     return (
-                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderRadius: '14px', background: '#141414', border: `1px solid ${isCurrent ? '#00BFA540' : '#2E2E2E'}`, cursor: 'pointer', transition: 'border-color 0.15s' }}
+                      <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', padding: '14px 18px', borderRadius: '14px', background: '#141414', border: `1px solid ${isCurrent ? '#00BFA540' : '#2E2E2E'}`, cursor: 'pointer', transition: 'border-color 0.15s' }}
                         onMouseEnter={e => (e.currentTarget.style.borderColor = '#00BFA5')}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = isCurrent ? '#00BFA540' : '#2E2E2E')}
                         onClick={() => setProgramme(p)}
@@ -1140,7 +1140,7 @@ export default function ProgrammesPage() {
             <CreationForm onGenerate={handleGenerate} />
 
             {/* Generate Training Block */}
-            <div style={{ marginTop: '32px', padding: '28px', borderRadius: '18px', background: '#141414', border: '1px solid #2E2E2E' }}>
+            <div className="gen-block" style={{ marginTop: '32px', padding: '28px', borderRadius: '18px', background: '#141414', border: '1px solid #2E2E2E' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 14px', borderRadius: '100px', background: '#A78BFA15', border: '1px solid #A78BFA30', marginBottom: '16px' }}>
                 <Sparkles size={12} color="#A78BFA" />
                 <span style={{ fontSize: '12px', fontWeight: 600, color: '#A78BFA' }}>AI Powered</span>

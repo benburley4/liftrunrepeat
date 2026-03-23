@@ -497,9 +497,9 @@ export default function LogSessionPage() {
                   {/* Sets */}
                   <div className="p-4">
                     {/* Column headers */}
-                    <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: '28px 76px 1fr 1fr 52px' }}>
+                    <div className="set-grid mb-2">
                       <span className="text-xs text-center" style={{ color: '#606060' }}>Set</span>
-                      <span className="text-xs text-center" style={{ color: '#606060' }}>Planned</span>
+                      <span className="text-xs text-center set-planned" style={{ color: '#606060' }}>Planned</span>
                       <span className="text-xs text-center" style={{ color: '#606060' }}>Reps</span>
                       <span className="text-xs text-center" style={{ color: '#606060' }}>kg</span>
                       <span className="text-xs text-center" style={{ color: '#606060' }}>RPE</span>
@@ -508,13 +508,13 @@ export default function LogSessionPage() {
                     {ex.actualSets.map((set, si) => {
                       const planned = ex.plannedSets[si]
                       return (
-                        <div key={si} className="grid gap-2 mb-2 items-center" style={{ gridTemplateColumns: '28px 76px 1fr 1fr 52px' }}>
+                        <div key={si} className="set-grid">
                           <button onClick={() => removeSet(ex.id, si)}
                             className="w-6 h-6 rounded text-xs flex items-center justify-center mx-auto"
                             style={{ background: '#242424', color: '#606060', cursor: 'pointer' }}>
                             {si + 1}
                           </button>
-                          <div className="text-xs text-center" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <div className="text-xs text-center set-planned" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
                             {planned ? `${planned.reps}×${planned.weight}` : '—'}
                           </div>
                           <input type="number" value={set.reps} onChange={e => updateSet(ex.id, si, 'reps', e.target.value)}

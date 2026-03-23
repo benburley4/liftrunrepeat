@@ -510,13 +510,13 @@ export default function AnalyticsPage() {
       {/* Tabs */}
       <div className="sticky top-16 z-30" style={{ background: 'rgba(13,13,13,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid #1A1A1A' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex gap-1">
+          <div className="analytics-tabs">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className="px-4 py-4 text-sm font-medium transition-colors relative"
-                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
               >
                 {tab.label}
                 {activeTab === tab.id && (
@@ -803,9 +803,9 @@ export default function AnalyticsPage() {
                     {exercises.length > 0 && (
                       <div className="px-5 pb-1 pl-11 space-y-0.5">
                         {exercises.map(ex => (
-                          <div key={ex.id} className="flex items-center justify-between text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
-                            <span className="font-medium" style={{ color: '#A0A0A0' }}>{ex.exerciseName}</span>
-                            <span style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <div key={ex.id} className="flex items-center gap-2 text-xs min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <span className="font-medium shrink-0" style={{ color: '#A0A0A0' }}>{ex.exerciseName}</span>
+                            <span className="truncate text-right flex-1" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
                               {ex.actualSets.filter(s => s.reps || s.weight).map(s => `${s.reps}×${s.weight}kg`).join(', ') || `${ex.actualSets.length} sets`}
                             </span>
                           </div>
