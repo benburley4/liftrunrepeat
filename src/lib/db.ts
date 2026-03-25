@@ -200,6 +200,16 @@ export async function saveCoachReport(weekEnding: string, reportText: string, st
       { onConflict: 'user_id,week_ending' }
     )
   throwIfError(error)
+  // Trim to last 12 weeks — delete any beyond that
+  const { data: rows } = await supabase
+    .from('coach_reports')
+    .select('id')
+    .eq('user_id', user.id)
+    .order('week_ending', { ascending: false })
+  if (rows && rows.length > 12) {
+    const toDelete = rows.slice(12).map((r: { id: string }) => r.id)
+    await supabase.from('coach_reports').delete().in('id', toDelete)
+  }
 }
 
 // ─── Custom Exercises ─────────────────────────────────────────────────────────

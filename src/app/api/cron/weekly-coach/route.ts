@@ -150,6 +150,17 @@ export async function GET(req: NextRequest) {
         )
       if (saveErr) throw new Error(saveErr.message)
 
+      // Trim to last 12 weeks per user
+      const { data: allRows } = await supabaseAdmin
+        .from('coach_reports')
+        .select('id')
+        .eq('user_id', userId)
+        .order('week_ending', { ascending: false })
+      if (allRows && allRows.length > 12) {
+        const toDelete = allRows.slice(12).map((r: { id: string }) => r.id)
+        await supabaseAdmin.from('coach_reports').delete().in('id', toDelete)
+      }
+
       results.push({ userId, status: 'generated' })
     } catch (e) {
       results.push({ userId, status: 'error', error: String(e) })
