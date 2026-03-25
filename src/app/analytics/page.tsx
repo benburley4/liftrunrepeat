@@ -5,12 +5,12 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts'
-import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronDown, Pencil, Check, X, Trash2 } from 'lucide-react'
-import { getSessions, upsertSession, deleteSession as dbDeleteSession } from '@/lib/db'
+import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
+import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, CoachReport } from '@/lib/db'
 import ConsistencyHeatmap from '@/components/ui/ConsistencyHeatmap'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 
-type TabId = 'overview' | 'prs' | 'history' | 'strength' | 'running' | 'hybrid'
+type TabId = 'overview' | 'ai-coach' | 'prs' | 'history' | 'strength' | 'running' | 'hybrid'
 
 const chartTooltipStyle = {
   contentStyle: { background: '#242424', border: '1px solid #2E2E2E', borderRadius: '8px', fontFamily: 'Inter, sans-serif' },
@@ -91,6 +91,16 @@ export default function AnalyticsPage() {
   const [selected, setSelected] = useState<SavedSession | null>(null)
   const [editing, setEditing] = useState(false)
   const [editSession, setEditSession] = useState<SavedSession | null>(null)
+  const [aiCoachLoading, setAiCoachLoading] = useState(false)
+  const [aiCoachText, setAiCoachText] = useState('')
+  const [aiCoachError, setAiCoachError] = useState('')
+  const [pastReports, setPastReports] = useState<CoachReport[]>([])
+  const [expandedReport, setExpandedReport] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (activeTab === 'ai-coach') loadPastReports()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
 
   useEffect(() => {
     getSessions().then(raw => {
@@ -210,6 +220,104 @@ export default function AnalyticsPage() {
 
   function cancelEdit() {
     setEditing(false); setEditSession(null)
+  }
+
+  function currentWeekEnding(): string {
+    const d = new Date(); d.setHours(0, 0, 0, 0)
+    const day = d.getDay()
+    d.setDate(d.getDate() + (day === 0 ? 0 : 7 - day))
+    return d.toISOString().split('T')[0]
+  }
+
+  async function loadPastReports() {
+    try {
+      const reports = await getCoachReports()
+      setPastReports(reports)
+      // If a report exists for the current week, pre-populate the current view
+      const weekEnding = currentWeekEnding()
+      const thisWeek = reports.find(r => r.weekEnding === weekEnding)
+      if (thisWeek && !aiCoachText) setAiCoachText(thisWeek.reportText)
+    } catch { /* table may not exist yet */ }
+  }
+
+  async function handleAICoach() {
+    setAiCoachLoading(true); setAiCoachText(''); setAiCoachError('')
+    try {
+      const payload = {
+        overview: overviewStats,
+        totalSessions: history.length,
+        strengthSummary: strengthData ? {
+          topExercises: strengthData.topExercises,
+          prs: strengthData.prs.slice(0, 5),
+        } : null,
+        runSummary: runningData ? {
+          weeklyKm: runningData.weeklyKm,
+          runTypeMix: runningData.runTypeMix,
+        } : null,
+        breakdown: sessionBreakdown,
+        balance: hybridData ? { liftPct: hybridData.liftPct, runPct: hybridData.runPct } : null,
+      }
+      const res = await fetch('/api/analytics-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok || !res.body) throw new Error('Failed')
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let full = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        full += decoder.decode(value, { stream: true })
+        setAiCoachText(full)
+      }
+      // Save to DB
+      if (full) {
+        const weekEnding = currentWeekEnding()
+        await saveCoachReport(weekEnding, full, payload).catch(() => {})
+        await loadPastReports()
+      }
+    } catch {
+      setAiCoachError('Failed to generate analysis. Please try again.')
+    } finally {
+      setAiCoachLoading(false)
+    }
+  }
+
+  function renderAICoachText(text: string) {
+    const sections = text.split(/^##\s+/m).filter(Boolean)
+    return sections.map((section, idx) => {
+      const lines = section.split('\n')
+      const title = lines[0].trim()
+      const body = lines.slice(1).join('\n').trim()
+      const isRecs = /RECOMMENDATION/i.test(title)
+      const bulletColor = isRecs ? '#C084FC' : '#00BFA5'
+      const borderColor = isRecs ? 'rgba(167,139,250,0.2)' : '#2E2E2E'
+      const titleColor = isRecs ? '#A78BFA' : '#606060'
+      const bullets = body.split('\n').filter(l => l.trim()).map((l, i) => {
+        const content = l.replace(/^[-•*]\s*/, '').trim()
+        if (!content) return null
+        const parts = content.split(/\*\*(.*?)\*\*/g)
+        return (
+          <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: bulletColor, flexShrink: 0, marginTop: 6 }} />
+            <p style={{ color: '#A0A0A0', fontSize: 13, lineHeight: 1.6, fontFamily: 'Inter, sans-serif', margin: 0 }}>
+              {parts.map((p, pi) => pi % 2 === 1
+                ? <strong key={pi} style={{ color: '#F5F5F5', fontWeight: 600 }}>{p}</strong>
+                : p
+              )}
+            </p>
+          </div>
+        )
+      })
+      return (
+        <div key={idx} className="rounded-xl p-5" style={{ background: '#1A1A1A', border: `1px solid ${borderColor}` }}>
+          <p className="text-xs font-black uppercase mb-3" style={{ color: titleColor, fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.08em' }}>{title}</p>
+          <div>{bullets}</div>
+        </div>
+      )
+    })
   }
 
   async function deleteSession(savedAt: string) {
@@ -521,6 +629,7 @@ export default function AnalyticsPage() {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'overview', label: 'Overview' },
+    { id: 'ai-coach', label: 'AI Coach' },
     { id: 'prs', label: 'Personal Records' },
     { id: 'history', label: 'History' },
     { id: 'strength', label: 'Strength' },
@@ -1158,6 +1267,141 @@ export default function AnalyticsPage() {
             </div>
           )
         })()}
+
+        {/* AI COACH TAB */}
+        {activeTab === 'ai-coach' && (
+          <div className="space-y-5">
+            {/* Header card */}
+            <div className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid rgba(167,139,250,0.2)' }}>
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles size={15} style={{ color: '#A78BFA' }} />
+                    <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>AI Coach</span>
+                  </div>
+                  <h3 className="text-2xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                    Training Analysis
+                  </h3>
+                  <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', maxWidth: 480 }}>
+                    Your AI coach will analyse your logged session history — load, strength trends, running volume, training balance, and recovery — and give you personalised recommendations.
+                  </p>
+                  {history.length === 0 && (
+                    <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>
+                      Log some sessions first to enable AI analysis.
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleAICoach}
+                  disabled={aiCoachLoading || history.length === 0}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    background: aiCoachLoading || history.length === 0 ? '#1A1A1A' : 'linear-gradient(135deg, #7C3AED, #A78BFA)',
+                    color: aiCoachLoading || history.length === 0 ? '#3E3E3E' : '#F5F5F5',
+                    border: `1px solid ${aiCoachLoading || history.length === 0 ? '#2E2E2E' : 'rgba(167,139,250,0.4)'}`,
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: aiCoachLoading || history.length === 0 ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <Sparkles size={14} />
+                  {aiCoachLoading ? 'Analysing...' : aiCoachText ? 'Regenerate' : 'Generate Analysis'}
+                </button>
+              </div>
+
+              {/* Progress indicator */}
+              {aiCoachLoading && (
+                <div className="mt-4">
+                  <div style={{ width: '100%', height: '3px', background: '#0D0D0D', borderRadius: '2px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      width: '60%',
+                      background: 'linear-gradient(90deg, #7C3AED, #A78BFA)',
+                      borderRadius: '2px',
+                      animation: 'pulse 1.5s ease-in-out infinite',
+                    }} />
+                  </div>
+                  <p className="text-xs mt-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Analysing your training data...</p>
+                </div>
+              )}
+
+              {aiCoachError && (
+                <p className="text-xs mt-3" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>{aiCoachError}</p>
+              )}
+            </div>
+
+            {/* AI output */}
+            {aiCoachText && (
+              <div className="space-y-4">
+                {renderAICoachText(aiCoachText)}
+              </div>
+            )}
+
+            {/* Placeholder when no analysis yet */}
+            {!aiCoachText && !aiCoachLoading && history.length > 0 && (
+              <div className="rounded-xl p-10 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <Sparkles size={32} style={{ color: '#2E2E2E', margin: '0 auto 12px' }} />
+                <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                  Click &ldquo;Generate Analysis&rdquo; to get your personalised coaching report.
+                </p>
+                <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>
+                  Based on {history.length} logged session{history.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+            )}
+
+            {/* Past reports */}
+            {pastReports.filter(r => r.weekEnding !== currentWeekEnding()).length > 0 && (
+              <div>
+                <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                  Past Reports
+                </p>
+                <div className="space-y-2">
+                  {pastReports
+                    .filter(r => r.weekEnding !== currentWeekEnding())
+                    .map(report => {
+                      const isOpen = expandedReport === report.id
+                      const weekLabel = new Date(report.weekEnding + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+                      return (
+                        <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                          <button
+                            onClick={() => setExpandedReport(isOpen ? null : report.id)}
+                            className="w-full flex items-center justify-between px-5 py-4"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <Sparkles size={13} style={{ color: '#A78BFA', flexShrink: 0 }} />
+                              <div>
+                                <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>
+                                  Week ending {weekLabel}
+                                </p>
+                                <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                                  {report.reportText.split('\n').find(l => l.startsWith('- '))?.replace('- ', '').slice(0, 80) ?? 'AI Coach report'}...
+                                </p>
+                              </div>
+                            </div>
+                            <ChevronDown size={14} style={{ color: '#606060', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                          </button>
+                          {isOpen && (
+                            <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
+                              {renderAICoachText(report.reportText)}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* STRENGTH TAB */}
         {activeTab === 'strength' && (

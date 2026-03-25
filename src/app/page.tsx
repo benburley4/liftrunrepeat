@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Dumbbell, Heart, Footprints, ArrowRight, TrendingUp, BarChart2, Zap, X, Plus } from 'lucide-react'
+import { Dumbbell, Heart, Footprints, ArrowRight, TrendingUp, BarChart2, Zap, X, Plus, Sparkles, Brain } from 'lucide-react'
 import { programmes, Programme } from '@/lib/mockData'
 import ProgrammeCard from '@/components/ui/ProgrammeCard'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
@@ -501,7 +501,7 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 icon: Dumbbell,
@@ -512,20 +512,28 @@ export default function HomePage() {
                 border: 'rgba(0,229,200,0.15)',
               },
               {
+                icon: Footprints,
+                title: 'Endurance',
+                desc: 'From 5K to ultra. Track paces, mileage, and run segments alongside your lifting — all in one dashboard.',
+                accent: '#C8102E',
+                bg: 'rgba(255,107,53,0.06)',
+                border: 'rgba(255,107,53,0.15)',
+              },
+              {
                 icon: Heart,
                 title: 'Recovery',
-                desc: 'Interference happens when programming ignores recovery. Our conflict checker flags risky session pairings before they cost you.',
+                desc: 'Interference happens when programming ignores recovery. Our analytics flag the exact weeks where running volume hurt your strength gains.',
                 accent: '#A78BFA',
                 bg: 'rgba(167,139,250,0.06)',
                 border: 'rgba(167,139,250,0.15)',
               },
               {
-                icon: Footprints,
-                title: 'Endurance',
-                desc: 'From 5K to ultra. Track VDOT, paces, mileage, and race goals alongside your lifting — all in one dashboard.',
-                accent: '#C8102E',
-                bg: 'rgba(255,107,53,0.06)',
-                border: 'rgba(255,107,53,0.15)',
+                icon: Sparkles,
+                title: 'AI Coach',
+                desc: 'Generate expert hybrid programmes in seconds. Get personalised coaching reviews with Analysis and Recommendations — then let AI revamp your plan.',
+                accent: '#F59E0B',
+                bg: 'rgba(245,158,11,0.06)',
+                border: 'rgba(245,158,11,0.15)',
               },
             ].map(({ icon: Icon, title, desc, accent, bg, border }) => (
               <div
@@ -582,6 +590,112 @@ export default function HomePage() {
             {programmes.slice(0, 3).map(p => (
               <ProgrammeCard key={p.id} programme={p} onStart={() => openProgramme(p)} />
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* AI FEATURES */}
+      <section className="py-24" style={{ borderTop: '1px solid #1A1A1A' }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-14">
+            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>
+              AI Coaching
+            </p>
+            <h2 className="text-5xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              Your AI Coach.<br />Always On.
+            </h2>
+            <p className="text-lg max-w-2xl mx-auto" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+              Generate expert hybrid programmes in seconds. Get personalised coaching reviews. Let AI rebuild your programme based on its own recommendations.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* AI Programme Generator card */}
+            <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0F0F1A', border: '1px solid rgba(167,139,250,0.2)' }}>
+              <div className="px-6 py-5" style={{ borderBottom: '1px solid #1E1E2E' }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles size={14} style={{ color: '#A78BFA' }} />
+                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>AI Programme Generator</span>
+                </div>
+                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Full Programme in Seconds</h3>
+                <p className="text-sm mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Tell the AI your goals, schedule, and current lifts. It builds a complete multi-week hybrid programme with progressive overload built in.</p>
+              </div>
+              <div className="px-6 py-5 space-y-3 flex-1">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Building your programme...</span>
+                    <span className="text-xs font-bold" style={{ color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>78%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '4px', background: '#1A1527', borderRadius: '2px' }}>
+                    <div style={{ height: '100%', width: '78%', background: 'linear-gradient(90deg, #A78BFA, #C4B5FD)', borderRadius: '2px' }} />
+                  </div>
+                </div>
+                {[
+                  { day: 'MON', label: 'Lower Strength', items: 'Back Squat · Romanian Deadlift · Leg Press', color: '#00BFA5' },
+                  { day: 'TUE', label: 'Easy Run', items: '10 km @ Zone 2 · 5:30/km pace', color: '#C8102E' },
+                  { day: 'THU', label: 'Upper Strength', items: 'Bench Press · Bent-over Row · OHP', color: '#00BFA5' },
+                  { day: 'SAT', label: 'Long Run', items: '18 km · Progressive · Tempo finish', color: '#C8102E' },
+                ].map(({ day, label, items, color }) => (
+                  <div key={day} className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: '#1A1527', border: '1px solid #2A2040' }}>
+                    <span className="text-xs font-black w-8 shrink-0 mt-0.5" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{day}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{label}</p>
+                      <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{items}</p>
+                    </div>
+                    <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: color }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* AI Coach Review card */}
+            <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0F0F1A', border: '1px solid rgba(167,139,250,0.2)' }}>
+              <div className="px-6 py-5" style={{ borderBottom: '1px solid #1E1E2E' }}>
+                <div className="flex items-center gap-2 mb-1">
+                  <Brain size={14} style={{ color: '#A78BFA' }} />
+                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>AI Coach Review</span>
+                </div>
+                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Expert Analysis on Demand</h3>
+                <p className="text-sm mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Submit any programme for a full AI coaching review covering strength, running, concurrent training, periodisation, and recovery.</p>
+              </div>
+              <div className="px-6 py-5 flex-1 flex flex-col gap-4">
+                <div className="grid grid-cols-2 gap-4 flex-1">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Analysis</p>
+                    {[
+                      'Squat 3×/wk may limit run adaptation on high mileage weeks',
+                      'No deload scheduled across 8 weeks',
+                      'Saturday long run follows heavy Friday lower session',
+                    ].map((t, i) => (
+                      <div key={i} className="flex items-start gap-2 mb-2.5">
+                        <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: '#606060' }} />
+                        <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{t}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#C084FC', fontFamily: 'Montserrat, sans-serif' }}>Recommendations</p>
+                    {[
+                      'Reduce to 2 squat sessions/wk — swap one for RDL-focused lower',
+                      'Insert deload at week 4 and week 8',
+                      'Move long run to Sunday for full recovery buffer',
+                    ].map((t, i) => (
+                      <div key={i} className="flex items-start gap-2 mb-2.5">
+                        <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: '#C084FC' }} />
+                        <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{t}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)' }}>
+                  <div className="flex items-center gap-2">
+                    <Zap size={13} style={{ color: '#A78BFA' }} />
+                    <span className="text-sm font-bold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>Revamp Programme</span>
+                  </div>
+                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>AI applies all recommendations →</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -782,10 +896,10 @@ export default function HomePage() {
                 className="text-5xl font-black uppercase mb-4"
                 style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
               >
-                See the<br />Interference.
+                Know Your<br />Training.
               </h2>
               <p className="text-base leading-relaxed mb-6" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-                We overlay your strength trends with your running volume to reveal the exact weeks where concurrent training interference hit your gains. No other platform does this.
+                Track every session on a visual calendar heatmap. See Push/Pull/Legs and body part breakdowns from your actual training history. Overlay strength trends with running volume to reveal the exact weeks where interference hit your gains.
               </p>
               <button
                 onClick={() => setModal('analytics')}
@@ -816,7 +930,7 @@ export default function HomePage() {
             Ready to Train Like<br />a <span style={{ color: '#00BFA5' }}>Hybrid Athlete?</span>
           </h2>
           <p className="text-lg mb-8" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-            Build your schedule, track both disciplines, and peak at both.
+            Log sessions. Track both disciplines. Generate AI programmes. Get coached. Peak at both.
           </p>
           <button
             onClick={() => setModal('builder')}

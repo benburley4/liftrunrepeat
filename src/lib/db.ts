@@ -164,6 +164,44 @@ export async function deleteAIReport(id: string): Promise<void> {
   throwIfError(error)
 }
 
+// ─── Weekly Coach Reports ─────────────────────────────────────────────────────
+
+export interface CoachReport {
+  id: string
+  weekEnding: string   // ISO date string YYYY-MM-DD (Sunday of the week)
+  reportText: string
+  stats: unknown
+  createdAt: string
+}
+
+export async function getCoachReports(): Promise<CoachReport[]> {
+  const { data, error } = await supabase
+    .from('coach_reports')
+    .select('id, week_ending, report_text, stats, created_at')
+    .order('week_ending', { ascending: false })
+    .limit(12)
+  throwIfError(error)
+  return (data ?? []).map(row => ({
+    id: row.id,
+    weekEnding: row.week_ending,
+    reportText: row.report_text,
+    stats: row.stats,
+    createdAt: row.created_at,
+  }))
+}
+
+export async function saveCoachReport(weekEnding: string, reportText: string, stats: unknown): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const { error } = await supabase
+    .from('coach_reports')
+    .upsert(
+      { user_id: user.id, week_ending: weekEnding, report_text: reportText, stats, created_at: new Date().toISOString() },
+      { onConflict: 'user_id,week_ending' }
+    )
+  throwIfError(error)
+}
+
 // ─── Custom Exercises ─────────────────────────────────────────────────────────
 
 export async function getCustomExercises(): Promise<unknown[]> {
