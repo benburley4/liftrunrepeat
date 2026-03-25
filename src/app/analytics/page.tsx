@@ -687,7 +687,7 @@ export default function AnalyticsPage() {
                     )
                   }
                   return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: 32, flexShrink: 0, alignItems: 'flex-start' }}>
                       <div>
                         <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Push / Pull / Legs</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -695,7 +695,7 @@ export default function AnalyticsPage() {
                           <Legend slices={sessionBreakdown.pplSlices} />
                         </div>
                       </div>
-                      <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: 20 }}>
+                      <div style={{ borderLeft: '1px solid #2E2E2E', paddingLeft: 32 }}>
                         <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Body Part Split</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <MiniDonut slices={sessionBreakdown.bodySlices} size={80} />
