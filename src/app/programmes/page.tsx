@@ -858,7 +858,7 @@ function CreationForm({ onGenerate }: CreationFormProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProgrammesPage() {
-  const { canUseAI, withinLimit } = usePremium()
+  const { canUseAI, withinLimit, aiUsesLabel, recordAIUse } = usePremium()
   const [programme, setProgramme] = useState<Programme | null>(null)
   const [savedList, setSavedList] = useState<Programme[]>([])
   const [currentProgId, setCurrentProgIdState] = useState<string | null>(null)
@@ -950,8 +950,8 @@ export default function ProgrammesPage() {
 
   async function handleAIGenerate() {
     if (!genDays.length) return
-    if (!canUseAI('AI_PROGRAMME_GENERATE')) {
-      setGenError(`AI Programme Generator requires Premium. ${FEATURES.UPGRADE_CTA}`)
+    if (!canUseAI()) {
+      setGenError(`AI uses exhausted. ${FEATURES.UPGRADE_CTA}`)
       return
     }
     if (!withinLimit('MAX_PROGRAMMES', savedList.length)) {
@@ -1086,6 +1086,7 @@ export default function ProgrammesPage() {
       setGenProgress(100)
       setProgramme(prog)
       upsertProgramme(prog.id, prog).catch(console.error)
+      recordAIUse().catch(console.error)
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -1339,6 +1340,9 @@ export default function ProgrammesPage() {
                   <div style={{ width: '100%', height: '4px', background: '#1A1527', borderRadius: '2px', marginTop: '10px', overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${genProgress}%`, background: 'linear-gradient(90deg, #A78BFA, #C4B5FD)', borderRadius: '2px', transition: 'width 0.4s ease' }} />
                   </div>
+                )}
+                {aiUsesLabel() && !genLoading && (
+                  <p style={{ textAlign: 'center', fontSize: '11px', color: '#606060', marginTop: '8px', fontFamily: 'Inter, sans-serif' }}>{aiUsesLabel()}</p>
                 )}
               </div>
             </div>

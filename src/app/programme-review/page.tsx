@@ -452,7 +452,7 @@ function ChartLegend({ counts, colors }: { counts: Record<string, number>; color
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function ProgrammeReviewPage() {
-  const { canUseAI } = usePremium()
+  const { canUseAI, aiUsesLabel, recordAIUse } = usePremium()
   const [programmes, setProgs]         = useState<Programme[]>([])
   const [selectedId, setSelectedId]    = useState<string>('')
   const [context, setContext]          = useState('')
@@ -494,8 +494,8 @@ export default function ProgrammeReviewPage() {
 
   async function handleGenerate() {
     if (!selectedProg) return
-    if (!canUseAI('AI_COACH_REVIEW')) {
-      setError(`AI Coach Review requires Premium. ${FEATURES.UPGRADE_CTA}`)
+    if (!canUseAI()) {
+      setError(`AI uses exhausted. ${FEATURES.UPGRADE_CTA}`)
       return
     }
     setLoading(true)
@@ -542,6 +542,7 @@ export default function ProgrammeReviewPage() {
         setSavedReports(prev => [report, ...prev].slice(0, 10))
         setSelectedReport(report.id)
         upsertAIReport(report.id, report).catch(console.error)
+        recordAIUse().catch(console.error)
       }
     } catch (err) {
       setError((err as Error).message)
@@ -567,8 +568,8 @@ export default function ProgrammeReviewPage() {
 
   async function handleRevamp() {
     if (!selectedProg || !review || revampLoading) return
-    if (!canUseAI('AI_REVAMP')) {
-      setRevampError(`AI Revamp requires Premium. ${FEATURES.UPGRADE_CTA}`)
+    if (!canUseAI()) {
+      setRevampError(`AI uses exhausted. ${FEATURES.UPGRADE_CTA}`)
       return
     }
     setRevampLoading(true)
@@ -681,6 +682,7 @@ export default function ProgrammeReviewPage() {
 
       setRevampProgress(100)
       await upsertProgramme(prog.id, prog)
+      recordAIUse().catch(console.error)
       setRevampDone(true)
       setTimeout(() => { setRevampProgress(0); setRevampDone(false) }, 3000)
     } catch (err) {
@@ -841,6 +843,9 @@ export default function ProgrammeReviewPage() {
           <Sparkles size={16} />
           {loading ? 'Generating Review…' : 'Generate AI Review'}
         </button>
+        {aiUsesLabel() && !loading && (
+          <p style={{ textAlign: 'center', fontSize: '11px', color: '#606060', marginTop: '6px', fontFamily: 'Inter, sans-serif' }}>{aiUsesLabel()}</p>
+        )}
 
         {/* Error */}
         {error && (
