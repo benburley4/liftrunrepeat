@@ -381,6 +381,78 @@ export default function AnalyticsPage() {
     return { weeklyKm, runTypeMix: buildTypeMix(runSessions), runTypeMixMonth: buildTypeMix(thisMonth), runTypeMixYear: buildTypeMix(thisYear) }
   }, [history])
 
+  // ─── Session breakdown: PPL + body part from actual logged exercises ──────
+  const sessionBreakdown = useMemo(() => {
+    const PPL_KEYWORDS: [RegExp, string][] = [
+      [/bench|push.?up|fly|chest|pec/i,                                        'Push'],
+      [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise/i, 'Push'],
+      [/tricep|pushdown|skull|extension/i,                                     'Push'],
+      [/row|pull.?up|chin.?up|lat\b|pulldown|face.?pull|rear.?delt|shrug/i,   'Pull'],
+      [/curl|bicep/i,                                                           'Pull'],
+      [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,        'Legs'],
+      [/deadlift|rdl|romanian/i,                                                'Legs'],
+      [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,             'Core'],
+    ]
+    const BODY_KEYWORDS: [RegExp, string][] = [
+      [/bench|push.?up|fly|chest|pec/i,                                         'Chest'],
+      [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise|face.?pull|rear.?delt/i, 'Shoulders'],
+      [/row|pull.?up|chin.?up|lat\b|pulldown|shrug/i,                           'Back'],
+      [/deadlift|rdl|romanian/i,                                                 'Back'],
+      [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,         'Legs'],
+      [/curl|bicep/i,                                                            'Arms'],
+      [/tricep|pushdown|skull|extension/i,                                       'Arms'],
+      [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,              'Core'],
+    ]
+    function classifyPPL(name: string) {
+      for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat
+      return 'Push'
+    }
+    function classifyBody(name: string) {
+      for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp
+      return 'Back'
+    }
+
+    const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Core: 0, Cardio: 0 }
+    const body: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0, Cardio: 0 }
+
+    for (const s of history) {
+      if (s.type === 'run' || s.type === 'hike') {
+        ppl.Cardio  += 3
+        body.Cardio += 3
+        continue
+      }
+      for (const ex of s.exercises ?? []) {
+        const sets = (ex.actualSets?.length || ex.plannedSets?.length || 0)
+        if (sets === 0) continue
+        const p = classifyPPL(ex.exerciseName)
+        const b = classifyBody(ex.exerciseName)
+        ppl[p]  = (ppl[p]  || 0) + sets
+        body[b] = (body[b] || 0) + sets
+      }
+      // hybrid: count run component too
+      if (s.type === 'hybrid' && (s.run ?? []).length > 0) {
+        ppl.Cardio  += 2
+        body.Cardio += 2
+      }
+    }
+
+    const PPL_COLORS:  Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Core: '#FF9500', Cardio: '#3B82F6' }
+    const BODY_COLORS: Record<string, string> = { Chest: '#C8102E', Back: '#00BFA5', Shoulders: '#FF9500', Legs: '#A78BFA', Arms: '#F472B6', Core: '#6B7280', Cardio: '#3B82F6' }
+
+    function toSlices(counts: Record<string, number>, colors: Record<string, string>) {
+      return Object.entries(counts)
+        .filter(([, v]) => v > 0)
+        .sort(([, a], [, b]) => b - a)
+        .map(([label, value]) => ({ label, value, color: colors[label] ?? '#606060' }))
+    }
+
+    return {
+      pplSlices:  toSlices(ppl,  PPL_COLORS),
+      bodySlices: toSlices(body, BODY_COLORS),
+      hasData: Object.values(ppl).some(v => v > 0),
+    }
+  }, [history])
+
   const hybridData = useMemo(() => {
     function segKm(seg: LoggedRunSegment): number {
       if (seg.metric === 'distance') return parseFloat(seg.actualValue) || 0
@@ -559,14 +631,71 @@ export default function AnalyticsPage() {
               )
             })()}
 
-            {/* Heatmap */}
+            {/* Heatmap + breakdown charts */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
-                  Training Consistency — Last 6 Months
-                </h3>
+              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                Training Consistency — Last 6 Months
+              </h3>
+              <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                  <ConsistencyHeatmap sessions={history} />
+                </div>
+                {sessionBreakdown.hasData && (() => {
+                  function MiniDonut({ slices, size = 80 }: { slices: { label: string; value: number; color: string }[]; size?: number }) {
+                    const total = slices.reduce((s, d) => s + d.value, 0)
+                    if (total === 0) return null
+                    const cx = size / 2, cy = size / 2, r = size / 2 - 2, hole = r * 0.52
+                    let angle = -Math.PI / 2
+                    const paths = slices.map((d, i) => {
+                      const sweep = (d.value / total) * 2 * Math.PI
+                      if (sweep >= 2 * Math.PI - 0.001) return <circle key={i} cx={cx} cy={cy} r={r} fill={d.color} />
+                      const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle)
+                      angle += sweep
+                      const x2 = cx + r * Math.cos(angle), y2 = cy + r * Math.sin(angle)
+                      return <path key={i} d={`M${cx},${cy} L${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${sweep > Math.PI ? 1 : 0},1 ${x2.toFixed(1)},${y2.toFixed(1)} Z`} fill={d.color} />
+                    })
+                    return (
+                      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                        {paths}<circle cx={cx} cy={cy} r={hole} fill="#1A1A1A" />
+                      </svg>
+                    )
+                  }
+                  function Legend({ slices }: { slices: { label: string; value: number; color: string }[] }) {
+                    const total = slices.reduce((s, d) => s + d.value, 0)
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                        {slices.map(d => (
+                          <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, color: '#A0A0A0', fontFamily: 'Inter, sans-serif', flex: 1 }}>{d.label}</span>
+                            <span style={{ fontSize: 11, color: '#606060', fontFamily: 'JetBrains Mono, monospace', paddingLeft: 6 }}>
+                              {Math.round((d.value / total) * 100)}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flexShrink: 0 }}>
+                      <div>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Push / Pull / Legs</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <MiniDonut slices={sessionBreakdown.pplSlices} size={80} />
+                          <Legend slices={sessionBreakdown.pplSlices} />
+                        </div>
+                      </div>
+                      <div style={{ borderTop: '1px solid #2E2E2E', paddingTop: 20 }}>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Body Part Split</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <MiniDonut slices={sessionBreakdown.bodySlices} size={80} />
+                          <Legend slices={sessionBreakdown.bodySlices} />
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
-              <ConsistencyHeatmap sessions={history} />
             </div>
 
             {/* Recent sessions — last 7 days from history */}
