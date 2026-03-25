@@ -352,6 +352,7 @@ export default function LogSessionPage() {
   }
 
   const handleSave = async () => {
+    if (saved) return   // prevent double-save
     const session = {
       type: sessionType,
       name: sessionName || `${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)} Session`,

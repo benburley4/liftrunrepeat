@@ -93,7 +93,17 @@ export default function AnalyticsPage() {
   const [editSession, setEditSession] = useState<SavedSession | null>(null)
 
   useEffect(() => {
-    getSessions().then(s => setHistory(s as unknown as SavedSession[])).catch(console.error)
+    getSessions().then(raw => {
+      const sessions = raw as unknown as SavedSession[]
+      // Deduplicate: same date + type + name → keep the one with the latest savedAt
+      const seen = new Map<string, SavedSession>()
+      for (const s of sessions) {
+        const key = `${s.date}|${s.type}|${s.name}`
+        const existing = seen.get(key)
+        if (!existing || s.savedAt > existing.savedAt) seen.set(key, s)
+      }
+      setHistory(Array.from(seen.values()))
+    }).catch(console.error)
   }, [])
 
   const strengthData = useMemo(() => {
