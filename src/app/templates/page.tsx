@@ -7,6 +7,8 @@ import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RepeatBlock, RunSegment, 
 import HikeBuilder, { HikeData } from '@/components/templates/HikeBuilder'
 import { programmes as staticProgrammes, exercises as libraryExercises } from '@/lib/mockData'
 import { getTemplates, upsertTemplate, deleteTemplate } from '@/lib/db'
+import { usePremium } from '@/hooks/usePremium'
+import { FEATURES } from '@/lib/features'
 
 type TabId = 'lifting' | 'running' | 'hike' | 'hybrid' | 'mine'
 
@@ -766,6 +768,7 @@ function CustomTemplateCard({
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function TemplatesPage() {
+  const { withinLimit } = usePremium()
   const [activeTab, setActiveTab]           = useState<TabId>('mine')
   const [expanded, setExpanded]             = useState<string | null>(null)
   const [toast, setToast]                   = useState<string | null>(null)
@@ -791,6 +794,10 @@ export default function TemplatesPage() {
 
   function handleSave(t: CustomTemplate) {
     const isUpdate = customTemplates.some(c => c.id === t.id)
+    if (!isUpdate && !withinLimit('MAX_TEMPLATES', customTemplates.length)) {
+      showToast(`Free tier is limited to ${FEATURES.FREE.MAX_TEMPLATES} custom templates. ${FEATURES.UPGRADE_CTA}`)
+      return
+    }
     const next = isUpdate
       ? customTemplates.map(c => c.id === t.id ? t : c)
       : [t, ...customTemplates]

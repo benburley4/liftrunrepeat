@@ -5,6 +5,8 @@ import { Check, X, Pencil, Sparkles, Loader2 } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, segDerivedKm } from '@/components/templates/ExerciseBuilder'
 import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTemplate, getSetting, upsertSetting } from '@/lib/db'
+import { usePremium } from '@/hooks/usePremium'
+import { FEATURES } from '@/lib/features'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -856,6 +858,7 @@ function CreationForm({ onGenerate }: CreationFormProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProgrammesPage() {
+  const { canUseAI, withinLimit } = usePremium()
   const [programme, setProgramme] = useState<Programme | null>(null)
   const [savedList, setSavedList] = useState<Programme[]>([])
   const [currentProgId, setCurrentProgIdState] = useState<string | null>(null)
@@ -874,6 +877,7 @@ export default function ProgrammesPage() {
   const [genBalance, setGenBalance]         = useState(50) // 0 = 100% lift, 100 = 100% run
   const [genConstraints, setGenConstraints] = useState('')
   const [genLoading, setGenLoading]     = useState(false)
+  const [genProgress, setGenProgress]   = useState(0)
   const [genError, setGenError]         = useState('')
   const [ready, setReady] = useState(false)
 
@@ -926,6 +930,10 @@ export default function ProgrammesPage() {
   }
 
   function handleGenerate(p: Programme) {
+    if (!withinLimit('MAX_PROGRAMMES', savedList.length)) {
+      alert(`Free tier is limited to ${FEATURES.FREE.MAX_PROGRAMMES} programmes.\n\n${FEATURES.UPGRADE_CTA}`)
+      return
+    }
     const withId = { ...p, id: `prog-${Date.now()}` }
     setSavedList(prev => {
       const next = [...prev, withId]
@@ -942,7 +950,16 @@ export default function ProgrammesPage() {
 
   async function handleAIGenerate() {
     if (!genDays.length) return
+    if (!canUseAI('AI_PROGRAMME_GENERATE')) {
+      setGenError(`AI Programme Generator requires Premium. ${FEATURES.UPGRADE_CTA}`)
+      return
+    }
+    if (!withinLimit('MAX_PROGRAMMES', savedList.length)) {
+      setGenError(`Free tier is limited to ${FEATURES.FREE.MAX_PROGRAMMES} programmes. ${FEATURES.UPGRADE_CTA}`)
+      return
+    }
     setGenLoading(true)
+    setGenProgress(0)
     setGenError('')
     upsertSetting('gen_form_state', JSON.stringify({
       weeks: genWeeks, days: genDays, balance: genBalance,
@@ -982,13 +999,17 @@ export default function ProgrammesPage() {
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
       let raw = ''
+      const EXPECTED_CHARS = 18000 // rough estimate for a full programme JSON
       if (reader) {
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
           raw += decoder.decode(value, { stream: true })
+          // Update progress: fill to 90% while streaming, snap to 100% on parse
+          setGenProgress(Math.min(90, Math.round((raw.length / EXPECTED_CHARS) * 90)))
         }
       }
+      setGenProgress(95)
 
       // Extract JSON (strip any accidental markdown fences)
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
@@ -1062,12 +1083,14 @@ export default function ProgrammesPage() {
         if (next.length === 1) { setCurrentProgId(prog.id); setCurrentProgIdState(prog.id); upsertSetting('current_programme_id', prog.id).catch(console.error) }
         return next
       })
+      setGenProgress(100)
       setProgramme(prog)
       upsertProgramme(prog.id, prog).catch(console.error)
     } catch (err) {
       setGenError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
       setGenLoading(false)
+      setTimeout(() => setGenProgress(0), 800)
     }
   }
 
@@ -1312,6 +1335,11 @@ export default function ProgrammesPage() {
                     ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Building your programme…</>
                     : <><Sparkles size={16} /> Generate Programme</>}
                 </button>
+                {genLoading && (
+                  <div style={{ width: '100%', height: '4px', background: '#1A1527', borderRadius: '2px', marginTop: '10px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${genProgress}%`, background: 'linear-gradient(90deg, #A78BFA, #C4B5FD)', borderRadius: '2px', transition: 'width 0.4s ease' }} />
+                  </div>
+                )}
               </div>
             </div>
 

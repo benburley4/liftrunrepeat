@@ -44,38 +44,70 @@ Wed  ░░░░░░░░░░  Rest
 ---
 
 ## STRENGTH ANALYSIS
+
+**Analysis:**
 - Exercise balance (push/pull/legs/posterior chain)
 - Volume & frequency
 - Progression plan
 - Injury risk flags
 
+**Recommendations:**
+- Specific actionable change 1
+- Specific actionable change 2
+- Specific actionable change 3
+
 ---
 
 ## RUNNING ANALYSIS
+
+**Analysis:**
 - Mileage & intensity split (easy vs quality)
 - Goal specificity
 - Injury prevention
 - Periodisation
 
+**Recommendations:**
+- Specific actionable change 1
+- Specific actionable change 2
+- Specific actionable change 3
+
 ---
 
 ## CONCURRENT TRAINING
+
+**Analysis:**
 - Session sequencing (strength vs run timing)
 - Interference effect management
 - Recovery between sessions
 
+**Recommendations:**
+- Specific actionable change 1
+- Specific actionable change 2
+
 ---
 
 ## PERIODISATION & DELOADS
+
+**Analysis:**
 - Progression logic across weeks
-- Deload weeks present? Y/N and recommendation
+- Deload weeks present? Y/N
+
+**Recommendations:**
+- Specific actionable change 1
+- Specific actionable change 2
 
 ---
 
 ## RECOVERY & INJURY PREVENTION
+
+**Analysis:**
 - Rest days adequacy
 - Mobility/prehab (present or missing)
 - Sleep & nutrition flags (if provided)
+
+**Recommendations:**
+- Specific actionable change 1
+- Specific actionable change 2
 
 ---
 
