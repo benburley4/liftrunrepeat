@@ -1283,7 +1283,7 @@ export default function AnalyticsPage() {
                     Training Analysis
                   </h3>
                   <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', maxWidth: 480 }}>
-                    Your AI coach will analyse your logged session history — load, strength trends, running volume, training balance, and recovery — and give you personalised recommendations.
+                    Your AI coach will analyse your logged session history — load, strength trends, running volume, training balance, and recovery — and give you personalised recommendations. Reports auto-generate every Sunday at 23:50 and are saved for the last 12 weeks.
                   </p>
                   {history.length === 0 && (
                     <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>
