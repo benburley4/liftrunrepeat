@@ -10,7 +10,7 @@ import { FEATURES } from '@/lib/features'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type TemplateKind = 'lift' | 'run' | 'hybrid'
+type TemplateKind = 'lift' | 'run' | 'hybrid' | 'hike'
 
 // Matches the shape stored in thhl_custom_templates (Templates tab)
 interface StoredTemplate {
@@ -21,6 +21,7 @@ interface StoredTemplate {
   duration?: string
   exerciseRows?: ExRow[]
   runRows?: RunEntry[]
+  hikeData?: { distanceKm: string; elevationGainM: string }
 }
 
 interface CellData {
@@ -33,7 +34,8 @@ interface Programme {
   name: string
   weeks: number
   startDate: string // 'YYYY-MM-DD'
-  cells: Record<string, CellData> // key: 'w{week}d{day}'
+  sessionsPerDay?: 1 | 2
+  cells: Record<string, CellData> // key: 'w{week}d{day}' or 'w{week}d{day}_2' for second session
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -150,6 +152,8 @@ function calcVolume(t: StoredTemplate): { weight: number; distance: number } {
       distance += segDerivedKm(entry)
     }
   }
+  // Hike distance
+  if (t.hikeData?.distanceKm) distance += parseFloat(t.hikeData.distanceKm) || 0
   return { weight: Math.round(weight), distance: Math.round(distance * 10) / 10 }
 }
 
@@ -163,11 +167,12 @@ function typeColor(type: TemplateKind): string {
   if (type === 'lift')   return '#00BFA5'
   if (type === 'run')    return '#C8102E'
   if (type === 'hybrid') return '#a78bfa'
+  if (type === 'hike')   return '#84CC16'
   return '#6b7280'
 }
 
 function typeLabel(type: TemplateKind): string {
-  return { lift: 'Lifting', run: 'Run', hybrid: 'Hybrid' }[type] ?? type
+  return { lift: 'Lifting', run: 'Run', hybrid: 'Hybrid', hike: 'Hike' }[type] ?? type
 }
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
@@ -489,12 +494,13 @@ interface EmptyCellProps {
   date: Date
   onCreateNew: () => void
   onSelectExisting: () => void
+  isSecond?: boolean
 }
 
-function EmptyCell({ date, onCreateNew, onSelectExisting }: EmptyCellProps) {
+function EmptyCell({ date, onCreateNew, onSelectExisting, isSecond = false }: EmptyCellProps) {
   return (
-    <div style={{ borderRadius: '12px', padding: '10px', minHeight: '120px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#0D0D0D', border: '1px solid #1A1A1A' }}>
-      <div style={{ fontSize: '11px', color: '#374151', marginBottom: '2px' }}>{fmtDate(date)}</div>
+    <div style={{ borderRadius: '12px', padding: '10px', minHeight: '120px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#0D0D0D', border: `1px solid ${isSecond ? '#A78BFA20' : '#1A1A1A'}` }}>
+      <div style={{ fontSize: '11px', color: isSecond ? '#A78BFA80' : '#374151', marginBottom: '2px' }}>{isSecond ? '2nd Session' : fmtDate(date)}</div>
       <button onClick={onCreateNew}
         style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%', padding: '8px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', background: '#00BFA50D', color: '#00BFA5', border: '1px dashed #00BFA530', transition: 'all 0.15s' }}
         onMouseEnter={e => { e.currentTarget.style.background = '#00BFA520'; e.currentTarget.style.borderColor = '#00BFA560' }}
@@ -520,9 +526,10 @@ interface PopulatedCellProps {
   data: CellData
   onEdit: () => void
   onDelete: () => void
+  isSecond?: boolean
 }
 
-function PopulatedCell({ date, data, onEdit, onDelete }: PopulatedCellProps) {
+function PopulatedCell({ date, data, onEdit, onDelete, isSecond = false }: PopulatedCellProps) {
   const { template } = data
   const vol = calcVolume(template)
   const col = typeColor(template.type)
@@ -537,7 +544,9 @@ function PopulatedCell({ date, data, onEdit, onDelete }: PopulatedCellProps) {
     >
       {/* Date + type badge + delete */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: '11px', color: '#6B7280' }}>{fmtDate(date)}</span>
+        <span style={{ fontSize: '11px', color: isSecond ? '#A78BFA' : '#6B7280' }}>
+          {isSecond ? '2nd Session' : fmtDate(date)}
+        </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '100px', background: `${col}20`, color: col, fontWeight: 600 }}>{typeLabel(template.type)}</span>
           <button
@@ -625,13 +634,16 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
 
   function weekTotals(w: number) {
     let weight = 0, distance = 0, rpeSum = 0, rpeCount = 0
+    const suffixes = programme.sessionsPerDay === 2 ? ['', '_2'] : ['']
     for (let d = 0; d < 7; d++) {
-      const cell = programme.cells[`w${w}d${d}`]
-      if (cell) {
-        const vol = calcVolume(cell.template)
-        weight += vol.weight
-        distance += vol.distance
-        if (cell.rpe > 0) { rpeSum += cell.rpe; rpeCount++ }
+      for (const sfx of suffixes) {
+        const cell = programme.cells[`w${w}d${d}${sfx}`]
+        if (cell) {
+          const vol = calcVolume(cell.template)
+          weight += vol.weight
+          distance += vol.distance
+          if (cell.rpe > 0) { rpeSum += cell.rpe; rpeCount++ }
+        }
       }
     }
     return {
@@ -724,10 +736,12 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
               {/* Week cells */}
               {Array.from({ length: programme.weeks }, (_, w) => {
                 const key = `w${w}d${d}`
+                const key2 = `w${w}d${d}_2`
                 const cell = programme.cells[key]
+                const cell2 = programme.cells[key2]
                 const date = getDate(w, d)
                 return (
-                  <div key={w} style={{ flexShrink: 0, width: `${COL}px` }}>
+                  <div key={w} style={{ flexShrink: 0, width: `${COL}px`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {cell
                       ? <PopulatedCell date={date} data={cell}
                           onEdit={() => setModal({ type: 'create', key, initial: cell.template })}
@@ -735,6 +749,15 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
                       : <EmptyCell date={date}
                           onCreateNew={() => setModal({ type: 'create', key })}
                           onSelectExisting={() => setModal({ type: 'select', key })} />}
+                    {programme.sessionsPerDay === 2 && (
+                      cell2
+                        ? <PopulatedCell date={date} data={cell2} isSecond
+                            onEdit={() => setModal({ type: 'create', key: key2, initial: cell2.template })}
+                            onDelete={() => clearCell(key2)} />
+                        : <EmptyCell date={date} isSecond
+                            onCreateNew={() => setModal({ type: 'create', key: key2 })}
+                            onSelectExisting={() => setModal({ type: 'select', key: key2 })} />
+                    )}
                   </div>
                 )
               })}
@@ -795,13 +818,14 @@ interface CreationFormProps {
 }
 
 function CreationForm({ onGenerate }: CreationFormProps) {
-  const [name, setName]           = useState('')
-  const [weeks, setWeeks]         = useState(12)
-  const [startDate, setStartDate] = useState(nextMonday)
+  const [name, setName]                         = useState('')
+  const [weeks, setWeeks]                       = useState(12)
+  const [startDate, setStartDate]               = useState(thisOrNextMonday)
+  const [sessionsPerDay, setSessionsPerDay]     = useState<1 | 2>(1)
 
   function handleGenerate() {
     if (!name.trim()) return
-    onGenerate({ id: '', name: name.trim(), weeks, startDate, cells: {} })
+    onGenerate({ id: '', name: name.trim(), weeks, startDate, sessionsPerDay, cells: {} })
   }
 
   return (
@@ -842,6 +866,17 @@ function CreationForm({ onGenerate }: CreationFormProps) {
               style={{ width: '100%', padding: '12px 14px', borderRadius: '12px', background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#fff', fontSize: '14px', boxSizing: 'border-box', colorScheme: 'dark' }}
             />
           </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions Per Day</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {([1, 2] as const).map(n => (
+                <button key={n} onClick={() => setSessionsPerDay(n)}
+                  style={{ flex: 1, padding: '12px 14px', borderRadius: '12px', background: sessionsPerDay === n ? '#00BFA520' : '#1E1E1E', border: `1px solid ${sessionsPerDay === n ? '#00BFA555' : '#2E2E2E'}`, color: sessionsPerDay === n ? '#00BFA5' : '#6B7280', fontWeight: 700, fontSize: '15px', cursor: 'pointer' }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <button
@@ -874,8 +909,9 @@ export default function ProgrammesPage() {
   const [genTarget,  setGenTarget]      = useState({ ...emptyStandards })
   const [genWeeks, setGenWeeks]         = useState(12)
   const [genDays, setGenDays]           = useState<number[]>([1, 3, 5, 6]) // Mon Wed Fri Sat
-  const [genBalance, setGenBalance]         = useState(50) // 0 = 100% lift, 100 = 100% run
-  const [genConstraints, setGenConstraints] = useState('')
+  const [genBalance, setGenBalance]             = useState(50) // 0 = 100% lift, 100 = 100% run
+  const [genSessionsPerDay, setGenSessionsPerDay] = useState<1 | 2>(1)
+  const [genConstraints, setGenConstraints]     = useState('')
   const [genLoading, setGenLoading]     = useState(false)
   const [genProgress, setGenProgress]   = useState(0)
   const [genError, setGenError]         = useState('')
@@ -895,10 +931,11 @@ export default function ProgrammesPage() {
         if (genFormRaw) {
           try {
             const f = JSON.parse(genFormRaw)
-            if (f.weeks)       setGenWeeks(f.weeks)
-            if (f.days)        setGenDays(f.days)
-            if (f.balance != null) setGenBalance(f.balance)
-            if (f.constraints) setGenConstraints(f.constraints)
+            if (f.weeks)              setGenWeeks(f.weeks)
+            if (f.days)               setGenDays(f.days)
+            if (f.balance != null)    setGenBalance(f.balance)
+            if (f.sessionsPerDay)     setGenSessionsPerDay(f.sessionsPerDay)
+            if (f.constraints)        setGenConstraints(f.constraints)
             if (f.target)      setGenTarget((t: Record<string, string>) => ({ ...t, ...f.target }))
             if (f.current)     setGenCurrent((t: Record<string, string>) => ({ ...t, ...f.current }))
           } catch { /* ignore */ }
@@ -963,6 +1000,7 @@ export default function ProgrammesPage() {
     setGenError('')
     upsertSetting('gen_form_state', JSON.stringify({
       weeks: genWeeks, days: genDays, balance: genBalance,
+      sessionsPerDay: genSessionsPerDay,
       constraints: genConstraints, target: genTarget, current: genCurrent,
     })).catch(console.error)
     try {
@@ -1076,6 +1114,7 @@ export default function ProgrammesPage() {
         name: data.name ?? `${genWeeks}-Week AI Programme`,
         weeks: data.weeks ?? genWeeks,
         startDate: thisOrNextMonday(),
+        sessionsPerDay: genSessionsPerDay,
         cells,
       }
       setSavedList(prev => {
@@ -1295,20 +1334,33 @@ export default function ProgrammesPage() {
                   </div>
                 </div>
 
-                {/* Training days */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Training Days</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {['M','T','W','T','F','S','S'].map((label, i) => {
-                      const day = i + 1
-                      const active = genDays.includes(day)
-                      return (
-                        <button key={day} onClick={() => setGenDays(prev => active ? prev.filter(d => d !== day) : [...prev, day].sort())}
-                          style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${active ? '#A78BFA55' : '#2E2E2E'}`, background: active ? '#A78BFA20' : '#1E1E1E', color: active ? '#A78BFA' : '#6B7280', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
-                          {label}
+                {/* Training days + Sessions per day */}
+                <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Training Days</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {['M','T','W','T','F','S','S'].map((label, i) => {
+                        const day = i + 1
+                        const active = genDays.includes(day)
+                        return (
+                          <button key={day} onClick={() => setGenDays(prev => active ? prev.filter(d => d !== day) : [...prev, day].sort())}
+                            style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${active ? '#A78BFA55' : '#2E2E2E'}`, background: active ? '#A78BFA20' : '#1E1E1E', color: active ? '#A78BFA' : '#6B7280', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#6B7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sessions Per Day</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {([1, 2] as const).map(n => (
+                        <button key={n} onClick={() => setGenSessionsPerDay(n)}
+                          style={{ width: '40px', height: '40px', borderRadius: '10px', border: `1px solid ${genSessionsPerDay === n ? '#A78BFA55' : '#2E2E2E'}`, background: genSessionsPerDay === n ? '#A78BFA20' : '#1E1E1E', color: genSessionsPerDay === n ? '#A78BFA' : '#6B7280', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}>
+                          {n}
                         </button>
-                      )
-                    })}
+                      ))}
+                    </div>
                   </div>
                 </div>
 

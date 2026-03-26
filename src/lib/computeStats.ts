@@ -11,6 +11,7 @@ export interface SessionData {
   type: string; name: string; date: string; savedAt: string
   exercises?: LoggedExercise[]
   run?: LoggedRunEntry[]
+  hikeKm?: number // distance for hike sessions logged without run segments
 }
 
 function segKm(seg: LoggedRunSegment): number {
@@ -24,11 +25,12 @@ function segKm(seg: LoggedRunSegment): number {
 }
 
 function sessionKm(s: SessionData): number {
-  return (s.run ?? []).reduce((rs, entry) => {
+  const runKm = (s.run ?? []).reduce((rs, entry) => {
     if ('kind' in entry && entry.kind === 'repeat')
       return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
     return rs + segKm(entry as LoggedRunSegment)
   }, 0)
+  return runKm + (s.hikeKm ?? 0)
 }
 
 function sessionLoad(s: SessionData): number {
@@ -186,8 +188,8 @@ export function computeStats(history: SessionData[]) {
       date: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     }))
 
-  // Run weekly km (last 12 weeks)
-  const runSessions = history.filter(s => (s.run ?? []).length > 0)
+  // Run/hike weekly km (last 12 weeks)
+  const runSessions = history.filter(s => (s.run ?? []).length > 0 || s.type === 'hike' || s.type === 'run')
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const weeks: string[] = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(today)
@@ -196,20 +198,21 @@ export function computeStats(history: SessionData[]) {
     d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
     return d.toISOString().split('T')[0]
   })
-  const byWeek: Record<string, SessionData[]> = {}
-  for (const s of runSessions) { const wk = weekStart(s.date); (byWeek[wk] ??= []).push(s) }
+  const byWeekRun: Record<string, SessionData[]> = {}
+  for (const s of runSessions) { const wk = weekStart(s.date); (byWeekRun[wk] ??= []).push(s) }
   const weeklyKm = weeks.map(wk => ({
     week: new Date(wk + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    km: Math.round(byWeek[wk]?.reduce((sum, s) => sum + sessionKm(s), 0) ?? 0),
+    km: Math.round(byWeekRun[wk]?.reduce((sum, s) => sum + sessionKm(s), 0) ?? 0),
   }))
 
-  // Run type mix
+  // Run/hike type mix
   const TYPE_COLORS: Record<string, string> = {
     easy: '#4CAF50', tempo: '#F59E0B', long: '#00BFA5', interval: '#EF4444',
     recovery: '#60A5FA', warmup: '#A78BFA', cooldown: '#A78BFA', hills: '#F97316', rest: '#606060',
+    hike: '#84CC16',
   }
   const typeCounts: Record<string, number> = {}
-  for (const s of runSessions)
+  for (const s of runSessions) {
     for (const entry of s.run ?? []) {
       if ('kind' in entry && entry.kind === 'repeat') {
         for (const lap of entry.laps) typeCounts[lap.segmentType] = (typeCounts[lap.segmentType] ?? 0) + segKm(lap) * (parseInt(entry.count) || 1)
@@ -218,6 +221,11 @@ export function computeStats(history: SessionData[]) {
         typeCounts[seg.segmentType] = (typeCounts[seg.segmentType] ?? 0) + segKm(seg)
       }
     }
+    // Count hikeKm for hike sessions that don't use run segments
+    if (s.type === 'hike' && s.hikeKm && (s.run ?? []).length === 0) {
+      typeCounts['hike'] = (typeCounts['hike'] ?? 0) + s.hikeKm
+    }
+  }
   const totalRunKm = Object.values(typeCounts).reduce((a, b) => a + b, 0)
   const runTypeMix = totalRunKm > 0
     ? Object.entries(typeCounts)
@@ -260,7 +268,7 @@ export function computeStats(history: SessionData[]) {
     },
     totalSessions: history.length,
     strengthSummary: liftSessions.length > 0 ? { topExercises, prs } : null,
-    runSummary: runSessions.length > 0 ? { weeklyKm, runTypeMix } : null,
+    runSummary: runSessions.length > 0 || history.some(s => s.type === 'hike') ? { weeklyKm, runTypeMix } : null,
     breakdown: { pplSlices: toSlices(ppl, PPL_COLORS), bodySlices: toSlices(body, BODY_COLORS), hasData: Object.values(ppl).some(v => v > 0) },
     balance: { liftPct: Math.round((liftCount / total) * 100), runPct: Math.round((runCount / total) * 100) },
   }

@@ -28,6 +28,7 @@ interface Programme {
   name: string
   weeks: number
   startDate: string
+  sessionsPerDay?: 1 | 2
   cells: Record<string, CellData>
 }
 
@@ -88,17 +89,12 @@ function formatProgramme(prog: Programme): string {
   const weekBase = hasW0 ? 0 : 1
   const dayBase  = hasW0 ? 0 : 1
 
+  const sessionsPerDay = prog.sessionsPerDay ?? 1
+  if (sessionsPerDay === 2) lines.push(`Note: ${sessionsPerDay} sessions per day`)
   lines.push('Weekly Schedule (Week 1 as representative):')
-  for (let d = 0; d < 7; d++) {
-    const key = `w${weekBase}d${dayBase + d}`
-    const cell = prog.cells[key]
-    if (!cell) {
-      lines.push(`  ${DAYS[d]}: Rest`)
-      continue
-    }
-    const t = cell.template
-    lines.push(`  ${DAYS[d]}: ${t.name} (${t.type})${cell.rpe ? ` — RPE ${cell.rpe}` : ''}`)
 
+  function formatCell(t: StoredTemplate, label: string, rpe: number) {
+    lines.push(`  ${label}: ${t.name} (${t.type})${rpe ? ` — RPE ${rpe}` : ''}`)
     if (t.exerciseRows?.length) {
       for (const ex of t.exerciseRows) {
         const setStr = ex.sets
@@ -108,7 +104,9 @@ function formatProgramme(prog: Programme): string {
         lines.push(`    • ${ex.exerciseName}${setStr ? `: ${setStr}` : ''}`)
       }
     }
-
+    if ((t as { hikeData?: { distanceKm: string } }).hikeData?.distanceKm) {
+      lines.push(`    • Hike: ${(t as { hikeData: { distanceKm: string } }).hikeData.distanceKm} km`)
+    }
     if (t.runRows?.length) {
       for (const entry of t.runRows) {
         if ('kind' in entry) {
@@ -123,6 +121,19 @@ function formatProgramme(prog: Programme): string {
         }
       }
     }
+  }
+
+  for (let d = 0; d < 7; d++) {
+    const key  = `w${weekBase}d${dayBase + d}`
+    const key2 = `w${weekBase}d${dayBase + d}_2`
+    const cell  = prog.cells[key]
+    const cell2 = prog.cells[key2]
+    if (!cell && !cell2) {
+      lines.push(`  ${DAYS[d]}: Rest`)
+      continue
+    }
+    if (cell)  formatCell(cell.template,  sessionsPerDay === 2 ? `${DAYS[d]} (Session 1)` : DAYS[d], cell.rpe)
+    if (cell2) formatCell(cell2.template, `${DAYS[d]} (Session 2)`, cell2.rpe)
   }
 
   // Check if there are variations across weeks

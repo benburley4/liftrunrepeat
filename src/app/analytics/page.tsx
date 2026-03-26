@@ -34,6 +34,7 @@ interface SavedSession {
   type: string; name: string; date: string; savedAt: string
   exercises?: LoggedExercise[]
   run?: LoggedRunEntry[]
+  hikeKm?: number
 }
 
 function RunRow({ lap, editing, onUpdate }: {
@@ -103,13 +104,10 @@ export default function AnalyticsPage() {
   useEffect(() => {
     getSessions().then(raw => {
       const sessions = raw as unknown as SavedSession[]
-      // Deduplicate: same date + type + name → keep the one with the latest savedAt
+      // Deduplicate by savedAt (the DB unique key) — keeps all sessions including
+      // multiple sessions on the same day; only removes exact savedAt duplicates
       const seen = new Map<string, SavedSession>()
-      for (const s of sessions) {
-        const key = `${s.date}|${s.type}|${s.name}`
-        const existing = seen.get(key)
-        if (!existing || s.savedAt > existing.savedAt) seen.set(key, s)
-      }
+      for (const s of sessions) seen.set(s.savedAt, s)
       setHistory(Array.from(seen.values()))
     }).catch(console.error)
   }, [])

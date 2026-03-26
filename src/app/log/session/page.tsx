@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Check, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import { upsertSession, getProgrammes, getTemplates, getCustomExercises } from '@/lib/db'
 import { exercises as staticExercises } from '@/lib/mockData'
 import { formatTimeInput } from '@/lib/utils'
 
-type SessionType = 'lift' | 'run' | 'hybrid'
-type TemplateKind = 'lift' | 'run' | 'hybrid'
+type SessionType = 'lift' | 'run' | 'hybrid' | 'hike'
+type TemplateKind = 'lift' | 'run' | 'hybrid' | 'hike'
 
 interface PlannedSet { id: string; reps: string; weight: string }
 interface PlannedExercise { id: string; exerciseName: string; sets: PlannedSet[] }
@@ -20,6 +20,7 @@ interface StoredTemplate {
   id: string; name: string; type: TemplateKind
   exerciseRows?: PlannedExercise[]
   runRows?: PlannedRunEntry[]
+  hikeData?: { distanceKm: string; elevationGainM?: string }
 }
 
 interface CellData { template: StoredTemplate; rpe: number }
@@ -49,24 +50,33 @@ function getMonday(dateStr: string): Date {
   return d
 }
 
-function findCellForDate(prog: Programme, date: Date): { cell: CellData; week: number; dayName: string } | null {
+function findCellForDate(prog: Programme, date: Date, second = false): { cell: CellData; week: number; dayName: string } | null {
   const start = getMonday(prog.startDate)
   const d = new Date(date); d.setHours(0,0,0,0)
   const daysSince = Math.floor((d.getTime() - start.getTime()) / 86400000)
-  if (daysSince < 0) return null
+  const suffix = second ? '_2' : ''
+
+  if (daysSince < 0) {
+    // Date is before programme start — show week-1 plan for this day-of-week as a preview
+    const dow = d.getDay()
+    const dayIdx = dow === 0 ? 6 : dow - 1 // Sun=0 → 6, Mon=1 → 0, ...
+    const cell = prog.cells[`w0d${dayIdx}${suffix}`]
+    return cell ? { cell, week: 1, dayName: DAYS[dayIdx] } : null
+  }
+
   const weekIdx = Math.floor(daysSince / 7)
   const dayIdx = daysSince % 7
   if (weekIdx >= prog.weeks) return null
-  const cell = prog.cells[`w${weekIdx}d${dayIdx}`]
+  const cell = prog.cells[`w${weekIdx}d${dayIdx}${suffix}`]
   return cell ? { cell, week: weekIdx + 1, dayName: DAYS[dayIdx] } : null
 }
 
 function typeColor(type: TemplateKind): string {
-  return type === 'lift' ? '#00BFA5' : type === 'run' ? '#C8102E' : '#a78bfa'
+  return type === 'lift' ? '#00BFA5' : type === 'run' ? '#C8102E' : type === 'hike' ? '#84CC16' : '#a78bfa'
 }
 
 function typeLabel(type: TemplateKind): string {
-  return type === 'lift' ? 'Lifting' : type === 'run' ? 'Run' : 'Hybrid'
+  return type === 'lift' ? 'Lifting' : type === 'run' ? 'Run' : type === 'hike' ? 'Hike' : 'Hybrid'
 }
 
 
@@ -140,7 +150,7 @@ function initRunEntries(rows: PlannedRunEntry[]): LoggedRunEntry[] {
 
 // ─── Run segment row ──────────────────────────────────────────────────────────
 
-const RUN_SEGMENT_TYPES = ['easy','tempo','interval','rest','warmup','cooldown','recovery','hills','long']
+const RUN_SEGMENT_TYPES = ['easy','tempo','interval','rest','warmup','cooldown','recovery','hills','long','hike']
 const RUN_METRICS = ['distance', 'time', 'pace']
 
 function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: {
@@ -150,6 +160,7 @@ function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: 
   onUpdate: (entryIdx: number, field: 'actualValue' | 'actualPace', value: string, lapIdx?: number) => void
   onUpdateMeta?: (entryIdx: number, field: 'segmentType' | 'metric', value: string, lapIdx?: number) => void
 }) {
+  const segColor = seg.segmentType === 'hike' ? '#84CC16' : '#C8102E'
   const unit = seg.metric === 'distance' ? 'km' : seg.metric === 'time' ? 'min' : ''
   const plannedLabel = seg.plannedValue
     ? `${seg.plannedValue}${unit ? ' ' + unit : ''}${seg.plannedPace ? ` @ ${seg.plannedPace}/km` : ''}`
@@ -163,13 +174,13 @@ function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: 
           value={seg.segmentType}
           onChange={e => onUpdateMeta(entryIdx, 'segmentType', e.target.value, lapIdx)}
           className="text-xs font-semibold rounded px-2 py-0.5 outline-none cursor-pointer flex-shrink-0"
-          style={{ background: '#C8102E20', color: '#C8102E', border: '1px solid #C8102E40', fontFamily: 'Inter, sans-serif' }}
+          style={{ background: `${segColor}20`, color: segColor, border: `1px solid ${segColor}40`, fontFamily: 'Inter, sans-serif' }}
         >
           {RUN_SEGMENT_TYPES.map(t => <option key={t} value={t} style={{ background: '#1A1A1A', color: '#F5F5F5' }}>{t}</option>)}
         </select>
       ) : (
         <span className="text-xs font-semibold capitalize px-2 py-0.5 rounded flex-shrink-0"
-          style={{ background: '#C8102E20', color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>
+          style={{ background: `${segColor}20`, color: segColor, fontFamily: 'Inter, sans-serif' }}>
           {seg.segmentType}
         </span>
       )}
@@ -223,7 +234,10 @@ export default function LogSessionPage() {
   const [saved, setSaved] = useState(false)
   const [transitionTime, setTransitionTime] = useState('15')
   const [todayPlan, setTodayPlan] = useState<{ cell: CellData; week: number; dayName: string; progName: string } | null>(null)
-  const [dayOffset, setDayOffset] = useState(0)
+  const [selectedIso, setSelectedIso] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  })
   const [loggedExercises, setLoggedExercises] = useState<LoggedExercise[]>([])
   const [loggedRun, setLoggedRun] = useState<LoggedRunEntry[]>([])
   const [showAddEx, setShowAddEx] = useState(false)
@@ -232,14 +246,26 @@ export default function LogSessionPage() {
   const [library, setLibrary] = useState<StoredTemplate[]>([])
   const [showPicker, setShowPicker] = useState(false)
   const [pickerType, setPickerType] = useState<'lift' | 'run'>('lift')
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [secondPlan, setSecondPlan] = useState<{ cell: CellData; week: number; dayName: string; progName: string } | null>(null)
+  const userOverride = useRef(false) // prevents async programme load from overwriting manual template selection
+  const savedAtRef = useRef<string | null>(null) // reuse savedAt on re-save to avoid duplicate DB rows
 
-  const now = new Date()
-  const selectedDate = new Date(now)
-  selectedDate.setDate(now.getDate() + dayOffset)
+  function todayIso() {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  function shiftDay(n: number) {
+    const d = new Date(selectedIso + 'T00:00:00')
+    d.setDate(d.getDate() + n)
+    setSelectedIso(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
+  }
 
+  const selectedDate = new Date(selectedIso + 'T00:00:00')
   const dateStr = selectedDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-  const dateIso = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
-  const isToday = dayOffset === 0
+  const dateIso = selectedIso
+  const isToday = selectedIso === todayIso()
 
   useEffect(() => {
     getTemplates().then(data => setLibrary(data as StoredTemplate[])).catch(() => {})
@@ -253,28 +279,38 @@ export default function LogSessionPage() {
   }, [])
 
   useEffect(() => {
+    userOverride.current = false // new day navigation resets override
+    savedAtRef.current = null    // new day gets a fresh savedAt
+    const isoSnapshot = selectedIso  // capture for async closure — avoids stale date if user navigates again before promise resolves
     loadCurrentProgramme().then(prog => {
+      if (userOverride.current) return // user picked a template while we were loading — don't overwrite
       if (!prog) {
-        setTodayPlan(null); setSessionName('')
+        setTodayPlan(null); setSecondPlan(null); setSessionName('')
         setLoggedExercises([]); setLoggedRun([])
         return
       }
-      const found = findCellForDate(prog, selectedDate)
+      const date = new Date(isoSnapshot + 'T00:00:00')
+      const found = findCellForDate(prog, date)
+      // Also look for second session slot (_2)
+      const found2 = findCellForDate(prog, date, true)
+      setSecondPlan(found2 ? { ...found2, progName: prog.name } : null)
       if (!found) {
         setTodayPlan(null); setSessionName('')
         setLoggedExercises([]); setLoggedRun([])
         return
       }
+      const tpl = found.cell.template
       setTodayPlan({ ...found, progName: prog.name })
-      setSessionName(found.cell.template.name)
-      setSessionType(found.cell.template.type as SessionType)
-      setLoggedExercises(initExercises(found.cell.template.exerciseRows ?? []))
-      setLoggedRun(initRunEntries(found.cell.template.runRows ?? []))
+      setSessionName(tpl.name)
+      setSessionType(tpl.type as SessionType)
+      setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
+      setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
     }).catch(() => {
-      setTodayPlan(null); setSessionName('')
+      if (userOverride.current) return
+      setTodayPlan(null); setSecondPlan(null); setSessionName('')
       setLoggedExercises([]); setLoggedRun([])
     })
-  }, [dayOffset])
+  }, [selectedIso])
 
   function updateSet(exId: string, si: number, field: keyof ActualSet, value: string) {
     setLoggedExercises(prev => prev.map(ex => ex.id !== exId ? ex : {
@@ -319,16 +355,57 @@ export default function LogSessionPage() {
     setShowPicker(true)
   }
 
+  function hikeSegmentFromTemplate(tpl: StoredTemplate): LoggedRunSegment[] {
+    if (tpl.type !== 'hike' || !tpl.hikeData?.distanceKm) return []
+    return [{
+      id: `hike-${Date.now()}`, segmentType: 'hike', metric: 'distance',
+      plannedValue: tpl.hikeData.distanceKm, plannedPace: '',
+      actualValue: tpl.hikeData.distanceKm, actualPace: '',
+    }]
+  }
+
   function loadFromTemplate(tpl: StoredTemplate) {
     if (tpl.exerciseRows?.length) {
       setLoggedExercises(prev => [...prev, ...initExercises(tpl.exerciseRows!)])
     }
-    if (tpl.runRows?.length) {
+    if (tpl.type === 'hike') {
+      setLoggedRun(prev => [...prev, ...hikeSegmentFromTemplate(tpl)])
+    } else if (tpl.runRows?.length) {
       setLoggedRun(prev => [...prev, ...initRunEntries(tpl.runRows!)])
     }
     if (!sessionName) setSessionName(tpl.name)
     setSessionType(tpl.type as SessionType)
     setShowPicker(false)
+  }
+
+  function replaceFromTemplate(tpl: StoredTemplate) {
+    userOverride.current = true // prevent async programme load from overwriting this
+    savedAtRef.current = null   // fresh savedAt for the new template session
+    setSessionName(tpl.name)
+    setSessionType(tpl.type as SessionType)
+    setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
+    setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+    setTodayPlan(null) // clear programme badge — session is now from template
+    setSecondPlan(null)
+    setShowTemplatePicker(false)
+    setTemplateSearch('')
+    setSaved(false)
+  }
+
+  async function loadSecondSession() {
+    if (!secondPlan) return
+    // Auto-save session 1 if it has content and hasn't been saved yet
+    const hasContent = loggedExercises.length > 0 || loggedRun.length > 0
+    if (hasContent && !saved) await handleSave()
+    savedAtRef.current = null // fresh savedAt for session 2
+    const tpl = secondPlan.cell.template
+    setSessionName(tpl.name)
+    setSessionType(tpl.type as SessionType)
+    setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
+    setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+    setTodayPlan(secondPlan)
+    setSecondPlan(null) // consumed — don't show button again
+    setSaved(false)
   }
 
   function removeExercise(exId: string) {
@@ -353,13 +430,29 @@ export default function LogSessionPage() {
 
   const handleSave = async () => {
     if (saved) return   // prevent double-save
+    // For hike sessions, extract total distance from run segments → store as hikeKm
+    // Store run: [] to avoid double-counting in computeStats (sessionKm adds runKm + hikeKm)
+    let hikeKm: number | undefined
+    let runToStore: LoggedRunEntry[] = loggedRun
+    if (sessionType === 'hike') {
+      hikeKm = loggedRun.reduce((sum, entry) => {
+        if ('kind' in entry && entry.kind === 'repeat') return sum
+        const seg = entry as LoggedRunSegment
+        return seg.metric === 'distance' ? sum + (parseFloat(seg.actualValue) || 0) : sum
+      }, 0)
+      runToStore = []
+    }
+    // Reuse savedAt on re-save so we upsert the same DB row (no duplicate sessions)
+    const savedAt = savedAtRef.current ?? new Date().toISOString()
+    savedAtRef.current = savedAt
     const session = {
       type: sessionType,
       name: sessionName || `${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)} Session`,
       date: dateIso,
-      savedAt: now.toISOString(),
+      savedAt,
       exercises: loggedExercises,
-      run: loggedRun,
+      run: runToStore,
+      ...(hikeKm !== undefined ? { hikeKm } : {}),
     }
     await upsertSession(session)
     setSaved(true)
@@ -375,14 +468,15 @@ export default function LogSessionPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-6">
 
           {/* Date navigation */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <button
-              onClick={() => setDayOffset(d => d - 1)}
+              onClick={() => shiftDay(-1)}
               className="p-1 rounded"
               style={{ color: '#606060', background: '#1A1A1A', border: '1px solid #2E2E2E' }}
             >
               <ChevronLeft size={16} />
             </button>
+
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
                 {dateStr}
@@ -393,17 +487,28 @@ export default function LogSessionPage() {
                 </span>
               )}
             </div>
+
             <button
-              onClick={() => setDayOffset(d => d + 1)}
+              onClick={() => shiftDay(1)}
               className="p-1 rounded"
               style={{ color: '#606060', background: '#1A1A1A', border: '1px solid #2E2E2E' }}
             >
               <ChevronRight size={16} />
             </button>
-            {dayOffset !== 0 && (
+
+            {/* Direct date picker */}
+            <input
+              type="date"
+              value={selectedIso}
+              onChange={e => e.target.value && setSelectedIso(e.target.value)}
+              className="text-xs px-2 py-1 rounded outline-none"
+              style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', colorScheme: 'dark', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+            />
+
+            {!isToday && (
               <button
-                onClick={() => setDayOffset(0)}
-                className="text-xs ml-2"
+                onClick={() => setSelectedIso(todayIso())}
+                className="text-xs"
                 style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}
               >
                 Back to today
@@ -425,13 +530,35 @@ export default function LogSessionPage() {
                 paddingBottom: '4px',
               }}
             />
-            {todayPlan && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded text-sm flex-shrink-0"
-                style={{ background: `${typeColor(todayPlan.cell.template.type)}15`, border: `1px solid ${typeColor(todayPlan.cell.template.type)}40`, color: typeColor(todayPlan.cell.template.type), fontFamily: 'Inter, sans-serif' }}>
-                <Calendar size={13} />
-                <span>{todayPlan.progName} · Wk {todayPlan.week} · {todayPlan.dayName}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {todayPlan && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded text-sm"
+                  style={{ background: `${typeColor(todayPlan.cell.template.type)}15`, border: `1px solid ${typeColor(todayPlan.cell.template.type)}40`, color: typeColor(todayPlan.cell.template.type), fontFamily: 'Inter, sans-serif' }}>
+                  <Calendar size={13} />
+                  <span>{todayPlan.progName} · Wk {todayPlan.week} · {todayPlan.dayName}{secondPlan ? ' — Session 1' : ''}</span>
+                </div>
+              )}
+              {secondPlan && (
+                <button
+                  onClick={loadSecondSession}
+                  className="flex items-center gap-2 px-3 py-2 rounded text-sm"
+                  style={{ background: '#A78BFA15', border: '1px solid #A78BFA40', color: '#A78BFA', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                  title={`Load session 2: ${secondPlan.cell.template.name}`}
+                >
+                  <Calendar size={13} />
+                  <span>{secondPlan.cell.template.name} — Session 2</span>
+                </button>
+              )}
+              <button
+                onClick={() => { setShowTemplatePicker(true); setTemplateSearch('') }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold flex-shrink-0"
+                style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#9CA3AF', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#00BFA5'; e.currentTarget.style.color = '#00BFA5' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#9CA3AF' }}
+              >
+                ↗ Use Template
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -603,13 +730,15 @@ export default function LogSessionPage() {
           </div>
         )}
 
-        {/* Run Block */}
+        {/* Run / Hike Block */}
         {loggedRun.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
               <span className="text-xs uppercase font-bold tracking-widest px-3"
-                style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>Run Block</span>
+                style={{ color: sessionType === 'hike' ? '#84CC16' : '#C8102E', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>
+                {sessionType === 'hike' ? 'Hike Block' : 'Run Block'}
+              </span>
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
             </div>
 
@@ -639,7 +768,7 @@ export default function LogSessionPage() {
 
             <button onClick={addManualRunSegment}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+              style={{ background: sessionType === 'hike' ? 'rgba(132,204,22,0.08)' : 'rgba(200,16,46,0.08)', color: sessionType === 'hike' ? '#84CC16' : '#C8102E', border: `1px solid ${sessionType === 'hike' ? 'rgba(132,204,22,0.2)' : 'rgba(200,16,46,0.2)'}`, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
               <Plus size={14} /> Add Segment
             </button>
           </div>
@@ -653,25 +782,36 @@ export default function LogSessionPage() {
           <button className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
             Discard
           </button>
-          <button
-            onClick={handleSave}
-            className="px-8 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"
-            style={{
-              background: saved ? '#1A1A1A' : '#00BFA5',
-              color: saved ? '#00BFA5' : '#0D0D0D',
-              border: saved ? '1px solid #00BFA5' : 'none',
-              fontFamily: 'Inter, sans-serif',
-            }}
-          >
-            {saved ? (
-              <>
-                <Check size={16} />
-                Session Saved!
-              </>
-            ) : (
-              'Save Session'
+          <div className="flex items-center gap-3">
+            {secondPlan && (
+              <button
+                onClick={loadSecondSession}
+                className="px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2"
+                style={{ background: '#A78BFA20', color: '#A78BFA', border: '1px solid #A78BFA40', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+              >
+                ↗ Log 2nd Session
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleSave}
+              className="px-8 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"
+              style={{
+                background: saved ? '#1A1A1A' : '#00BFA5',
+                color: saved ? '#00BFA5' : '#0D0D0D',
+                border: saved ? '1px solid #00BFA5' : 'none',
+                fontFamily: 'Inter, sans-serif',
+              }}
+            >
+              {saved ? (
+                <>
+                  <Check size={16} />
+                  Session Saved!
+                </>
+              ) : (
+                'Save Session'
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -738,6 +878,72 @@ export default function LogSessionPage() {
                   <Plus size={13} /> Start blank
                 </span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Use Template picker modal */}
+      {showTemplatePicker && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
+          onClick={() => { setShowTemplatePicker(false); setTemplateSearch('') }}>
+          <div className="w-full max-w-lg rounded-2xl overflow-hidden"
+            style={{ background: '#141414', border: '1px solid #2E2E2E', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+            onClick={e => e.stopPropagation()}>
+
+            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #2E2E2E' }}>
+              <span className="text-sm font-bold uppercase tracking-wider"
+                style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif' }}>Use Template</span>
+              <button onClick={() => { setShowTemplatePicker(false); setTemplateSearch('') }}
+                style={{ color: '#606060', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+
+            <div className="px-4 pt-3 pb-2">
+              <input
+                autoFocus
+                value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
+                placeholder="Search templates…"
+                className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+              />
+            </div>
+
+            <div className="overflow-y-auto p-3 space-y-2">
+              {library
+                .filter(t => !templateSearch || t.name.toLowerCase().includes(templateSearch.toLowerCase()))
+                .length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                  No templates found.
+                </p>
+              )}
+              {library
+                .filter(t => !templateSearch || t.name.toLowerCase().includes(templateSearch.toLowerCase()))
+                .map(tpl => (
+                  <button key={tpl.id} onClick={() => replaceFromTemplate(tpl)}
+                    className="w-full text-left px-4 py-3 rounded-xl transition-all"
+                    style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = '#00BFA544')}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = '#2E2E2E')}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{tpl.name}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{ background: `${typeColor(tpl.type as TemplateKind)}20`, color: typeColor(tpl.type as TemplateKind), fontFamily: 'Inter, sans-serif' }}>
+                        {typeLabel(tpl.type as TemplateKind)}
+                      </span>
+                    </div>
+                    {tpl.exerciseRows && tpl.exerciseRows.length > 0 && (
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                        {tpl.exerciseRows.slice(0, 4).map(e => e.exerciseName).join(' · ')}{tpl.exerciseRows.length > 4 ? ` +${tpl.exerciseRows.length - 4} more` : ''}
+                      </p>
+                    )}
+                    {tpl.runRows && tpl.runRows.length > 0 && (
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                        {tpl.runRows.length} segment{tpl.runRows.length !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </button>
+                ))}
             </div>
           </div>
         </div>
