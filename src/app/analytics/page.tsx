@@ -338,9 +338,7 @@ export default function AnalyticsPage() {
         es + ex.actualSets.reduce((ss, set) =>
           ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0), 0)
 
-    // Readiness: based on 7-day training load vs 28-day average (simplified ATL/CTL)
-    const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
-    const fourWeeksAgo = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
+    // ── Readiness score: personalised, history-aware ──────────────────────────
     function sessionLoad(s: SavedSession) {
       const liftLoad = (s.exercises ?? []).reduce((sum, ex) =>
         sum + ex.actualSets.reduce((ss, set) =>
@@ -352,12 +350,82 @@ export default function AnalyticsPage() {
       }, 0)
       return liftLoad + runLoad
     }
-    const recent7 = history.filter(s => new Date(s.date + 'T00:00:00') >= sevenDaysAgo)
+    function sessionLiftLoad(s: SavedSession) {
+      return (s.exercises ?? []).reduce((sum, ex) =>
+        sum + ex.actualSets.reduce((ss, set) =>
+          ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
+    }
+    function wkStart(dateStr: string) {
+      const d = new Date(dateStr + 'T00:00:00'); const day = d.getDay()
+      d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day)); return d.toISOString().split('T')[0]
+    }
+
+    // Group all history by week
+    const byWeek: Record<string, { total: number; lift: number; run: number }> = {}
+    for (const s of history) {
+      const wk = wkStart(s.date)
+      if (!byWeek[wk]) byWeek[wk] = { total: 0, lift: 0, run: 0 }
+      const load = sessionLoad(s); const liftL = sessionLiftLoad(s)
+      byWeek[wk].total += load; byWeek[wk].lift += liftL; byWeek[wk].run += load - liftL
+    }
+    const allWeekLoads = Object.values(byWeek)
+    const personalWeeklyAvg = allWeekLoads.length > 0
+      ? allWeekLoads.reduce((s, w) => s + w.total, 0) / allWeekLoads.length : 0
+
+    const thisWk = wkStart(now.toISOString().split('T')[0])
+    const lastWkDate = new Date(now); lastWkDate.setDate(now.getDate() - 7)
+    const lastWk = wkStart(lastWkDate.toISOString().split('T')[0])
+    const thisWeekLoad = byWeek[thisWk]?.total ?? 0
+    const lastWeekLoad = byWeek[lastWk]?.total ?? 0
+
+    const sevenDaysAgo  = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
+    const fourWeeksAgo  = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
+    const recent7  = history.filter(s => new Date(s.date + 'T00:00:00') >= sevenDaysAgo)
     const recent28 = history.filter(s => new Date(s.date + 'T00:00:00') >= fourWeeksAgo)
-    const atl = recent7.reduce((s, sess) => s + sessionLoad(sess), 0) / 7
-    const ctl = recent28.length > 0 ? recent28.reduce((s, sess) => s + sessionLoad(sess), 0) / 28 : atl
-    const tsb = ctl > 0 ? Math.round(Math.max(0, Math.min(100, 50 + (ctl - atl) / ctl * 50))) : 50
-    const readinessLabel = tsb >= 70 ? 'Fresh — ready to push' : tsb >= 50 ? 'Good to train' : tsb >= 30 ? 'Moderate fatigue' : 'High fatigue — recover'
+
+    // 1. Personalised base score — centred on their own average, not a fixed 50
+    let score = personalWeeklyAvg > 0
+      ? Math.round(65 - ((thisWeekLoad / personalWeeklyAvg) - 1) * 30)
+      : history.length === 0 ? 75 : 65
+
+    // 2. Consistency bonus — sustained training builds resilience (max +10)
+    const weeksActive = allWeekLoads.filter(w => w.total > 0).length
+    score += Math.min(10, Math.floor(weeksActive / 2))
+
+    // 3. Days since last session — rest genuinely helps (max +15)
+    const lastSessionDate = [...history].sort((a, b) => b.date.localeCompare(a.date))[0]?.date
+    const daysSinceLast = lastSessionDate
+      ? Math.floor((now.getTime() - new Date(lastSessionDate + 'T00:00:00').getTime()) / 86400000)
+      : 0
+    if (daysSinceLast > 0) score += Math.min(15, daysSinceLast * 4)
+
+    // 4. Ramp rate — spike in volume signals injury risk
+    if (lastWeekLoad > 0) {
+      const ramp = (thisWeekLoad - lastWeekLoad) / lastWeekLoad
+      if (ramp > 0.1) score -= Math.round(Math.min(15, ramp * 30))
+      else if (ramp < -0.1) score += 5  // deload week = bonus
+    }
+
+    // 5. Cross-sport freshness — dominated-sport week means the other sport feels fresh
+    const recentLiftTotal = recent7.reduce((s, sess) => s + sessionLiftLoad(sess), 0)
+    const recentTotal = recent7.reduce((s, sess) => s + sessionLoad(sess), 0)
+    const liftRatio = recentTotal > 0 ? recentLiftTotal / recentTotal : 0.5
+    if (liftRatio < 0.2 || liftRatio > 0.8) score += 5
+
+    // Clamp
+    const tsb = Math.max(0, Math.min(100, score))
+
+    // 6. Trend indicator vs last week's approximate readiness
+    const lastWeekScore = personalWeeklyAvg > 0
+      ? Math.round(65 - ((lastWeekLoad / personalWeeklyAvg) - 1) * 30)
+      : 65
+    const readinessTrend = tsb > lastWeekScore + 3 ? '↑' : tsb < lastWeekScore - 3 ? '↓' : '→'
+
+    // 7. Positive labels
+    const readinessLabel = tsb >= 80 ? 'Peak readiness — go for it'
+      : tsb >= 65 ? 'Ready to perform'
+      : tsb >= 45 ? 'Building fitness — keep it steady'
+      : 'Hard week — well earned rest'
 
     return {
       sessionsThisWeek,
@@ -366,6 +434,7 @@ export default function AnalyticsPage() {
       totalVolume: Math.round(totalVolume),
       tsb,
       readinessLabel,
+      readinessTrend,
     }
   }, [history])
 
@@ -629,9 +698,9 @@ export default function AnalyticsPage() {
             },
             {
               label: 'Readiness Score',
-              value: `${overviewStats.tsb}%`,
+              value: `${overviewStats.tsb}% ${overviewStats.readinessTrend}`,
               sub: overviewStats.readinessLabel,
-              accent: overviewStats.tsb >= 50 ? '#00BFA5' : '#C8102E', icon: Trophy,
+              accent: overviewStats.tsb >= 65 ? '#00BFA5' : overviewStats.tsb >= 45 ? '#F59E0B' : '#C8102E', icon: Trophy,
             },
           ].map(({ label, value, sub, accent, icon: Icon }) => (
             <div

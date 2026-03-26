@@ -72,22 +72,82 @@ const BODY_KEYWORDS: [RegExp, string][] = [
 function classifyPPL(name: string) { for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat; return 'Push' }
 function classifyBody(name: string) { for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp; return 'Back' }
 
+function sessionLiftLoad(s: SessionData): number {
+  return (s.exercises ?? []).reduce((sum, ex) =>
+    sum + ex.actualSets.reduce((ss, set) =>
+      ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
+}
+
 export function computeStats(history: SessionData[]) {
   const now = new Date(); now.setHours(0, 0, 0, 0)
   const dow = now.getDay()
   const monday = new Date(now)
   monday.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow))
 
-  const thisWeek   = history.filter(s => new Date(s.date + 'T00:00:00') >= monday)
-  const sevenDaysAgo  = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
-  const fourWeeksAgo  = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
+  const thisWeek = history.filter(s => new Date(s.date + 'T00:00:00') >= monday)
+  const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
+  const fourWeeksAgo = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
   const recent7  = history.filter(s => new Date(s.date + 'T00:00:00') >= sevenDaysAgo)
-  const recent28 = history.filter(s => new Date(s.date + 'T00:00:00') >= fourWeeksAgo)
 
-  const atl = recent7.reduce((s, sess) => s + sessionLoad(sess), 0) / 7
-  const ctl = recent28.length > 0 ? recent28.reduce((s, sess) => s + sessionLoad(sess), 0) / 28 : atl
-  const tsb = ctl > 0 ? Math.round(Math.max(0, Math.min(100, 50 + (ctl - atl) / ctl * 50))) : 50
-  const readinessLabel = tsb >= 70 ? 'Fresh — ready to push' : tsb >= 50 ? 'Good to train' : tsb >= 30 ? 'Moderate fatigue' : 'High fatigue — recover'
+  // Group all history by week
+  const byWeek: Record<string, { total: number; lift: number }> = {}
+  for (const s of history) {
+    const wk = weekStart(s.date)
+    if (!byWeek[wk]) byWeek[wk] = { total: 0, lift: 0 }
+    const load = sessionLoad(s); const liftL = sessionLiftLoad(s)
+    byWeek[wk].total += load; byWeek[wk].lift += liftL
+  }
+  const allWeekLoads = Object.values(byWeek)
+  const personalWeeklyAvg = allWeekLoads.length > 0
+    ? allWeekLoads.reduce((s, w) => s + w.total, 0) / allWeekLoads.length : 0
+
+  const thisWk = weekStart(now.toISOString().split('T')[0])
+  const lastWkDate = new Date(now); lastWkDate.setDate(now.getDate() - 7)
+  const lastWk = weekStart(lastWkDate.toISOString().split('T')[0])
+  const thisWeekLoad = byWeek[thisWk]?.total ?? 0
+  const lastWeekLoad = byWeek[lastWk]?.total ?? 0
+
+  // 1. Personalised base score
+  let score = personalWeeklyAvg > 0
+    ? Math.round(65 - ((thisWeekLoad / personalWeeklyAvg) - 1) * 30)
+    : history.length === 0 ? 75 : 65
+
+  // 2. Consistency bonus (max +10)
+  const weeksActive = allWeekLoads.filter(w => w.total > 0).length
+  score += Math.min(10, Math.floor(weeksActive / 2))
+
+  // 3. Days since last session (max +15)
+  const lastSessionDate = [...history].sort((a, b) => b.date.localeCompare(a.date))[0]?.date
+  const daysSinceLast = lastSessionDate
+    ? Math.floor((now.getTime() - new Date(lastSessionDate + 'T00:00:00').getTime()) / 86400000)
+    : 0
+  if (daysSinceLast > 0) score += Math.min(15, daysSinceLast * 4)
+
+  // 4. Ramp rate
+  if (lastWeekLoad > 0) {
+    const ramp = (thisWeekLoad - lastWeekLoad) / lastWeekLoad
+    if (ramp > 0.1) score -= Math.round(Math.min(15, ramp * 30))
+    else if (ramp < -0.1) score += 5
+  }
+
+  // 5. Cross-sport freshness
+  const recentLiftTotal = recent7.reduce((s, sess) => s + sessionLiftLoad(sess), 0)
+  const recentTotal = recent7.reduce((s, sess) => s + sessionLoad(sess), 0)
+  const liftRatio = recentTotal > 0 ? recentLiftTotal / recentTotal : 0.5
+  if (liftRatio < 0.2 || liftRatio > 0.8) score += 5
+
+  const tsb = Math.max(0, Math.min(100, score))
+
+  // 6. Trend
+  const lastWeekScore = personalWeeklyAvg > 0
+    ? Math.round(65 - ((lastWeekLoad / personalWeeklyAvg) - 1) * 30) : 65
+  const readinessTrend = tsb > lastWeekScore + 3 ? '↑' : tsb < lastWeekScore - 3 ? '↓' : '→'
+
+  // 7. Positive labels
+  const readinessLabel = tsb >= 80 ? 'Peak readiness — go for it'
+    : tsb >= 65 ? 'Ready to perform'
+    : tsb >= 45 ? 'Building fitness — keep it steady'
+    : 'Hard week — well earned rest'
 
   const kmThisWeek = thisWeek.reduce((sum, s) => sum + sessionKm(s), 0)
   const totalVolume = history.reduce((sum, s) =>
@@ -196,6 +256,7 @@ export function computeStats(history: SessionData[]) {
       totalVolume: Math.round(totalVolume),
       tsb,
       readinessLabel,
+      readinessTrend,
     },
     totalSessions: history.length,
     strengthSummary: liftSessions.length > 0 ? { topExercises, prs } : null,
