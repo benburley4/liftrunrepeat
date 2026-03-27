@@ -104,10 +104,15 @@ export default function AnalyticsPage() {
   useEffect(() => {
     getSessions().then(raw => {
       const sessions = raw as unknown as SavedSession[]
-      // Deduplicate by savedAt (the DB unique key) — keeps all sessions including
-      // multiple sessions on the same day; only removes exact savedAt duplicates
+      // Deduplicate by date+name, keeping the latest savedAt for each.
+      // This collapses re-saves of the same session (e.g. after page refresh)
+      // while still allowing two differently-named sessions on the same day.
       const seen = new Map<string, SavedSession>()
-      for (const s of sessions) seen.set(s.savedAt, s)
+      for (const s of sessions) {
+        const key = `${s.date}|${(s.name ?? '').toLowerCase().trim()}`
+        const existing = seen.get(key)
+        if (!existing || s.savedAt > existing.savedAt) seen.set(key, s)
+      }
       setHistory(Array.from(seen.values()))
     }).catch(console.error)
   }, [])
