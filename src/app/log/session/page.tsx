@@ -405,11 +405,8 @@ export default function LogSessionPage() {
     setSaved(false)
   }
 
-  async function loadSecondSession() {
+  function loadSecondSession() {
     if (!secondPlan) return
-    // Auto-save session 1 if it has content and hasn't been saved yet
-    const hasContent = loggedExercises.length > 0 || loggedRun.length > 0
-    if (hasContent && !saved) await handleSave()
     savedAtRef.current = null // fresh savedAt for session 2
     const tpl = secondPlan.cell.template
     setFirstPlan(todayPlan) // remember session 1 so user can switch back
@@ -422,11 +419,8 @@ export default function LogSessionPage() {
     setSaved(false)
   }
 
-  async function loadFirstSession() {
+  function loadFirstSession() {
     if (!firstPlan) return
-    // Auto-save session 2 if it has content and hasn't been saved yet
-    const hasContent = loggedExercises.length > 0 || loggedRun.length > 0
-    if (hasContent && !saved) await handleSave()
     savedAtRef.current = null // fresh savedAt for session 1
     const tpl = firstPlan.cell.template
     setSecondPlan(todayPlan) // session 2 plan goes back to secondPlan
