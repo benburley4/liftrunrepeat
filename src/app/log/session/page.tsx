@@ -249,6 +249,7 @@ export default function LogSessionPage() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false)
   const [templateSearch, setTemplateSearch] = useState('')
   const [secondPlan, setSecondPlan] = useState<{ cell: CellData; week: number; dayName: string; progName: string } | null>(null)
+  const [firstPlan, setFirstPlan] = useState<{ cell: CellData; week: number; dayName: string; progName: string } | null>(null)
   const userOverride = useRef(false) // prevents async programme load from overwriting manual template selection
   const savedAtRef = useRef<string | null>(null) // reuse savedAt on re-save to avoid duplicate DB rows
 
@@ -281,6 +282,7 @@ export default function LogSessionPage() {
   useEffect(() => {
     userOverride.current = false // new day navigation resets override
     savedAtRef.current = null    // new day gets a fresh savedAt
+    setFirstPlan(null)           // reset session slot tracking
     const isoSnapshot = selectedIso  // capture for async closure — avoids stale date if user navigates again before promise resolves
     loadCurrentProgramme().then(prog => {
       if (userOverride.current) return // user picked a template while we were loading — don't overwrite
@@ -410,12 +412,30 @@ export default function LogSessionPage() {
     if (hasContent && !saved) await handleSave()
     savedAtRef.current = null // fresh savedAt for session 2
     const tpl = secondPlan.cell.template
+    setFirstPlan(todayPlan) // remember session 1 so user can switch back
     setSessionName(tpl.name)
     setSessionType(tpl.type as SessionType)
     setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
     setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
     setTodayPlan(secondPlan)
-    setSecondPlan(null) // consumed — don't show button again
+    setSecondPlan(null)
+    setSaved(false)
+  }
+
+  async function loadFirstSession() {
+    if (!firstPlan) return
+    // Auto-save session 2 if it has content and hasn't been saved yet
+    const hasContent = loggedExercises.length > 0 || loggedRun.length > 0
+    if (hasContent && !saved) await handleSave()
+    savedAtRef.current = null // fresh savedAt for session 1
+    const tpl = firstPlan.cell.template
+    setSecondPlan(todayPlan) // session 2 plan goes back to secondPlan
+    setSessionName(tpl.name)
+    setSessionType(tpl.type as SessionType)
+    setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
+    setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+    setTodayPlan(firstPlan)
+    setFirstPlan(null)
     setSaved(false)
   }
 
@@ -527,49 +547,66 @@ export default function LogSessionPage() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-2">
-            <input
-              type="text"
-              value={sessionName}
-              onChange={e => setSessionName(e.target.value)}
-              placeholder="Session name..."
-              className="flex-1 bg-transparent outline-none text-3xl font-black uppercase"
-              style={{
-                fontFamily: 'Montserrat, sans-serif',
-                color: '#F5F5F5',
-                borderBottom: '1px solid #2E2E2E',
-                paddingBottom: '4px',
-              }}
-            />
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {todayPlan && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded text-sm"
-                  style={{ background: `${typeColor(todayPlan.cell.template.type)}15`, border: `1px solid ${typeColor(todayPlan.cell.template.type)}40`, color: typeColor(todayPlan.cell.template.type), fontFamily: 'Inter, sans-serif' }}>
-                  <Calendar size={13} />
-                  <span>{todayPlan.progName} · Wk {todayPlan.week} · {todayPlan.dayName}{secondPlan ? ' — Session 1' : ''}</span>
-                </div>
-              )}
-              {secondPlan && (
-                <button
-                  onClick={loadSecondSession}
-                  className="flex items-center gap-2 px-3 py-2 rounded text-sm"
-                  style={{ background: '#A78BFA15', border: '1px solid #A78BFA40', color: '#A78BFA', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
-                  title={`Load session 2: ${secondPlan.cell.template.name}`}
-                >
-                  <Calendar size={13} />
-                  <span>{secondPlan.cell.template.name} — Session 2</span>
-                </button>
-              )}
+          <input
+            type="text"
+            value={sessionName}
+            onChange={e => setSessionName(e.target.value)}
+            placeholder="Session name..."
+            className="w-full bg-transparent outline-none text-3xl font-black uppercase mt-2"
+            style={{
+              fontFamily: 'Montserrat, sans-serif',
+              color: '#F5F5F5',
+              borderBottom: '1px solid #2E2E2E',
+              paddingBottom: '4px',
+            }}
+          />
+          <div className="flex items-center gap-2 flex-wrap mt-3">
+            {/* Session 1 badge — clickable when we're currently on session 2 */}
+            {firstPlan ? (
               <button
-                onClick={() => { setShowTemplatePicker(true); setTemplateSearch('') }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded text-xs font-semibold flex-shrink-0"
-                style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#9CA3AF', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#00BFA5'; e.currentTarget.style.color = '#00BFA5' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#9CA3AF' }}
+                onClick={loadFirstSession}
+                className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
+                style={{ background: `${typeColor(firstPlan.cell.template.type)}15`, border: `1px solid ${typeColor(firstPlan.cell.template.type)}40`, color: typeColor(firstPlan.cell.template.type), fontFamily: 'Inter, sans-serif', cursor: 'pointer', opacity: 0.7 }}
+                title={`Switch back to session 1: ${firstPlan.cell.template.name}`}
               >
-                ↗ Use Template
+                <Calendar size={12} />
+                <span>{firstPlan.cell.template.name} — Session 1</span>
               </button>
-            </div>
+            ) : todayPlan && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
+                style={{ background: `${typeColor(todayPlan.cell.template.type)}15`, border: `1px solid ${typeColor(todayPlan.cell.template.type)}40`, color: typeColor(todayPlan.cell.template.type), fontFamily: 'Inter, sans-serif' }}>
+                <Calendar size={12} />
+                <span>{todayPlan.progName} · Wk {todayPlan.week} · {todayPlan.dayName}{secondPlan ? ' — Session 1' : ''}</span>
+              </div>
+            )}
+            {/* Session 2 badge — clickable when we're on session 1 with a session 2 available;
+                non-clickable indicator when we're currently on session 2 (firstPlan is set) */}
+            {firstPlan && todayPlan ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
+                style={{ background: '#A78BFA20', border: '1px solid #A78BFA60', color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>
+                <Calendar size={12} />
+                <span>{todayPlan.cell.template.name} — Session 2</span>
+              </div>
+            ) : secondPlan && (
+              <button
+                onClick={loadSecondSession}
+                className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
+                style={{ background: '#A78BFA15', border: '1px solid #A78BFA40', color: '#A78BFA', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                title={`Load session 2: ${secondPlan.cell.template.name}`}
+              >
+                <Calendar size={12} />
+                <span>{secondPlan.cell.template.name} — Session 2</span>
+              </button>
+            )}
+            <button
+              onClick={() => { setShowTemplatePicker(true); setTemplateSearch('') }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold"
+              style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#9CA3AF', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#00BFA5'; e.currentTarget.style.color = '#00BFA5' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#9CA3AF' }}
+            >
+              ↗ Use Template
+            </button>
           </div>
         </div>
       </div>
@@ -794,6 +831,15 @@ export default function LogSessionPage() {
             Discard
           </button>
           <div className="flex items-center gap-3">
+            {firstPlan && (
+              <button
+                onClick={loadFirstSession}
+                className="px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2"
+                style={{ background: `${typeColor(firstPlan.cell.template.type)}20`, color: typeColor(firstPlan.cell.template.type), border: `1px solid ${typeColor(firstPlan.cell.template.type)}40`, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+              >
+                ↩ Back to 1st Session
+              </button>
+            )}
             {secondPlan && (
               <button
                 onClick={loadSecondSession}
