@@ -293,12 +293,23 @@ export default function LogSessionPage() {
       const found = findCellForDate(prog, date)
       // Also look for second session slot (_2)
       const found2 = findCellForDate(prog, date, true)
-      setSecondPlan(found2 ? { ...found2, progName: prog.name } : null)
       if (!found) {
-        setTodayPlan(null); setSessionName('')
-        setLoggedExercises([]); setLoggedRun([])
+        if (found2) {
+          // Only a _2 session exists for this day — load it directly as the primary session
+          const tpl2 = found2.cell.template
+          setTodayPlan({ ...found2, progName: prog.name })
+          setSecondPlan(null)
+          setSessionName(tpl2.name)
+          setSessionType(tpl2.type as SessionType)
+          setLoggedExercises(initExercises(tpl2.exerciseRows ?? []))
+          setLoggedRun(tpl2.type === 'hike' ? hikeSegmentFromTemplate(tpl2) : initRunEntries(tpl2.runRows ?? []))
+        } else {
+          setTodayPlan(null); setSecondPlan(null); setSessionName('')
+          setLoggedExercises([]); setLoggedRun([])
+        }
         return
       }
+      setSecondPlan(found2 ? { ...found2, progName: prog.name } : null)
       const tpl = found.cell.template
       setTodayPlan({ ...found, progName: prog.name })
       setSessionName(tpl.name)
