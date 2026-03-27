@@ -848,7 +848,9 @@ export default function AnalyticsPage() {
               const sevenDaysAgo = new Date()
               sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
               sevenDaysAgo.setHours(0, 0, 0, 0)
-              const recent = history.filter(s => new Date(s.date) >= sevenDaysAgo)
+              const recent = history
+                .filter(s => new Date(s.date) >= sevenDaysAgo)
+                .sort((a, b) => b.date.localeCompare(a.date))
               if (recent.length === 0) return null
               return (
                 <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
