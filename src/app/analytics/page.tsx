@@ -35,6 +35,7 @@ interface SavedSession {
   exercises?: LoggedExercise[]
   run?: LoggedRunEntry[]
   hikeKm?: number
+  hikeElevationM?: number
 }
 
 function RunRow({ lap, editing, onUpdate }: {
@@ -1287,10 +1288,29 @@ export default function AnalyticsPage() {
                 )
               })}
 
-              {(sess.exercises ?? []).length === 0 && (sess.run ?? []).length === 0 && (
+              {(sess.exercises ?? []).length === 0 && (sess.run ?? []).length === 0 && !sess.hikeKm && (
                 <p className="text-sm text-center py-8" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
                   No exercise or run data recorded for this session.
                 </p>
+              )}
+              {sess.hikeKm != null && (
+                <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #84CC1640' }}>
+                  <div className="px-4 py-2" style={{ background: '#84CC1610', borderBottom: '1px solid #84CC1630' }}>
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#84CC16', fontFamily: 'Montserrat, sans-serif' }}>Hike</span>
+                  </div>
+                  <div className="grid grid-cols-2 divide-x" style={{ borderColor: '#2E2E2E' }}>
+                    <div className="px-4 py-4">
+                      <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Distance</p>
+                      <p className="text-xl font-bold" style={{ color: '#84CC16', fontFamily: 'JetBrains Mono, monospace' }}>{sess.hikeKm} <span className="text-sm font-normal" style={{ color: '#606060' }}>km</span></p>
+                    </div>
+                    {sess.hikeElevationM != null && (
+                      <div className="px-4 py-4">
+                        <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Elevation Gain</p>
+                        <p className="text-xl font-bold" style={{ color: '#84CC16', fontFamily: 'JetBrains Mono, monospace' }}>{sess.hikeElevationM} <span className="text-sm font-normal" style={{ color: '#606060' }}>m</span></p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )
