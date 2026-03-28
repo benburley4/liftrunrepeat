@@ -16,11 +16,19 @@ interface PlannedSegment { id: string; segmentType: string; metric: string; valu
 interface PlannedRepeat { id: string; kind: 'repeat'; count: string; laps: PlannedSegment[] }
 type PlannedRunEntry = PlannedSegment | PlannedRepeat
 
+interface HikeSettings { pace: string; surface: string; packWeight: string }
+
 interface StoredTemplate {
   id: string; name: string; type: TemplateKind
   exerciseRows?: PlannedExercise[]
   runRows?: PlannedRunEntry[]
-  hikeData?: { distanceKm: string; elevationGainM?: string }
+  hikeData?: { distanceKm: string; elevationGainM?: string; settings?: HikeSettings }
+}
+
+interface HikeLogData {
+  plannedKm: string; plannedElevM: string
+  actualKm: string;  actualElevM: string
+  settings: HikeSettings | null
 }
 
 interface CellData { template: StoredTemplate; rpe: number }
@@ -79,6 +87,26 @@ function typeLabel(type: TemplateKind): string {
   return type === 'lift' ? 'Lifting' : type === 'run' ? 'Run' : type === 'hike' ? 'Hike' : 'Hybrid'
 }
 
+
+// ─── Naismith helpers ─────────────────────────────────────────────────────────
+
+const HIKE_PACE_MULT:    Record<string, number> = { slow: 1.25, normal: 1.0, fast: 0.82, run: 0.65 }
+const HIKE_SURFACE_MULT: Record<string, number> = { easy: 1.0, good: 1.08, rough: 1.22, tough: 1.48 }
+const HIKE_PACK_MULT:    Record<string, number> = { light: 1.0, regular: 1.04, heavy: 1.14, 'very-heavy': 1.28 }
+
+function hikeNaismith(km: number, elevM: number, s: HikeSettings | null): number {
+  const base = km * 12 + elevM / 10
+  if (!s) return base
+  return base * (HIKE_PACE_MULT[s.pace] ?? 1) * (HIKE_SURFACE_MULT[s.surface] ?? 1) * (HIKE_PACK_MULT[s.packWeight] ?? 1)
+}
+
+function fmtHikeDuration(mins: number): string {
+  if (mins <= 0 || !isFinite(mins)) return '—'
+  const h = Math.floor(mins / 60), m = Math.round(mins % 60)
+  return h > 0 ? `${h}h ${m.toString().padStart(2, '0')}m` : `${m}m`
+}
+
+// ─── Epley 1RM ────────────────────────────────────────────────────────────────
 
 function epley1RM(weight: number, reps: number): number {
   return reps === 1 ? weight : Math.round(weight * (1 + reps / 30))
@@ -240,6 +268,7 @@ export default function LogSessionPage() {
   })
   const [loggedExercises, setLoggedExercises] = useState<LoggedExercise[]>([])
   const [loggedRun, setLoggedRun] = useState<LoggedRunEntry[]>([])
+  const [loggedHike, setLoggedHike] = useState<HikeLogData | null>(null)
   const [showAddEx, setShowAddEx] = useState(false)
   const [addExSearch, setAddExSearch] = useState('')
   const [allExercises, setAllExercises] = useState<{ id: string; name: string }[]>(staticExercises.map(e => ({ id: e.id, name: e.name })))
@@ -288,7 +317,7 @@ export default function LogSessionPage() {
       if (userOverride.current) return // user picked a template while we were loading — don't overwrite
       if (!prog) {
         setTodayPlan(null); setSecondPlan(null); setSessionName('')
-        setLoggedExercises([]); setLoggedRun([])
+        setLoggedExercises([]); setLoggedRun([]); setLoggedHike(null)
         return
       }
       const date = new Date(isoSnapshot + 'T00:00:00')
@@ -299,29 +328,33 @@ export default function LogSessionPage() {
         if (found2) {
           // Only a _2 session exists for this day — load it directly as the primary session
           const tpl2 = found2.cell.template
+          const hike2 = hikeLogFromTemplate(tpl2)
           setTodayPlan({ ...found2, progName: prog.name })
           setSecondPlan(null)
           setSessionName(tpl2.name)
           setSessionType(tpl2.type as SessionType)
           setLoggedExercises(initExercises(tpl2.exerciseRows ?? []))
-          setLoggedRun(tpl2.type === 'hike' ? hikeSegmentFromTemplate(tpl2) : initRunEntries(tpl2.runRows ?? []))
+          setLoggedRun(hike2 ? [] : initRunEntries(tpl2.runRows ?? []))
+          setLoggedHike(hike2)
         } else {
           setTodayPlan(null); setSecondPlan(null); setSessionName('')
-          setLoggedExercises([]); setLoggedRun([])
+          setLoggedExercises([]); setLoggedRun([]); setLoggedHike(null)
         }
         return
       }
       setSecondPlan(found2 ? { ...found2, progName: prog.name } : null)
       const tpl = found.cell.template
+      const hike = hikeLogFromTemplate(tpl)
       setTodayPlan({ ...found, progName: prog.name })
       setSessionName(tpl.name)
       setSessionType(tpl.type as SessionType)
       setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
-      setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+      setLoggedRun(hike ? [] : initRunEntries(tpl.runRows ?? []))
+      setLoggedHike(hike)
     }).catch(() => {
       if (userOverride.current) return
       setTodayPlan(null); setSecondPlan(null); setSessionName('')
-      setLoggedExercises([]); setLoggedRun([])
+      setLoggedExercises([]); setLoggedRun([]); setLoggedHike(null)
     })
   }, [selectedIso])
 
@@ -368,24 +401,31 @@ export default function LogSessionPage() {
     setShowPicker(true)
   }
 
-  function hikeSegmentFromTemplate(tpl: StoredTemplate): LoggedRunSegment[] {
-    if (tpl.type !== 'hike' || !tpl.hikeData?.distanceKm) return []
-    return [{
-      id: `hike-${Date.now()}`, segmentType: 'hike', metric: 'distance',
-      plannedValue: tpl.hikeData.distanceKm, plannedPace: '',
-      actualValue: tpl.hikeData.distanceKm, actualPace: '',
-    }]
+  function hikeLogFromTemplate(tpl: StoredTemplate): HikeLogData | null {
+    if (tpl.type !== 'hike') return null
+    const d = tpl.hikeData
+    return {
+      plannedKm: d?.distanceKm ?? '', plannedElevM: d?.elevationGainM ?? '',
+      actualKm: d?.distanceKm ?? '',  actualElevM: d?.elevationGainM ?? '',
+      settings: d?.settings ?? null,
+    }
+  }
+
+  function applyTemplate(tpl: StoredTemplate, opts: { replace: boolean }) {
+    const hike = hikeLogFromTemplate(tpl)
+    if (opts.replace) {
+      setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
+      setLoggedRun(hike ? [] : initRunEntries(tpl.runRows ?? []))
+      setLoggedHike(hike)
+    } else {
+      if (tpl.exerciseRows?.length) setLoggedExercises(prev => [...prev, ...initExercises(tpl.exerciseRows!)])
+      if (hike) setLoggedHike(hike)
+      else if (tpl.runRows?.length) setLoggedRun(prev => [...prev, ...initRunEntries(tpl.runRows!)])
+    }
   }
 
   function loadFromTemplate(tpl: StoredTemplate) {
-    if (tpl.exerciseRows?.length) {
-      setLoggedExercises(prev => [...prev, ...initExercises(tpl.exerciseRows!)])
-    }
-    if (tpl.type === 'hike') {
-      setLoggedRun(prev => [...prev, ...hikeSegmentFromTemplate(tpl)])
-    } else if (tpl.runRows?.length) {
-      setLoggedRun(prev => [...prev, ...initRunEntries(tpl.runRows!)])
-    }
+    applyTemplate(tpl, { replace: false })
     if (!sessionName) setSessionName(tpl.name)
     setSessionType(tpl.type as SessionType)
     setShowPicker(false)
@@ -396,8 +436,7 @@ export default function LogSessionPage() {
     savedAtRef.current = null   // fresh savedAt for the new template session
     setSessionName(tpl.name)
     setSessionType(tpl.type as SessionType)
-    setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
-    setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+    applyTemplate(tpl, { replace: true })
     setTodayPlan(null) // clear programme badge — session is now from template
     setSecondPlan(null)
     setShowTemplatePicker(false)
@@ -412,8 +451,7 @@ export default function LogSessionPage() {
     setFirstPlan(todayPlan) // remember session 1 so user can switch back
     setSessionName(tpl.name)
     setSessionType(tpl.type as SessionType)
-    setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
-    setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+    applyTemplate(tpl, { replace: true })
     setTodayPlan(secondPlan)
     setSecondPlan(null)
     setSaved(false)
@@ -426,8 +464,7 @@ export default function LogSessionPage() {
     setSecondPlan(todayPlan) // session 2 plan goes back to secondPlan
     setSessionName(tpl.name)
     setSessionType(tpl.type as SessionType)
-    setLoggedExercises(initExercises(tpl.exerciseRows ?? []))
-    setLoggedRun(tpl.type === 'hike' ? hikeSegmentFromTemplate(tpl) : initRunEntries(tpl.runRows ?? []))
+    applyTemplate(tpl, { replace: true })
     setTodayPlan(firstPlan)
     setFirstPlan(null)
     setSaved(false)
@@ -455,16 +492,14 @@ export default function LogSessionPage() {
 
   const handleSave = async () => {
     if (saved) return   // prevent double-save
-    // For hike sessions, extract total distance from run segments → store as hikeKm
-    // Store run: [] to avoid double-counting in computeStats (sessionKm adds runKm + hikeKm)
+    // For hike sessions, save distance+elevation from loggedHike; run: [] avoids double-counting
     let hikeKm: number | undefined
+    let hikeElevationM: number | undefined
     let runToStore: LoggedRunEntry[] = loggedRun
-    if (sessionType === 'hike') {
-      hikeKm = loggedRun.reduce((sum, entry) => {
-        if ('kind' in entry && entry.kind === 'repeat') return sum
-        const seg = entry as LoggedRunSegment
-        return seg.metric === 'distance' ? sum + (parseFloat(seg.actualValue) || 0) : sum
-      }, 0)
+    if (sessionType === 'hike' && loggedHike) {
+      hikeKm = parseFloat(loggedHike.actualKm) || 0
+      const elev = parseFloat(loggedHike.actualElevM)
+      if (!isNaN(elev) && elev > 0) hikeElevationM = elev
       runToStore = []
     }
     // Reuse savedAt on re-save so we upsert the same DB row (no duplicate sessions)
@@ -478,6 +513,7 @@ export default function LogSessionPage() {
       exercises: loggedExercises,
       run: runToStore,
       ...(hikeKm !== undefined ? { hikeKm } : {}),
+      ...(hikeElevationM !== undefined ? { hikeElevationM } : {}),
     }
     await upsertSession(session)
     setSaved(true)
@@ -608,7 +644,7 @@ export default function LogSessionPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
         {/* No session planned — manual entry prompt */}
-        {!todayPlan && loggedExercises.length === 0 && loggedRun.length === 0 && (
+        {!todayPlan && loggedExercises.length === 0 && loggedRun.length === 0 && !loggedHike && (
           <div className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
             <p className="text-sm font-semibold mb-1" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>No session planned</p>
             <p className="text-xs mb-5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Log a manual session for this day</p>
@@ -772,15 +808,80 @@ export default function LogSessionPage() {
           </div>
         )}
 
-        {/* Run / Hike Block */}
+        {/* Hike Block — dedicated card matching the template builder */}
+        {loggedHike && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
+              <span className="text-xs uppercase font-bold tracking-widest px-3"
+                style={{ color: '#84CC16', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>Hike Block</span>
+              <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
+            </div>
+            <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+              <div className="grid grid-cols-2" style={{ borderBottom: '1px solid #2E2E2E' }}>
+                {/* Distance */}
+                <div className="p-4" style={{ borderRight: '1px solid #2E2E2E' }}>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Distance</p>
+                  {loggedHike.plannedKm && (
+                    <p className="text-xs mb-2" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                      Planned: {loggedHike.plannedKm} km
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" inputMode="decimal" min="0" step="0.1"
+                      value={loggedHike.actualKm}
+                      onChange={e => setLoggedHike(h => h ? { ...h, actualKm: e.target.value } : h)}
+                      className="w-20 text-center py-2 rounded text-sm outline-none"
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #84CC1640', fontFamily: 'JetBrains Mono, monospace' }}
+                    />
+                    <span className="text-xs" style={{ color: '#606060' }}>km</span>
+                  </div>
+                </div>
+                {/* Elevation Gain */}
+                <div className="p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Elevation Gain</p>
+                  {loggedHike.plannedElevM && (
+                    <p className="text-xs mb-2" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                      Planned: {loggedHike.plannedElevM} m
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" inputMode="numeric" min="0"
+                      value={loggedHike.actualElevM}
+                      onChange={e => setLoggedHike(h => h ? { ...h, actualElevM: e.target.value } : h)}
+                      className="w-20 text-center py-2 rounded text-sm outline-none"
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #84CC1640', fontFamily: 'JetBrains Mono, monospace' }}
+                    />
+                    <span className="text-xs" style={{ color: '#606060' }}>m</span>
+                  </div>
+                </div>
+              </div>
+              {/* Naismith estimate */}
+              {(() => {
+                const km = parseFloat(loggedHike.actualKm) || 0
+                const elev = parseFloat(loggedHike.actualElevM) || 0
+                if (km <= 0 && elev <= 0) return null
+                const mins = hikeNaismith(km, elev, loggedHike.settings)
+                return (
+                  <div className="px-4 py-3 flex items-center justify-between">
+                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Est. Duration (Naismith)</span>
+                    <span className="text-sm font-bold" style={{ color: '#84CC16', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHikeDuration(mins)}</span>
+                  </div>
+                )
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Run Block */}
         {loggedRun.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
               <span className="text-xs uppercase font-bold tracking-widest px-3"
-                style={{ color: sessionType === 'hike' ? '#84CC16' : '#C8102E', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>
-                {sessionType === 'hike' ? 'Hike Block' : 'Run Block'}
-              </span>
+                style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>Run Block</span>
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
             </div>
 
@@ -810,7 +911,7 @@ export default function LogSessionPage() {
 
             <button onClick={addManualRunSegment}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: sessionType === 'hike' ? 'rgba(132,204,22,0.08)' : 'rgba(200,16,46,0.08)', color: sessionType === 'hike' ? '#84CC16' : '#C8102E', border: `1px solid ${sessionType === 'hike' ? 'rgba(132,204,22,0.2)' : 'rgba(200,16,46,0.2)'}`, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+              style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
               <Plus size={14} /> Add Segment
             </button>
           </div>

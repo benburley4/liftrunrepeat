@@ -104,8 +104,8 @@ function formatProgramme(prog: Programme): string {
         lines.push(`    • ${ex.exerciseName}${setStr ? `: ${setStr}` : ''}`)
       }
     }
-    if ((t as { hikeData?: { distanceKm: string } }).hikeData?.distanceKm) {
-      lines.push(`    • Hike: ${(t as { hikeData: { distanceKm: string } }).hikeData.distanceKm} km`)
+    if ((t as unknown as { hikeData?: { distanceKm: string } }).hikeData?.distanceKm) {
+      lines.push(`    • Hike: ${(t as unknown as { hikeData: { distanceKm: string } }).hikeData.distanceKm} km`)
     }
     if (t.runRows?.length) {
       for (const entry of t.runRows) {
