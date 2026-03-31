@@ -190,6 +190,11 @@ export async function getCoachReports(): Promise<CoachReport[]> {
   }))
 }
 
+export async function deleteCoachReport(id: string): Promise<void> {
+  const { error } = await supabase.from('coach_reports').delete().eq('id', id)
+  throwIfError(error)
+}
+
 export async function saveCoachReport(weekEnding: string, reportText: string, stats: unknown): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return

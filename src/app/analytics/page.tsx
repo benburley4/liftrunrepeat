@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts'
 import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
-import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, CoachReport } from '@/lib/db'
+import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, CoachReport } from '@/lib/db'
 import ConsistencyHeatmap from '@/components/ui/ConsistencyHeatmap'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 
@@ -276,6 +276,12 @@ export default function AnalyticsPage() {
         </div>
       )
     })
+  }
+
+  async function handleDeleteReport(id: string) {
+    await deleteCoachReport(id).catch(console.error)
+    setPastReports(prev => prev.filter(r => r.id !== id))
+    if (expandedReport === id) setExpandedReport(null)
   }
 
   async function deleteSession(savedAt: string) {
@@ -1388,7 +1394,16 @@ export default function AnalyticsPage() {
                                 </p>
                               </div>
                             </div>
-                            <ChevronDown size={14} style={{ color: '#606060', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={e => { e.stopPropagation(); if (confirm('Delete this report?')) handleDeleteReport(report.id) }}
+                                className="p-1.5 rounded-lg" style={{ color: '#3E3E3E', cursor: 'pointer', background: 'none', border: 'none' }}
+                                onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
+                                onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}
+                                title="Delete report"
+                              ><Trash2 size={13} /></button>
+                              <ChevronDown size={14} style={{ color: '#606060', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </div>
                           </button>
                           {isOpen && (
                             <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
