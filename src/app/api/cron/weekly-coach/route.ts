@@ -31,12 +31,12 @@ import { computeStats, SessionData } from '@/lib/computeStats'
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY ?? ''
 const CRON_SECRET  = process.env.CRON_SECRET ?? ''
 
-// Sunday of the current week (YYYY-MM-DD)
+// Most recent Sunday (or today if today is Sunday) — the week that just ended
 function currentWeekEnding(): string {
   const d = new Date()
   d.setUTCHours(0, 0, 0, 0)
   const day = d.getUTCDay() // 0 = Sunday
-  d.setUTCDate(d.getUTCDate() + (day === 0 ? 0 : 7 - day))
+  d.setUTCDate(d.getUTCDate() - day) // go back to last Sunday
   return d.toISOString().split('T')[0]
 }
 

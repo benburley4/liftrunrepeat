@@ -227,7 +227,7 @@ export default function AnalyticsPage() {
   function currentWeekEnding(): string {
     const d = new Date(); d.setHours(0, 0, 0, 0)
     const day = d.getDay()
-    d.setDate(d.getDate() + (day === 0 ? 0 : 7 - day))
+    d.setDate(d.getDate() - day) // go back to last Sunday
     return d.toISOString().split('T')[0]
   }
 
