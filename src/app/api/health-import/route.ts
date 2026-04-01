@@ -59,11 +59,10 @@ interface AppleWorkout {
 }
 
 function parseDate(dateStr: string): string {
-  // Returns YYYY-MM-DD in local date of the workout (strips timezone offset)
-  const d = new Date(dateStr.replace(' ', 'T'))
-  if (isNaN(d.getTime())) return dateStr.slice(0, 10)
-  // Use the date embedded in the string directly (before the timezone shift)
-  return dateStr.slice(0, 10)
+  // Health Auto Export format: "2026-03-30 07:00:00 +0800"
+  // Just grab the YYYY-MM-DD directly from the string — no Date parsing needed
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/)
+  return match ? match[1] : dateStr.slice(0, 10)
 }
 
 function parseKm(w: AppleWorkout): number | null {
@@ -101,7 +100,8 @@ function buildRunSegment(w: AppleWorkout, km: number | null) {
 function workoutToSession(w: AppleWorkout) {
   const { type, name } = mapWorkout(w)
   const date    = parseDate(w.startDate)
-  const savedAt = new Date(w.startDate.replace(' ', 'T')).toISOString()
+  // Convert "2026-03-30 07:00:00 +0800" → ISO by replacing space and normalising offset
+  const savedAt = new Date(w.startDate.replace(' ', 'T').replace(/(\+\d{2})(\d{2})$/, '$1:$2')).toISOString()
   const km      = parseKm(w)
   const elevM   = parseElevationM(w)
 
