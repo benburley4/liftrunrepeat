@@ -100,8 +100,12 @@ function buildRunSegment(w: AppleWorkout, km: number | null) {
 function workoutToSession(w: AppleWorkout) {
   const { type, name } = mapWorkout(w)
   const date    = parseDate(w.startDate)
-  // Convert "2026-03-30 07:00:00 +0800" → ISO by replacing space and normalising offset
-  const savedAt = new Date(w.startDate.replace(' ', 'T').replace(/(\+\d{2})(\d{2})$/, '$1:$2')).toISOString()
+  // Build a stable unique ID from the date string without parsing it
+  // Format: "2026-03-30 07:00:00 +0800" → "2026-03-30T07:00:00+08:00"
+  const savedAt = w.startDate
+    .replace(' ', 'T')
+    .replace(/\s/, '')
+    .replace(/([+-]\d{2})(\d{2})$/, '$1:$2')
   const km      = parseKm(w)
   const elevM   = parseElevationM(w)
 
