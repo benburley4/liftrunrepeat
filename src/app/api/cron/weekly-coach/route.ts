@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
       const history = (sessionRows ?? []).map(r => r.data as SessionData)
       if (history.length === 0) { results.push({ userId, status: 'skipped (no sessions)' }); continue }
 
-      const stats = computeStats(history)
+      const stats = computeStats(history, weekEnding)
       const reportText = await generateReport(stats)
 
       const { error: saveErr } = await supabaseAdmin

@@ -80,13 +80,18 @@ function sessionLiftLoad(s: SessionData): number {
       ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
 }
 
-export function computeStats(history: SessionData[]) {
-  const now = new Date(); now.setHours(0, 0, 0, 0)
+export function computeStats(history: SessionData[], referenceDate?: string) {
+  // referenceDate: YYYY-MM-DD of the Sunday the report is FOR (defaults to today)
+  const now = referenceDate ? new Date(referenceDate + 'T00:00:00') : new Date()
+  now.setHours(0, 0, 0, 0)
   const dow = now.getDay()
   const monday = new Date(now)
   monday.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow))
 
-  const thisWeek = history.filter(s => new Date(s.date + 'T00:00:00') >= monday)
+  const thisWeek = history.filter(s => {
+    const d = new Date(s.date + 'T00:00:00')
+    return d >= monday && d <= now
+  })
   const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
   const fourWeeksAgo = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
   const recent7  = history.filter(s => new Date(s.date + 'T00:00:00') >= sevenDaysAgo)
