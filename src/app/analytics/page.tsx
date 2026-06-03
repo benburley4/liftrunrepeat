@@ -7,6 +7,8 @@ import {
 } from 'recharts'
 import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
 import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, CoachReport } from '@/lib/db'
+import { epleyRM, classifyPPL, classifyBody } from '@/lib/computeStats'
+import type { SessionData as SavedSession, ActualSet, LoggedExercise, LoggedRunSegment, LoggedRepeat, LoggedRunEntry } from '@/lib/computeStats'
 import ConsistencyHeatmap from '@/components/ui/ConsistencyHeatmap'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 
@@ -22,20 +24,6 @@ const sessionTypeColor: Record<string, string> = {
   lift: '#00BFA5',
   run: '#C8102E',
   hybrid: '#A78BFA',
-}
-
-interface ActualSet { reps: string; weight: string; rpe: string }
-interface LoggedExercise { id: string; exerciseName: string; plannedSets: Array<{ reps: string; weight: string }>; actualSets: ActualSet[] }
-interface LoggedRunSegment { id: string; segmentType: string; metric: string; plannedValue: string; plannedPace: string; actualValue: string; actualPace: string }
-interface LoggedRepeat { id: string; kind: 'repeat'; count: string; laps: LoggedRunSegment[] }
-type LoggedRunEntry = LoggedRunSegment | LoggedRepeat
-
-interface SavedSession {
-  type: string; name: string; date: string; savedAt: string
-  exercises?: LoggedExercise[]
-  run?: LoggedRunEntry[]
-  hikeKm?: number
-  hikeElevationM?: number
 }
 
 function RunRow({ lap, editing, onUpdate }: {
@@ -96,6 +84,7 @@ export default function AnalyticsPage() {
   const [aiCoachText, setAiCoachText] = useState('')
   const [pastReports, setPastReports] = useState<CoachReport[]>([])
   const [expandedReport, setExpandedReport] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   useEffect(() => {
     if (activeTab === 'ai-coach') loadPastReports()
@@ -119,7 +108,6 @@ export default function AnalyticsPage() {
   }, [])
 
   const strengthData = useMemo(() => {
-    function epleyRM(w: number, r: number) { return r === 1 ? w : Math.round(w * (1 + r / 30)) }
     function weekStart(dateStr: string): string {
       const d = new Date(dateStr + 'T00:00:00')
       const day = d.getDay()
@@ -336,11 +324,12 @@ export default function AnalyticsPage() {
     const sessionDiff = sessionsThisWeek - sessionsLastWeek
 
     const kmThisWeek = thisWeek.reduce((sum, s) => {
-      return sum + (s.run ?? []).reduce((rs, entry) => {
+      const runKm = (s.run ?? []).reduce((rs, entry) => {
         if ('kind' in entry && entry.kind === 'repeat')
           return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
         return rs + segKm(entry as LoggedRunSegment)
       }, 0)
+      return sum + runKm + (s.hikeKm ?? 0) + (s.hikeElevationM ?? 0) / 100
     }, 0)
 
     const totalVolume = history.reduce((sum, s) =>
@@ -358,7 +347,8 @@ export default function AnalyticsPage() {
           return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
         return rs + segKm(entry as LoggedRunSegment)
       }, 0)
-      return liftLoad + runLoad
+      const elevEquiv = (s.hikeElevationM ?? 0) / 100
+      return liftLoad + runLoad + (s.hikeKm ?? 0) + elevEquiv
     }
     function sessionLiftLoad(s: SavedSession) {
       return (s.exercises ?? []).reduce((sum, ex) =>
@@ -393,6 +383,8 @@ export default function AnalyticsPage() {
     const recent7  = history.filter(s => new Date(s.date + 'T00:00:00') >= sevenDaysAgo)
     const recent28 = history.filter(s => new Date(s.date + 'T00:00:00') >= fourWeeksAgo)
 
+    const tsbFactors: { name: string; points: number }[] = []
+
     // 1. Personalised base score — centred on their own average, not a fixed 50
     let score = personalWeeklyAvg > 0
       ? Math.round(65 - ((thisWeekLoad / personalWeeklyAvg) - 1) * 30)
@@ -400,27 +392,42 @@ export default function AnalyticsPage() {
 
     // 2. Consistency bonus — sustained training builds resilience (max +10)
     const weeksActive = allWeekLoads.filter(w => w.total > 0).length
-    score += Math.min(10, Math.floor(weeksActive / 2))
+    const consistencyBonus = Math.min(10, Math.floor(weeksActive / 2))
+    score += consistencyBonus
+    if (consistencyBonus > 0) tsbFactors.push({ name: 'Consistency', points: consistencyBonus })
 
     // 3. Days since last session — rest genuinely helps (max +15)
     const lastSessionDate = [...history].sort((a, b) => b.date.localeCompare(a.date))[0]?.date
     const daysSinceLast = lastSessionDate
       ? Math.floor((now.getTime() - new Date(lastSessionDate + 'T00:00:00').getTime()) / 86400000)
       : 0
-    if (daysSinceLast > 0) score += Math.min(15, daysSinceLast * 4)
+    const restBonus = daysSinceLast > 0 ? Math.min(15, daysSinceLast * 4) : 0
+    score += restBonus
+    if (restBonus > 0) tsbFactors.push({ name: `${daysSinceLast}d rest`, points: restBonus })
 
     // 4. Ramp rate — spike in volume signals injury risk
+    let overtrained = false
     if (lastWeekLoad > 0) {
       const ramp = (thisWeekLoad - lastWeekLoad) / lastWeekLoad
-      if (ramp > 0.1) score -= Math.round(Math.min(15, ramp * 30))
-      else if (ramp < -0.1) score += 5  // deload week = bonus
+      if (ramp > 0.1) {
+        const rampPenalty = -Math.round(Math.min(15, ramp * 30))
+        score += rampPenalty
+        tsbFactors.push({ name: 'Volume spike', points: rampPenalty })
+        if (ramp > 0.3) overtrained = true
+      } else if (ramp < -0.1) {
+        score += 5
+        tsbFactors.push({ name: 'Deload week', points: 5 })
+      }
     }
 
-    // 5. Cross-sport freshness — dominated-sport week means the other sport feels fresh
+    // 5. Cross-sport balance bonus — reward balanced weeks, not specialised ones
     const recentLiftTotal = recent7.reduce((s, sess) => s + sessionLiftLoad(sess), 0)
     const recentTotal = recent7.reduce((s, sess) => s + sessionLoad(sess), 0)
     const liftRatio = recentTotal > 0 ? recentLiftTotal / recentTotal : 0.5
-    if (liftRatio < 0.2 || liftRatio > 0.8) score += 5
+    if (liftRatio >= 0.3 && liftRatio <= 0.7) {
+      score += 5
+      tsbFactors.push({ name: 'Balanced training', points: 5 })
+    }
 
     // Clamp
     const tsb = Math.max(0, Math.min(100, score))
@@ -443,6 +450,8 @@ export default function AnalyticsPage() {
       kmThisWeek: Math.round(kmThisWeek * 10) / 10,
       totalVolume: Math.round(totalVolume),
       tsb,
+      tsbFactors,
+      overtrained,
       readinessLabel,
       readinessTrend,
     }
@@ -534,35 +543,6 @@ export default function AnalyticsPage() {
 
   // ─── Session breakdown: PPL + body part from actual logged exercises ──────
   const sessionBreakdown = useMemo(() => {
-    const PPL_KEYWORDS: [RegExp, string][] = [
-      [/bench|push.?up|fly|chest|pec/i,                                        'Push'],
-      [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise/i, 'Push'],
-      [/tricep|pushdown|skull|extension/i,                                     'Push'],
-      [/row|pull.?up|chin.?up|lat\b|pulldown|face.?pull|rear.?delt|shrug/i,   'Pull'],
-      [/curl|bicep/i,                                                           'Pull'],
-      [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,        'Legs'],
-      [/deadlift|rdl|romanian/i,                                                'Legs'],
-      [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,             'Core'],
-    ]
-    const BODY_KEYWORDS: [RegExp, string][] = [
-      [/bench|push.?up|fly|chest|pec/i,                                         'Chest'],
-      [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise|face.?pull|rear.?delt/i, 'Shoulders'],
-      [/row|pull.?up|chin.?up|lat\b|pulldown|shrug/i,                           'Back'],
-      [/deadlift|rdl|romanian/i,                                                 'Back'],
-      [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,         'Legs'],
-      [/curl|bicep/i,                                                            'Arms'],
-      [/tricep|pushdown|skull|extension/i,                                       'Arms'],
-      [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,              'Core'],
-    ]
-    function classifyPPL(name: string) {
-      for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat
-      return 'Push'
-    }
-    function classifyBody(name: string) {
-      for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp
-      return 'Back'
-    }
-
     const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Core: 0, Cardio: 0 }
     const body: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0, Cardio: 0 }
 
@@ -729,6 +709,18 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
+
+        {/* Overtraining warning */}
+        {overviewStats.overtrained && (
+          <div className="rounded-xl px-5 py-3 flex items-center gap-3 mb-2"
+            style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
+            <span style={{ fontSize: 18 }}>⚠</span>
+            <div>
+              <span className="text-sm font-bold" style={{ color: '#EF4444', fontFamily: 'Montserrat, sans-serif' }}>HIGH LOAD WARNING</span>
+              <span className="text-xs ml-2" style={{ color: '#A0A0A0' }}>This week&apos;s volume is &gt;30% above last week — injury risk is elevated. Consider dropping 1–2 sessions or reducing intensity.</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tabs */}
@@ -782,6 +774,26 @@ export default function AnalyticsPage() {
                 </div>
               )
             })()}
+
+            {/* Readiness factor breakdown */}
+            {overviewStats.tsbFactors.length > 0 && (
+              <div className="rounded-xl p-4" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>
+                  Readiness Breakdown — {overviewStats.tsb}%
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {overviewStats.tsbFactors.map(f => (
+                    <div key={f.name} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                      style={{ background: f.points > 0 ? 'rgba(0,191,165,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${f.points > 0 ? 'rgba(0,191,165,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+                      <span className="text-xs font-semibold" style={{ color: f.points > 0 ? '#00BFA5' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>
+                        {f.points > 0 ? `+${f.points}` : f.points}
+                      </span>
+                      <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{f.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Heatmap + breakdown charts */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
@@ -1076,12 +1088,23 @@ export default function AnalyticsPage() {
                       )}
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
                         style={{ background: `${col}22`, color: col, fontFamily: 'Inter, sans-serif' }}>{s.type}</span>
-                      <button onClick={e => { e.stopPropagation(); if (confirm('Delete this session?')) deleteSession(s.savedAt) }}
-                        className="flex-shrink-0 p-1.5 rounded-lg" style={{ color: '#3E3E3E', cursor: 'pointer' }}
-                        onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
-                        onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')} title="Delete session">
-                        <Trash2 size={13} />
-                      </button>
+                      {confirmDeleteId === s.savedAt ? (
+                        <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => { deleteSession(s.savedAt); setConfirmDeleteId(null) }}
+                            className="px-2 py-1 rounded text-xs font-semibold"
+                            style={{ background: '#C8102E', color: '#fff', cursor: 'pointer' }}>Delete</button>
+                          <button onClick={() => setConfirmDeleteId(null)}
+                            className="px-2 py-1 rounded text-xs"
+                            style={{ background: '#2E2E2E', color: '#A0A0A0', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      ) : (
+                        <button onClick={e => { e.stopPropagation(); setConfirmDeleteId(s.savedAt) }}
+                          className="flex-shrink-0 p-1.5 rounded-lg" style={{ color: '#3E3E3E', cursor: 'pointer' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
+                          onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')} title="Delete session">
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                     {exercises.length > 0 && (
                       <div className="px-5 pb-1 pl-11 space-y-0.5">
@@ -1206,11 +1229,26 @@ export default function AnalyticsPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <button onClick={() => { if (confirm('Delete this session?')) deleteSession(selected.savedAt) }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
-                      style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
-                      <Trash2 size={13} /> Delete
-                    </button>
+                    {confirmDeleteId === selected.savedAt ? (
+                      <>
+                        <button onClick={() => { deleteSession(selected.savedAt); setConfirmDeleteId(null) }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
+                          style={{ background: '#C8102E', color: '#fff', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                          <Trash2 size={13} /> Confirm Delete
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
+                          style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                          <X size={13} /> Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => setConfirmDeleteId(selected.savedAt)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
+                        style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    )}
                     <button onClick={startEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
                       style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
                       <Pencil size={13} /> Edit

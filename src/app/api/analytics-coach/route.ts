@@ -1,30 +1,23 @@
 import { NextRequest } from 'next/server'
+import { COACH_SYSTEM_PROMPT } from '@/lib/coachPrompt'
 
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY ?? ''
 
 export async function POST(req: NextRequest) {
   const { overview, totalSessions, strengthSummary, runSummary, breakdown, balance } = await req.json()
 
-  const systemPrompt = `You are an expert hybrid athlete coach specialising in concurrent strength and endurance training. Analyse the athlete's training data and produce a concise, actionable coaching report.
-
-Format your response using EXACTLY these section headers (nothing else before the first ##):
-## TRAINING LOAD
-## STRENGTH ANALYSIS
-## RUNNING ANALYSIS
-## HYBRID BALANCE
-## KEY RECOMMENDATIONS
-
-Each section must use bullet points starting with "- ". Use **bold** for key terms or numbers. Keep each section to 3–5 bullets. Total response 400–600 words. Be specific and reference the actual numbers provided.`
-
+  const factorStr = (overview.tsbFactors ?? []).map((f: { name: string; points: number }) => `${f.name} ${f.points > 0 ? '+' : ''}${f.points}`).join(', ')
   const userLines: string[] = [
     `OVERVIEW:`,
     `- Sessions this week: ${overview.sessionsThisWeek}`,
     `- Km run this week: ${overview.kmThisWeek}`,
+    `- Volume lifted this week: ${overview.volumeThisWeek} kg`,
     `- Total volume lifted (all time): ${overview.totalVolume} kg`,
-    `- Readiness score: ${overview.tsb}% — ${overview.readinessLabel}`,
+    `- Readiness score: ${overview.tsb}% — ${overview.readinessLabel}${factorStr ? ` (factors: ${factorStr})` : ''}`,
+    overview.overtrained ? `- ⚠ HIGH LOAD WARNING: volume >30% above last week — injury risk elevated` : '',
     `- Total sessions logged: ${totalSessions}`,
     ``,
-  ]
+  ].filter(l => l !== '')
 
   if (strengthSummary) {
     userLines.push(
@@ -49,10 +42,12 @@ Each section must use bullet points starting with "- ". Use **bold** for key ter
   }
 
   if (breakdown?.hasData) {
+    const pplTotal = breakdown.pplSlices.reduce((s: number, sl: { value: number }) => s + sl.value, 0) || 1
+    const bodyTotal = breakdown.bodySlices.reduce((s: number, sl: { value: number }) => s + sl.value, 0) || 1
     userLines.push(
       `TRAINING BREAKDOWN:`,
-      `- Push/Pull/Legs: ${breakdown.pplSlices.map((s: { label: string; value: number }) => `${s.label} ${s.value}%`).join(', ')}`,
-      `- Body parts: ${breakdown.bodySlices.map((s: { label: string; value: number }) => `${s.label} ${s.value}%`).join(', ')}`,
+      `- Push/Pull/Legs: ${breakdown.pplSlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / pplTotal) * 100)}%`).join(', ')}`,
+      `- Body parts: ${breakdown.bodySlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / bodyTotal) * 100)}%`).join(', ')}`,
       ``,
     )
   }
@@ -72,7 +67,7 @@ Each section must use bullet points starting with "- ". Use **bold** for key ter
       stream: true,
       max_tokens: 1500,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: COACH_SYSTEM_PROMPT },
         { role: 'user', content: userLines.join('\n') },
       ],
     }),
@@ -87,21 +82,24 @@ Each section must use bullet points starting with "- ". Use **bold** for key ter
     async start(controller) {
       const reader = response.body!.getReader()
       const decoder = new TextDecoder()
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const chunk = decoder.decode(value, { stream: true })
-        for (const line of chunk.split('\n')) {
-          const t = line.replace(/^data: /, '').trim()
-          if (!t || t === '[DONE]') continue
-          try {
-            const j = JSON.parse(t)
-            const text = j.choices?.[0]?.delta?.content ?? ''
-            if (text) controller.enqueue(encoder.encode(text))
-          } catch { /* skip malformed chunks */ }
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          for (const line of chunk.split('\n')) {
+            const t = line.replace(/^data: /, '').trim()
+            if (!t || t === '[DONE]') continue
+            try {
+              const j = JSON.parse(t)
+              const text = j.choices?.[0]?.delta?.content ?? ''
+              if (text) controller.enqueue(encoder.encode(text))
+            } catch { /* skip malformed chunks */ }
+          }
         }
+      } finally {
+        controller.close()
       }
-      controller.close()
     },
   })
 

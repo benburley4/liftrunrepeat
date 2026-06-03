@@ -1,20 +1,21 @@
 // Shared server-side stats computation — mirrors the useMemo logic in analytics/page.tsx
 
-interface ActualSet { reps: string; weight: string; rpe: string }
-interface PlannedSet { reps: string; weight: string }
-interface LoggedExercise { id: string; exerciseName: string; plannedSets: PlannedSet[]; actualSets: ActualSet[] }
-interface LoggedRunSegment { id: string; segmentType: string; metric: string; plannedValue: string; plannedPace: string; actualValue: string; actualPace: string }
-interface LoggedRepeat { id: string; kind: 'repeat'; count: string; laps: LoggedRunSegment[] }
-type LoggedRunEntry = LoggedRunSegment | LoggedRepeat
+export interface ActualSet { reps: string; weight: string; rpe: string }
+export interface PlannedSet { reps: string; weight: string }
+export interface LoggedExercise { id: string; exerciseName: string; plannedSets: PlannedSet[]; actualSets: ActualSet[] }
+export interface LoggedRunSegment { id: string; segmentType: string; metric: string; plannedValue: string; plannedPace: string; actualValue: string; actualPace: string }
+export interface LoggedRepeat { id: string; kind: 'repeat'; count: string; laps: LoggedRunSegment[] }
+export type LoggedRunEntry = LoggedRunSegment | LoggedRepeat
 
 export interface SessionData {
   type: string; name: string; date: string; savedAt: string
   exercises?: LoggedExercise[]
   run?: LoggedRunEntry[]
-  hikeKm?: number // distance for hike sessions logged without run segments
+  hikeKm?: number
+  hikeElevationM?: number
 }
 
-function segKm(seg: LoggedRunSegment): number {
+export function segKm(seg: LoggedRunSegment): number {
   if (seg.metric === 'distance') return parseFloat(seg.actualValue) || 0
   if (seg.metric === 'time' && seg.actualPace) {
     const [m, sc] = seg.actualPace.split(':').map(Number)
@@ -30,7 +31,9 @@ function sessionKm(s: SessionData): number {
       return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
     return rs + segKm(entry as LoggedRunSegment)
   }, 0)
-  return runKm + (s.hikeKm ?? 0)
+  // Naismith: every 100m of elevation gain ≈ 1km additional effort
+  const elevEquiv = (s.hikeElevationM ?? 0) / 100
+  return runKm + (s.hikeKm ?? 0) + elevEquiv
 }
 
 function sessionLoad(s: SessionData): number {
@@ -40,7 +43,7 @@ function sessionLoad(s: SessionData): number {
   return liftLoad + sessionKm(s)
 }
 
-function epleyRM(w: number, r: number) { return r === 1 ? w : Math.round(w * (1 + r / 30)) }
+export function epleyRM(w: number, r: number) { return r === 1 ? w : Math.round(w * (1 + r / 30)) }
 
 function weekStart(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
@@ -49,7 +52,7 @@ function weekStart(dateStr: string): string {
   return d.toISOString().split('T')[0]
 }
 
-const PPL_KEYWORDS: [RegExp, string][] = [
+export const PPL_KEYWORDS: [RegExp, string][] = [
   [/bench|push.?up|fly|chest|pec/i,                                          'Push'],
   [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise/i, 'Push'],
   [/tricep|pushdown|skull|extension/i,                                        'Push'],
@@ -60,7 +63,7 @@ const PPL_KEYWORDS: [RegExp, string][] = [
   [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,              'Core'],
 ]
 
-const BODY_KEYWORDS: [RegExp, string][] = [
+export const BODY_KEYWORDS: [RegExp, string][] = [
   [/bench|push.?up|fly|chest|pec/i,                                                              'Chest'],
   [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise|face.?pull|rear.?delt/i, 'Shoulders'],
   [/row|pull.?up|chin.?up|lat\b|pulldown|shrug/i,                                                'Back'],
@@ -71,8 +74,8 @@ const BODY_KEYWORDS: [RegExp, string][] = [
   [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,                                   'Core'],
 ]
 
-function classifyPPL(name: string) { for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat; return 'Push' }
-function classifyBody(name: string) { for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp; return 'Back' }
+export function classifyPPL(name: string) { for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat; return 'Push' }
+export function classifyBody(name: string) { for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp; return 'Back' }
 
 function sessionLiftLoad(s: SessionData): number {
   return (s.exercises ?? []).reduce((sum, ex) =>
@@ -93,7 +96,6 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
     return d >= monday && d <= now
   })
   const sevenDaysAgo = new Date(now); sevenDaysAgo.setDate(now.getDate() - 7)
-  const fourWeeksAgo = new Date(now); fourWeeksAgo.setDate(now.getDate() - 28)
   const recent7  = history.filter(s => new Date(s.date + 'T00:00:00') >= sevenDaysAgo)
 
   // Group all history by week
@@ -114,6 +116,8 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
   const thisWeekLoad = byWeek[thisWk]?.total ?? 0
   const lastWeekLoad = byWeek[lastWk]?.total ?? 0
 
+  const tsbFactors: { name: string; points: number }[] = []
+
   // 1. Personalised base score
   let score = personalWeeklyAvg > 0
     ? Math.round(65 - ((thisWeekLoad / personalWeeklyAvg) - 1) * 30)
@@ -121,27 +125,42 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
 
   // 2. Consistency bonus (max +10)
   const weeksActive = allWeekLoads.filter(w => w.total > 0).length
-  score += Math.min(10, Math.floor(weeksActive / 2))
+  const consistencyBonus = Math.min(10, Math.floor(weeksActive / 2))
+  score += consistencyBonus
+  if (consistencyBonus > 0) tsbFactors.push({ name: 'Consistency', points: consistencyBonus })
 
   // 3. Days since last session (max +15)
   const lastSessionDate = [...history].sort((a, b) => b.date.localeCompare(a.date))[0]?.date
   const daysSinceLast = lastSessionDate
     ? Math.floor((now.getTime() - new Date(lastSessionDate + 'T00:00:00').getTime()) / 86400000)
     : 0
-  if (daysSinceLast > 0) score += Math.min(15, daysSinceLast * 4)
+  const restBonus = daysSinceLast > 0 ? Math.min(15, daysSinceLast * 4) : 0
+  score += restBonus
+  if (restBonus > 0) tsbFactors.push({ name: `${daysSinceLast}d rest`, points: restBonus })
 
   // 4. Ramp rate
+  let overtrained = false
   if (lastWeekLoad > 0) {
     const ramp = (thisWeekLoad - lastWeekLoad) / lastWeekLoad
-    if (ramp > 0.1) score -= Math.round(Math.min(15, ramp * 30))
-    else if (ramp < -0.1) score += 5
+    if (ramp > 0.1) {
+      const rampPenalty = -Math.round(Math.min(15, ramp * 30))
+      score += rampPenalty
+      tsbFactors.push({ name: 'Volume spike', points: rampPenalty })
+      if (ramp > 0.3) overtrained = true
+    } else if (ramp < -0.1) {
+      score += 5
+      tsbFactors.push({ name: 'Deload week', points: 5 })
+    }
   }
 
-  // 5. Cross-sport freshness
+  // 5. Cross-sport balance bonus: reward balanced weeks, not specialised ones
   const recentLiftTotal = recent7.reduce((s, sess) => s + sessionLiftLoad(sess), 0)
   const recentTotal = recent7.reduce((s, sess) => s + sessionLoad(sess), 0)
   const liftRatio = recentTotal > 0 ? recentLiftTotal / recentTotal : 0.5
-  if (liftRatio < 0.2 || liftRatio > 0.8) score += 5
+  if (liftRatio >= 0.3 && liftRatio <= 0.7) {
+    score += 5
+    tsbFactors.push({ name: 'Balanced training', points: 5 })
+  }
 
   const tsb = Math.max(0, Math.min(100, score))
 
@@ -157,6 +176,10 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
     : 'Hard week — well earned rest'
 
   const kmThisWeek = thisWeek.reduce((sum, s) => sum + sessionKm(s), 0)
+  const volumeThisWeek = thisWeek.reduce((sum, s) =>
+    sum + (s.exercises ?? []).reduce((es, ex) =>
+      es + ex.actualSets.reduce((ss, set) =>
+        ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0), 0)
   const totalVolume = history.reduce((sum, s) =>
     sum + (s.exercises ?? []).reduce((es, ex) =>
       es + ex.actualSets.reduce((ss, set) =>
@@ -226,7 +249,6 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
         typeCounts[seg.segmentType] = (typeCounts[seg.segmentType] ?? 0) + segKm(seg)
       }
     }
-    // Count hikeKm for hike sessions that don't use run segments
     if (s.type === 'hike' && s.hikeKm && (s.run ?? []).length === 0) {
       typeCounts['hike'] = (typeCounts['hike'] ?? 0) + s.hikeKm
     }
@@ -266,8 +288,11 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
     overview: {
       sessionsThisWeek: thisWeek.length,
       kmThisWeek: Math.round(kmThisWeek * 10) / 10,
+      volumeThisWeek: Math.round(volumeThisWeek),
       totalVolume: Math.round(totalVolume),
       tsb,
+      tsbFactors,
+      overtrained,
       readinessLabel,
       readinessTrend,
     },

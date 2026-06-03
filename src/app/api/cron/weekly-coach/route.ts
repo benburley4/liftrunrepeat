@@ -27,6 +27,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { computeStats, SessionData } from '@/lib/computeStats'
+import { COACH_SYSTEM_PROMPT } from '@/lib/coachPrompt'
 
 const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY ?? ''
 const CRON_SECRET  = process.env.CRON_SECRET ?? ''
@@ -43,21 +44,18 @@ function currentWeekEnding(): string {
 async function generateReport(stats: ReturnType<typeof computeStats>): Promise<string> {
   const { overview, totalSessions, strengthSummary, runSummary, breakdown, balance } = stats
 
-  const systemPrompt = `You are an expert hybrid athlete coach. Analyse the athlete's weekly training data and produce a concise, actionable coaching report.
-Format using EXACTLY these headers (nothing before the first ##):
-## TRAINING LOAD
-## STRENGTH ANALYSIS
-## RUNNING ANALYSIS
-## HYBRID BALANCE
-## KEY RECOMMENDATIONS
-Each section: 3–5 bullet points starting with "- ". Use **bold** for key terms. 400–600 words total.`
+  const pplTotal = breakdown?.hasData ? (breakdown.pplSlices.reduce((s: number, sl: { value: number }) => s + sl.value, 0) || 1) : 1
+  const bodyTotal = breakdown?.hasData ? (breakdown.bodySlices.reduce((s: number, sl: { value: number }) => s + sl.value, 0) || 1) : 1
 
+  const factorStr = (overview.tsbFactors ?? []).map((f: { name: string; points: number }) => `${f.name} ${f.points > 0 ? '+' : ''}${f.points}`).join(', ')
   const lines = [
     `OVERVIEW:`,
     `- Sessions this week: ${overview.sessionsThisWeek}`,
     `- Km run this week: ${overview.kmThisWeek}`,
+    `- Volume lifted this week: ${overview.volumeThisWeek} kg`,
     `- Total volume lifted (all time): ${overview.totalVolume} kg`,
-    `- Readiness score: ${overview.tsb}% — ${overview.readinessLabel}`,
+    `- Readiness score: ${overview.tsb}% — ${overview.readinessLabel}${factorStr ? ` (factors: ${factorStr})` : ''}`,
+    overview.overtrained ? `- ⚠ HIGH LOAD WARNING: volume >30% above last week — injury risk elevated` : '',
     `- Total sessions logged: ${totalSessions}`,
     ``,
     strengthSummary
@@ -74,8 +72,8 @@ Each section: 3–5 bullet points starting with "- ". Use **bold** for key terms
     ``,
     breakdown?.hasData
       ? [`TRAINING BREAKDOWN:`,
-         `- Push/Pull/Legs: ${breakdown.pplSlices.map(s => `${s.label} ${s.value}%`).join(', ')}`,
-         `- Body parts: ${breakdown.bodySlices.map(s => `${s.label} ${s.value}%`).join(', ')}`].join('\n')
+         `- Push/Pull/Legs: ${breakdown.pplSlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / pplTotal) * 100)}%`).join(', ')}`,
+         `- Body parts: ${breakdown.bodySlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / bodyTotal) * 100)}%`).join(', ')}`].join('\n')
       : '',
     balance ? `SESSION BALANCE: ${balance.liftPct}% strength, ${balance.runPct}% running` : '',
   ]
@@ -88,7 +86,7 @@ Each section: 3–5 bullet points starting with "- ". Use **bold** for key terms
       stream: false,
       max_tokens: 1500,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: COACH_SYSTEM_PROMPT },
         { role: 'user',   content: lines.filter(Boolean).join('\n') },
       ],
     }),
