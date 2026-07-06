@@ -5,6 +5,7 @@ import { Check, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import { upsertSession, getProgrammes, getTemplates, getCustomExercises } from '@/lib/db'
 import { exercises as staticExercises } from '@/lib/mockData'
+import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, type BwOverrides } from '@/lib/bodyweight'
 import { formatTimeInput } from '@/lib/utils'
 
 type SessionType = 'lift' | 'run' | 'hybrid' | 'hike'
@@ -267,6 +268,7 @@ export default function LogSessionPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
   const [loggedExercises, setLoggedExercises] = useState<LoggedExercise[]>([])
+  const [bwOverrides, setBwOverrides] = useState<BwOverrides>({})
   const [loggedRun, setLoggedRun] = useState<LoggedRunEntry[]>([])
   const [loggedHike, setLoggedHike] = useState<HikeLogData | null>(null)
   const [showAddEx, setShowAddEx] = useState(false)
@@ -298,6 +300,7 @@ export default function LogSessionPage() {
   const isToday = selectedIso === todayIso()
 
   useEffect(() => {
+    getBwOverrides().then(setBwOverrides).catch(() => {})
     getTemplates().then(data => setLibrary(data as StoredTemplate[])).catch(() => {})
     getCustomExercises().then(data => {
       const custom = (data as { id: string; name: string }[]).map(e => ({ id: e.id, name: e.name }))
@@ -475,9 +478,10 @@ export default function LogSessionPage() {
   }
 
   function addExerciseFromLibrary(name: string) {
-    if (!name.trim()) return
+    const n = name.trim()
+    if (!n) return
     setLoggedExercises(prev => [...prev, {
-      id: `ex-${Date.now()}`, exerciseName: name.trim(),
+      id: `ex-${Date.now()}`, exerciseName: n,
       plannedSets: [], actualSets: [{ reps: '', weight: '', rpe: '' }],
     }])
     setAddExSearch(''); setShowAddEx(false)
@@ -687,6 +691,12 @@ export default function LogSessionPage() {
                       <span className="font-bold text-sm uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.05em' }}>{ex.exerciseName}</span>
                     </div>
                     <div className="flex items-center gap-3">
+                      {isBodyweightExercise(ex.exerciseName) && (
+                        <span className="text-xs px-2 py-0.5 rounded" style={{ color: '#A78BFA', background: '#A78BFA14', border: '1px solid #A78BFA33', fontFamily: 'JetBrains Mono, monospace' }}
+                          title="Share of bodyweight moved (set in the Library). Enter the weight column as ADDED weight — 0 = bodyweight.">
+                          ≈{resolveBodyweightPct(ex.exerciseName, bwOverrides)}% BW
+                        </span>
+                      )}
                       {maxRM > 0 && (
                         <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>Est. 1RM: {maxRM} kg</span>
                       )}

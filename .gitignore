@@ -43,3 +43,6 @@ Data/
 
 .vercel
 .env*.local
+
+# Local data backups from maintenance scripts
+scripts/backup-*.json

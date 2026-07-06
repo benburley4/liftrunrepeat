@@ -6,6 +6,7 @@ import { exercises as builtInExercises, Exercise } from '@/lib/mockData'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import MuscleBodyMap from '@/components/ui/MuscleBodyMap'
 import { getCustomExercises, upsertCustomExercise, deleteCustomExercise } from '@/lib/db'
+import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, saveBwOverride, type BwOverrides } from '@/lib/bodyweight'
 
 const CUSTOM_KEY = 'thhl_custom_library_exercises'
 
@@ -45,6 +46,9 @@ export default function LibraryPage() {
   const [loggedToast, setLoggedToast] = useState<string | null>(null)
   const [customExercises, setCustomExercises] = useState<Exercise[]>([])
   const [showAddModal, setShowAddModal] = useState(false)
+  const [bwOverrides, setBwOverrides] = useState<BwOverrides>({})
+  const [editingBwId, setEditingBwId] = useState<string | null>(null)
+  const [editingBwVal, setEditingBwVal] = useState('')
 
   // Add form state
   const [newName, setNewName] = useState('')
@@ -56,7 +60,14 @@ export default function LibraryPage() {
     getCustomExercises()
       .then(exs => setCustomExercises(exs as Exercise[]))
       .catch(() => setCustomExercises(loadCustom()))
+    getBwOverrides().then(setBwOverrides).catch(() => {})
   }, [])
+
+  function commitBwEdit(name: string) {
+    const v = parseFloat(editingBwVal)
+    saveBwOverride(name, isNaN(v) ? null : v).then(setBwOverrides).catch(() => {})
+    setEditingBwId(null)
+  }
 
   const allExercises = [...builtInExercises, ...customExercises]
 
@@ -207,6 +218,30 @@ export default function LibraryPage() {
                               style={{ background: `${color}18`, color, border: `1px solid ${color}33`, fontSize: '10px' }}>
                               {ex.category.replace('-', ' ')}
                             </span>
+                            {(ex.category === 'bodyweight' || isBodyweightExercise(ex.name)) && (() => {
+                              const overridden = bwOverrides[ex.name.toLowerCase()] != null
+                              if (editingBwId === ex.id) return (
+                                <span className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded"
+                                  style={{ background: '#A78BFA18', border: '1px solid #A78BFA55', fontSize: '10px' }}>
+                                  <input type="number" min={1} max={100} autoFocus value={editingBwVal}
+                                    onChange={e => setEditingBwVal(e.target.value)}
+                                    onBlur={() => commitBwEdit(ex.name)}
+                                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingBwId(null) }}
+                                    className="w-8 text-center outline-none"
+                                    style={{ background: 'transparent', color: '#A78BFA', border: 'none', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace' }} />
+                                  <span style={{ color: '#A78BFA' }}>% BW</span>
+                                </span>
+                              )
+                              return (
+                                <button
+                                  onClick={() => { setEditingBwId(ex.id); setEditingBwVal(String(resolveBodyweightPct(ex.name, bwOverrides))) }}
+                                  className="text-xs px-2 py-0.5 rounded font-semibold"
+                                  style={{ background: '#A78BFA18', color: '#A78BFA', border: `1px solid ${overridden ? '#A78BFA88' : '#A78BFA33'}`, fontSize: '10px', cursor: 'pointer' }}
+                                  title="Share of bodyweight moved — used to estimate 1RM. Click to edit; applies everywhere. Clear to reset to default.">
+                                  ≈{resolveBodyweightPct(ex.name, bwOverrides)}% BW{overridden ? ' ✎' : ''}
+                                </button>
+                              )
+                            })()}
                             {ex.primaryMuscles.map(m => (
                               <span key={m} className="text-xs px-1.5 py-0.5 rounded"
                                 style={{ background: '#242424', color: '#606060', fontSize: '10px' }}>

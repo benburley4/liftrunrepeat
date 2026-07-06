@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, Fragment } from 'react'
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine,
 } from 'recharts'
-import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
-import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, CoachReport } from '@/lib/db'
+import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronRight, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
+import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, getSetting, upsertSetting, CoachReport } from '@/lib/db'
 import { epleyRM, classifyPPL, classifyBody } from '@/lib/computeStats'
+import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, type BwOverrides } from '@/lib/bodyweight'
 import type { SessionData as SavedSession, ActualSet, LoggedExercise, LoggedRunSegment, LoggedRepeat, LoggedRunEntry } from '@/lib/computeStats'
 import ConsistencyHeatmap from '@/components/ui/ConsistencyHeatmap'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
@@ -85,6 +86,24 @@ export default function AnalyticsPage() {
   const [pastReports, setPastReports] = useState<CoachReport[]>([])
   const [expandedReport, setExpandedReport] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [historySubTab, setHistorySubTab] = useState<'sessions' | 'exercises'>('sessions')
+  const [selectedExercise, setSelectedExercise] = useState<string | null>(null)
+  const [exerciseFilter, setExerciseFilter] = useState<string>('All')
+  const [bodyweight, setBodyweight] = useState(75)
+  const [bwOverrides, setBwOverrides] = useState<BwOverrides>({})
+
+  useEffect(() => {
+    getSetting('bodyweight_kg').then(v => { const n = parseFloat(v ?? ''); if (!isNaN(n) && n > 0) setBodyweight(n) }).catch(() => {})
+    getBwOverrides().then(setBwOverrides).catch(() => {})
+  }, [])
+
+  // Persist only on commit (blur/Enter), clamped to a sane range so a stray
+  // keystroke can't save an absurd bodyweight that skews every estimate.
+  function commitBodyweight(v: number) {
+    const clamped = isNaN(v) ? 95 : Math.min(250, Math.max(30, v))
+    setBodyweight(clamped)
+    upsertSetting('bodyweight_kg', String(clamped)).catch(() => {})
+  }
 
   useEffect(() => {
     if (activeTab === 'ai-coach') loadPastReports()
@@ -192,6 +211,161 @@ export default function AnalyticsPage() {
 
     return { weeklyData, topExercises, prs }
   }, [history])
+
+  // Per-exercise RM table + charts. Estimates are bodyweight- and RPE-aware:
+  //   • Bodyweight moves (pull-up, dip, nordic…) use load = bodyweight + added weight.
+  //   • RPE is read as reps-in-reserve (RIR = 10 − RPE) so a submaximal set predicts a
+  //     higher true 1RM via Epley on (reps + RIR).
+  // Missing logged reps are interpolated between logged points; out-of-range reps are
+  // extrapolated along the prediction curve (both rendered in italics).
+  const exerciseAnalysis = useMemo(() => {
+    const epley = (load: number, effReps: number) => (effReps <= 1 ? load : load * (1 + effReps / 30))
+
+    // Phase 1: gather every raw set per exercise (keep zero-weight sets — they are
+    // the signal that an exercise is bodyweight).
+    type RawSet = { reps: number; weight: number; rpe: number; date: string }
+    const byExercise: Record<string, RawSet[]> = {}
+    for (const s of history)
+      for (const ex of s.exercises ?? [])
+        for (const set of ex.actualSets) {
+          const r = parseInt(set.reps)
+          if (isNaN(r) || r <= 0) continue
+          ;(byExercise[ex.exerciseName] ??= []).push({ reps: r, weight: parseFloat(set.weight), rpe: parseFloat(set.rpe), date: s.date })
+        }
+
+    const REPS = Array.from({ length: 12 }, (_, i) => i + 1)
+    const dayIdx = (d: string) => Math.round(new Date(d + 'T00:00:00').getTime() / 86400000)
+    const todayIdx = Math.round(Date.now() / 86400000)
+
+    return Object.entries(byExercise).map(([name, raws]) => {
+      const category = classifyPPL(name)
+
+      // Phase 2: decide if this is a bodyweight movement — library/name match, or
+      // a majority of sets logged at zero/empty weight (e.g. Walking Lunge @ 0).
+      const zeroCount = raws.filter(x => isNaN(x.weight) || x.weight <= 0).length
+      const bodyweightBased = isBodyweightExercise(name) || zeroCount / raws.length >= 0.5
+      const pct = resolveBodyweightPct(name, bwOverrides)
+      const frac = pct / 100
+
+      // Build loaded sets: bodyweight → bodyweight×frac + added; else the logged weight.
+      const sets = raws.flatMap(x => {
+        const added = isNaN(x.weight) ? 0 : Math.max(0, x.weight)
+        const load = bodyweightBased ? bodyweight * frac + added : x.weight
+        if (isNaN(load) || load <= 0) return []
+        const rir = !isNaN(x.rpe) && x.rpe > 0 && x.rpe < 10 ? Math.max(0, 10 - x.rpe) : 0
+        return [{ reps: x.reps, load, date: x.date, est1RM: epley(load, x.reps + rir) }]
+      })
+      if (sets.length === 0) return null
+
+      // Best estimated 1RM and the set (rep count + session) that produced it
+      let best = sets[0]
+      for (const s of sets) if (s.est1RM > best.est1RM) best = s
+      const best1RM = best.est1RM
+
+      // Epley inverse: predicted load for N reps taken to failure (1RM row = the 1RM)
+      const predicted = (n: number) => (n === 1 ? best1RM : best1RM / (1 + n / 30))
+
+      // Best actual logged load per rep count, with the date it was logged
+      const anchorMap: Record<number, { load: number; date: string }> = {}
+      for (const s of sets) {
+        const a = anchorMap[s.reps]
+        if (!a || s.load > a.load) anchorMap[s.reps] = { load: s.load, date: s.date }
+      }
+      const anchorReps = Object.keys(anchorMap).map(Number).sort((a, b) => a - b)
+      const realReps = anchorReps.length
+
+      const rows = REPS.map(n => {
+        const predWeight = Math.round(predicted(n))
+        const anchor = anchorMap[n]
+        if (anchor)
+          return { rep: n, predicted: predWeight, logged: Math.round(anchor.load), loggedDate: anchor.date as string | null, loggedKind: 'actual' as const }
+
+        const lower = [...anchorReps].reverse().find(r => r < n)
+        const higher = anchorReps.find(r => r > n)
+        let logged: number | null = null
+        let loggedKind: 'interp' | 'extrap' = 'interp'
+        if (lower !== undefined && higher !== undefined) {
+          const wl = anchorMap[lower].load, wh = anchorMap[higher].load
+          logged = wl + (wh - wl) * ((n - lower) / (higher - lower))
+          loggedKind = 'interp'
+        } else {
+          const nearest = lower ?? higher
+          if (nearest !== undefined) {
+            logged = anchorMap[nearest].load * (predicted(n) / predicted(nearest))
+            loggedKind = 'extrap'
+          }
+        }
+        return { rep: n, predicted: predWeight, logged: logged === null ? null : Math.round(logged), loggedDate: null as string | null, loggedKind }
+      })
+
+      // Est. 1RM progression: best est. 1RM per session date, chronological
+      const byDate: Record<string, number> = {}
+      const volByDate: Record<string, number> = {}
+      for (const s of sets) {
+        byDate[s.date] = Math.max(byDate[s.date] ?? 0, s.est1RM)
+        volByDate[s.date] = (volByDate[s.date] ?? 0) + s.load * s.reps
+      }
+      const trendRaw = Object.entries(byDate)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, e1rm]) => ({ date, e1rm: Math.round(e1rm) }))
+
+      // Linear regression (least squares) of e1RM vs day index → trendline fit
+      let trend = trendRaw.map(t => ({ ...t, fit: null as number | null }))
+      if (trendRaw.length >= 2) {
+        const xs = trendRaw.map(t => dayIdx(t.date))
+        const ys = trendRaw.map(t => t.e1rm)
+        const x0 = xs[0]
+        const n = xs.length
+        const sx = xs.reduce((a, x) => a + (x - x0), 0)
+        const sy = ys.reduce((a, y) => a + y, 0)
+        const sxx = xs.reduce((a, x) => a + (x - x0) ** 2, 0)
+        const sxy = xs.reduce((a, x, i) => a + (x - x0) * ys[i], 0)
+        const denom = n * sxx - sx * sx
+        const slope = denom !== 0 ? (n * sxy - sx * sy) / denom : 0
+        const intercept = (sy - slope * sx) / n
+        trend = trendRaw.map((t, i) => ({ ...t, fit: Math.round(intercept + slope * (xs[i] - x0)) }))
+      }
+      const volumeTrend = Object.entries(volByDate)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, volume]) => ({ date, volume: Math.round(volume) }))
+
+      // Recency / frequency
+      const firstDate = trendRaw[0]?.date ?? best.date
+      const lastDate = trendRaw.length ? trendRaw[trendRaw.length - 1].date : best.date
+      const daysSince = todayIdx - dayIdx(lastDate)
+      const spanWeeks = Math.max(1, (dayIdx(lastDate) - dayIdx(firstDate)) / 7)
+      const setsPerWeek = Math.round((sets.length / spanWeeks) * 10) / 10
+      const stale = daysSince > 21
+
+      // Progression: gain over the window, PR, plateau
+      const prValue = Math.max(...trendRaw.map(t => t.e1rm))
+      const prDate = trendRaw.find(t => t.e1rm === prValue)?.date ?? lastDate
+      let pctGain: number | null = null, gainWeeks = 0
+      if (trendRaw.length >= 2) {
+        const lastIdx = dayIdx(lastDate)
+        // earliest point still within ~8 weeks of the latest, else the very first point
+        const base = trendRaw.find(t => lastIdx - dayIdx(t.date) <= 56) ?? trendRaw[0]
+        if (base && base.e1rm > 0 && base.date !== lastDate) {
+          pctGain = Math.round(((trendRaw[trendRaw.length - 1].e1rm - base.e1rm) / base.e1rm) * 1000) / 10
+          gainWeeks = Math.round((lastIdx - dayIdx(base.date)) / 7)
+        }
+      }
+      const plateau = trendRaw.length >= 3 && (dayIdx(lastDate) - dayIdx(prDate)) >= 28
+
+      // Strength curve: predicted vs best-logged across reps (logged null = gap)
+      const curve = rows.map(r => ({ rep: r.rep, predicted: r.predicted, logged: r.logged }))
+
+      return {
+        name, category, bodyweightBased, bwPct: Math.round(pct),
+        totalSets: sets.length, realReps,
+        best1RM: Math.round(best1RM), sourceReps: best.reps, sourceDate: best.date,
+        firstDate, lastDate, daysSince, setsPerWeek, stale,
+        prValue, prDate, pctGain, gainWeeks, plateau,
+        rows, trend, curve, volumeTrend,
+      }
+    }).filter((e): e is NonNullable<typeof e> => e !== null)
+      .sort((a, b) => b.totalSets - a.totalSets)
+  }, [history, bodyweight, bwOverrides])
 
   function openSession(s: SavedSession) {
     setSelected(s); setEditing(false); setEditSession(null)
@@ -1042,7 +1216,23 @@ export default function AnalyticsPage() {
         )}
 
         {/* HISTORY TAB */}
+        {/* HISTORY — SUB-TAB TOGGLE */}
         {activeTab === 'history' && !selected && (
+          <div className="flex gap-2">
+            {(['sessions', 'exercises'] as const).map(v => (
+              <button key={v} onClick={() => { setHistorySubTab(v); setSelectedExercise(null) }}
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold capitalize"
+                style={{
+                  background: historySubTab === v ? '#00BFA5' : '#1A1A1A',
+                  color: historySubTab === v ? '#0D0D0D' : '#606060',
+                  border: `1px solid ${historySubTab === v ? '#00BFA5' : '#2E2E2E'}`,
+                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                }}>{v}</button>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'history' && !selected && historySubTab === 'sessions' && (
           <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
             {history.length === 0 ? (
               <div className="p-8 text-center space-y-3">
@@ -1201,6 +1391,229 @@ export default function AnalyticsPage() {
             })()}
           </div>
         )}
+
+        {/* HISTORY — EXERCISES SUB-TAB: GRID */}
+        {activeTab === 'history' && !selected && historySubTab === 'exercises' && !selectedExercise && (
+          exerciseAnalysis.length === 0 ? (
+            <div className="rounded-xl p-8 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+              <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No exercises logged yet.</p>
+              <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Lifts saved in Log Session will appear here.</p>
+            </div>
+          ) : (() => {
+            const CAT_COLORS: Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Core: '#FF9500', Cardio: '#3B82F6' }
+            const cats = ['All', ...Array.from(new Set(exerciseAnalysis.map(e => e.category)))]
+            const hasBW = exerciseAnalysis.some(e => e.bodyweightBased)
+            const filters = hasBW ? [...cats, 'Bodyweight'] : cats
+            const shown = exerciseAnalysis.filter(e =>
+              exerciseFilter === 'All' ? true : exerciseFilter === 'Bodyweight' ? e.bodyweightBased : e.category === exerciseFilter)
+            return (
+              <div className="space-y-4">
+                {/* Bodyweight setting + filter chips */}
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {filters.map(f => (
+                      <button key={f} onClick={() => setExerciseFilter(f)}
+                        className="px-3 py-1 rounded-full text-xs font-semibold"
+                        style={{
+                          background: exerciseFilter === f ? '#00BFA5' : '#1A1A1A',
+                          color: exerciseFilter === f ? '#0D0D0D' : '#606060',
+                          border: `1px solid ${exerciseFilter === f ? '#00BFA5' : '#2E2E2E'}`,
+                          cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                        }}>{f}</button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                    Bodyweight
+                    <input type="number" min={30} max={250} defaultValue={bodyweight}
+                      key={bodyweight}
+                      onBlur={e => commitBodyweight(parseFloat(e.target.value))}
+                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                      className="w-16 text-center py-1 rounded outline-none"
+                      style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }} />
+                    kg
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {shown.map(ex => {
+                    const catCol = CAT_COLORS[ex.category] ?? '#606060'
+                    return (
+                      <button key={ex.name} onClick={() => setSelectedExercise(ex.name)}
+                        className="rounded-xl p-4 text-left transition-colors relative"
+                        style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', cursor: 'pointer', opacity: ex.stale ? 0.62 : 1 }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#1E1E1E')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '#1A1A1A')}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <h3 className="text-sm font-black uppercase leading-tight" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{ex.name}</h3>
+                          <ChevronRight size={16} style={{ color: '#606060', flexShrink: 0, marginTop: 2 }} />
+                        </div>
+                        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${catCol}22`, color: catCol, fontFamily: 'Inter, sans-serif' }}>{ex.category}</span>
+                          {ex.bodyweightBased && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#2E2E2E', color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>BW</span>}
+                          {ex.plateau && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontFamily: 'Inter, sans-serif' }}>plateau</span>}
+                          {ex.pctGain !== null && ex.pctGain > 0 && !ex.plateau && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,191,165,0.1)', color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>▲ {ex.pctGain}%</span>}
+                        </div>
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <p className="text-2xl font-bold" style={{ color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>{ex.best1RM}<span className="text-sm" style={{ color: '#606060' }}> kg</span></p>
+                            <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>est. 1RM{ex.bodyweightBased ? ` · incl. ${ex.bwPct}% BW` : ''}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{ex.setsPerWeek}/wk · {ex.totalSets} sets</p>
+                            <p className="text-xs mt-0.5" style={{ color: ex.stale ? '#F59E0B' : '#606060', fontFamily: 'Inter, sans-serif' }}>
+                              {ex.daysSince === 0 ? 'today' : `${ex.daysSince}d ago`}{ex.stale ? ' · stale' : ''}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()
+        )}
+
+        {/* HISTORY — EXERCISES SUB-TAB: DETAIL */}
+        {activeTab === 'history' && !selected && historySubTab === 'exercises' && selectedExercise && (() => {
+          const ex = exerciseAnalysis.find(e => e.name === selectedExercise)
+          if (!ex) { setSelectedExercise(null); return null }
+          const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          const fmtShort = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          return (
+            <div className="space-y-5">
+              {/* Back bar */}
+              <button onClick={() => setSelectedExercise(null)} className="flex items-center gap-1 text-sm"
+                style={{ color: '#606060', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                <ChevronLeft size={16} /> All exercises
+              </button>
+
+              {/* Title + meta chips */}
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{ex.name}</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', fontFamily: 'Inter, sans-serif' }}>{ex.category}</span>
+                  {ex.bodyweightBased && <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>Bodyweight</span>}
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{ex.totalSets} sets · {ex.setsPerWeek}/wk</span>
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>{ex.best1RM} kg est. 1RM</span>
+                </div>
+              </div>
+
+              {/* Progression stat strip */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {ex.pctGain !== null && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: ex.pctGain >= 0 ? 'rgba(0,191,165,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${ex.pctGain >= 0 ? 'rgba(0,191,165,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+                    <span className="text-xs font-bold" style={{ color: ex.pctGain >= 0 ? '#00BFA5' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>{ex.pctGain >= 0 ? '▲' : '▼'} {Math.abs(ex.pctGain)}%</span>
+                    <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>est. 1RM · {ex.gainWeeks}wk</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.2)' }}>
+                  <Trophy size={12} style={{ color: '#C8102E' }} />
+                  <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>PR <span style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{ex.prValue} kg</span> · {fmtShort(ex.prDate)}</span>
+                </div>
+                {ex.plateau && (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                    <span className="text-xs font-bold" style={{ color: '#F59E0B', fontFamily: 'Inter, sans-serif' }}>Plateau — no PR in {Math.round((new Date(ex.lastDate).getTime() - new Date(ex.prDate).getTime()) / 86400000)}d</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{ex.realReps} real rep{ex.realReps === 1 ? '' : 's'} logged · rest estimated</span>
+                </div>
+              </div>
+
+              {ex.bodyweightBased && (
+                <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Log added weight only (0 = bodyweight). Total load = {ex.bwPct}% of your bodyweight ({bodyweight} kg = {Math.round(bodyweight * ex.bwPct) / 100} kg moved) + added — this movement leaves part of your mass unloaded. Set your bodyweight on the exercise grid.</p>
+              )}
+
+              {/* Chart 1: Est. 1RM progression over time (+ trendline, PR marker) */}
+              <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Est. 1RM Over Time</p>
+                {ex.trend.length < 2 ? (
+                  <p className="text-sm py-8 text-center" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Log this exercise across more sessions to see progression.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={ex.trend.map(t => ({ ...t, label: fmtShort(t.date) }))} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#606060' }} stroke="#2E2E2E" />
+                      <YAxis tick={{ fontSize: 11, fill: '#606060' }} stroke="#2E2E2E" width={40} domain={['dataMin - 5', 'dataMax + 5']} />
+                      <Tooltip {...chartTooltipStyle} formatter={(v: unknown, n: unknown) => [`${v} kg`, n === 'fit' ? 'Trend' : 'Est. 1RM']} />
+                      <ReferenceLine y={ex.prValue} stroke="#C8102E" strokeDasharray="3 3" strokeOpacity={0.5} label={{ value: `PR ${ex.prValue}`, position: 'insideTopRight', fontSize: 10, fill: '#C8102E' }} />
+                      <Line type="monotone" dataKey="fit" stroke="#606060" strokeWidth={1.5} strokeDasharray="5 4" dot={false} />
+                      <Line type="monotone" dataKey="e1rm" stroke="#A78BFA" strokeWidth={2} dot={{ r: 3, fill: '#A78BFA' }} activeDot={{ r: 5 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* Chart 3: Volume (tonnage) per session */}
+              <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Volume Per Session <span style={{ textTransform: 'none', color: '#3E3E3E' }}>· load × reps</span></p>
+                {ex.volumeTrend.length < 1 ? (
+                  <p className="text-sm py-8 text-center" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>No volume data.</p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={ex.volumeTrend.map(t => ({ ...t, label: fmtShort(t.date) }))} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#606060' }} stroke="#2E2E2E" />
+                      <YAxis tick={{ fontSize: 11, fill: '#606060' }} stroke="#2E2E2E" width={44} />
+                      <Tooltip {...chartTooltipStyle} formatter={(v: unknown) => [`${v} kg`, 'Volume']} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                      <Bar dataKey="volume" fill="#00BFA5" radius={[3, 3, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+
+              {/* Chart 2: Strength curve — predicted vs best logged across reps */}
+              <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Strength Curve — Predicted vs Best Logged</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={ex.curve} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
+                    <XAxis dataKey="rep" tick={{ fontSize: 11, fill: '#606060' }} stroke="#2E2E2E" label={{ value: 'Reps', position: 'insideBottom', offset: -2, fontSize: 10, fill: '#606060' }} />
+                    <YAxis tick={{ fontSize: 11, fill: '#606060' }} stroke="#2E2E2E" width={40} />
+                    <Tooltip {...chartTooltipStyle} formatter={(v: unknown, n: unknown) => [`${v} kg`, n === 'predicted' ? 'Predicted' : 'Best logged']} labelFormatter={(l) => `${l} reps`} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => v === 'predicted' ? 'Predicted' : 'Best logged'} />
+                    <Line type="monotone" dataKey="predicted" stroke="#606060" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                    <Line type="monotone" dataKey="logged" stroke="#00BFA5" strokeWidth={2} dot={{ r: 3, fill: '#00BFA5' }} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* RM table */}
+              <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 1fr' }}>
+                  <div className="px-5 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif', borderBottom: '1px solid #2E2E2E' }}>Reps</div>
+                  <div className="px-3 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif', borderBottom: '1px solid #2E2E2E' }}>
+                    Predicted <span style={{ textTransform: 'none', color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>· from {fmt(ex.sourceDate)}</span>
+                  </div>
+                  <div className="px-3 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif', borderBottom: '1px solid #2E2E2E' }}>Best logged{ex.bodyweightBased ? <span style={{ textTransform: 'none', color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}> · total load</span> : null}</div>
+                  {ex.rows.map(row => {
+                    const isSource = row.rep === ex.sourceReps
+                    const italic = row.loggedKind !== 'actual'
+                    return (
+                      <Fragment key={row.rep}>
+                        <div className="px-5 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', color: isSource ? '#00BFA5' : '#A0A0A0', fontWeight: isSource ? 700 : 400, fontFamily: 'JetBrains Mono, monospace' }}>{row.rep}</div>
+                        <div className="px-3 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', color: '#F5F5F5', fontWeight: isSource ? 700 : 400, fontFamily: 'JetBrains Mono, monospace' }}>{row.predicted} kg</div>
+                        <div className="px-3 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', fontFamily: 'JetBrains Mono, monospace' }}>
+                          {row.logged === null ? (
+                            <span style={{ color: '#3E3E3E' }}>—</span>
+                          ) : (
+                            <span style={{ color: italic ? '#606060' : '#00BFA5', fontStyle: italic ? 'italic' : 'normal' }}>
+                              {row.logged} kg
+                              {row.loggedDate
+                                ? <span style={{ color: '#3E3E3E', fontStyle: 'normal' }}> · {fmt(row.loggedDate)}</span>
+                                : <span style={{ color: '#3E3E3E', fontStyle: 'normal' }}> · {row.loggedKind === 'interp' ? 'interp' : 'est'}</span>}
+                            </span>
+                          )}
+                        </div>
+                      </Fragment>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* HISTORY — SESSION DETAIL */}
         {activeTab === 'history' && selected && (() => {
