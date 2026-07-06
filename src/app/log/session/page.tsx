@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Check, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import { upsertSession, getProgrammes, getTemplates, getCustomExercises } from '@/lib/db'
-import { exercises as staticExercises } from '@/lib/mockData'
+import { exercises as staticExercises } from '@/lib/exerciseLibrary'
 import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, type BwOverrides } from '@/lib/bodyweight'
 import { formatTimeInput } from '@/lib/utils'
 

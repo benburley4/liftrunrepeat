@@ -2,11 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Dumbbell, Heart, Footprints, ArrowRight, TrendingUp, BarChart2, Zap, X, Plus, Sparkles, Brain } from 'lucide-react'
-import { programmes, Programme } from '@/lib/mockData'
+import { programmes, Programme } from '@/lib/exerciseLibrary'
 import ProgrammeCard from '@/components/ui/ProgrammeCard'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import WeekPreview from '@/components/ui/WeekPreview'
+import { useAuth } from '@/context/AuthContext'
+import { BUILTIN_PLANS, expandPlanToProgramme } from '@/lib/builtinProgrammes'
+import { upsertProgramme, upsertSetting } from '@/lib/db'
 
 type ModalType = 'logger' | 'analytics' | 'programme' | 'builder' | null
 
@@ -238,6 +242,26 @@ function AnalyticsModal({ onClose }: { onClose: () => void }) {
 function ProgrammeModal({ programme, onClose }: { programme: Programme; onClose: () => void }) {
   const goalColors: Record<string, string> = { strength: '#00BFA5', endurance: '#C8102E', hybrid: '#A78BFA', 'strength-bias': '#00BFA5', 'endurance-bias': '#C8102E' }
   const color = goalColors[programme.goalBias] || '#A0A0A0'
+  const { user } = useAuth()
+  const router = useRouter()
+  const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState('')
+  const plan = BUILTIN_PLANS[programme.id]
+
+  async function handleStart() {
+    if (!plan || starting) return
+    setStarting(true)
+    setStartError('')
+    try {
+      const prog = expandPlanToProgramme(plan)
+      await upsertProgramme(prog.id, prog)
+      await upsertSetting('current_programme_id', prog.id)
+      router.push('/programmes')
+    } catch (e) {
+      setStartError(e instanceof Error ? e.message : 'Could not start programme')
+      setStarting(false)
+    }
+  }
 
   return (
     <ModalOverlay onClose={onClose}>
@@ -282,11 +306,14 @@ function ProgrammeModal({ programme, onClose }: { programme: Programme; onClose:
             ))}
           </div>
 
-          {/* Sign up note */}
+          {/* Start note */}
           <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,191,165,0.06)', border: '1px solid rgba(0,191,165,0.2)' }}>
             <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to start this programme and track your progress week by week
+              {user
+                ? 'Starting adds the full week-by-week plan to your programmes, with progression and deloads built in. You can edit every session afterwards.'
+                : <><Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to start this programme and track your progress week by week</>}
             </p>
+            {startError && <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>{startError}</p>}
           </div>
         </div>
 
@@ -295,10 +322,18 @@ function ProgrammeModal({ programme, onClose }: { programme: Programme; onClose:
             style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'none', border: '1px solid #2E2E2E', color: '#606060', fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
             Back
           </button>
-          <Link href="/login" className="flex-1 text-center py-3 rounded-xl text-sm font-bold"
-            style={{ background: color, color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}>
-            Sign Up to Start
-          </Link>
+          {user && plan ? (
+            <button onClick={handleStart} disabled={starting}
+              className="flex-1 text-center py-3 rounded-xl text-sm font-bold"
+              style={{ background: starting ? '#1A1A1A' : color, color: starting ? '#606060' : '#0D0D0D', border: 'none', cursor: starting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              {starting ? 'Starting…' : 'Start This Programme'}
+            </button>
+          ) : (
+            <Link href="/login" className="flex-1 text-center py-3 rounded-xl text-sm font-bold"
+              style={{ background: color, color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}>
+              Sign Up to Start
+            </Link>
+          )}
         </div>
       </div>
     </ModalOverlay>

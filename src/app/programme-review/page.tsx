@@ -6,6 +6,9 @@ import QuickLogFAB from '@/components/log/QuickLogFAB'
 import { getProgrammes, getAIReports, upsertAIReport, deleteAIReport, getSetting, upsertProgramme } from '@/lib/db'
 import { usePremium } from '@/hooks/usePremium'
 import { FEATURES } from '@/lib/features'
+import { authHeaders } from '@/lib/auth'
+import { loadProfile, profileToPrompt } from '@/lib/athleteProfile'
+import { validateAIProgramme } from '@/lib/programmeSchema'
 
 // ─── Types (mirrored from programmes page) ────────────────────────────────────
 
@@ -518,10 +521,11 @@ export default function ProgrammeReviewPage() {
     let fullReview = ''
 
     try {
+      const profile = profileToPrompt(await loadProfile().catch(() => null))
       const res = await fetch('/api/programme-review', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ programmeText, context }),
+        headers: await authHeaders(),
+        body: JSON.stringify({ programmeText, context, profile }),
       })
 
       if (!res.ok) {
@@ -601,10 +605,11 @@ export default function ProgrammeReviewPage() {
     }
 
     try {
+      const profile = profileToPrompt(await loadProfile().catch(() => null))
       const res = await fetch('/api/revamp-programme', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ programme: selectedProg, review }),
+        headers: await authHeaders(),
+        body: JSON.stringify({ programme: selectedProg, review, profile }),
       })
       if (!res.ok) throw new Error((await res.text()) || 'Request failed')
 
@@ -624,7 +629,7 @@ export default function ProgrammeReviewPage() {
 
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) throw new Error('Could not parse AI response — please try again')
-      const data = JSON.parse(jsonMatch[0])
+      const data = validateAIProgramme(JSON.parse(jsonMatch[0]))
 
       type AISession = { rpe: number; template: { name: string; type: string; exerciseRows?: { exerciseName: string; category: string; sets: { reps: string; weight: string }[] }[]; runRows?: { segmentType: string; metric: string; value: string }[] } }
       type AIPhase  = { name: string; startWeek: number; endWeek: number; deloadWeeks?: number[]; sessions: Record<string, AISession> }

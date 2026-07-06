@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { getSetting, upsertSetting } from '@/lib/db'
+import { getSetting } from '@/lib/db'
 import { FEATURES } from '@/lib/features'
 
 interface AIUsage {
@@ -75,15 +75,20 @@ export function usePremium() {
     return               `${remaining} of ${FEATURES.FREE.AI_USES_LIFETIME} lifetime AI uses remaining`
   }
 
-  /** Call this after a successful AI response to deduct one use. */
+  /**
+   * Call this after a successful AI response. The server records the actual
+   * use (see lib/server/requireUser.ts) — this just refreshes the local copy
+   * so the remaining-uses label stays accurate.
+   */
   async function recordAIUse(): Promise<void> {
     if (!FEATURES.PAYWALL_ENABLED) return
-    const u = effectiveUsage(usage)
-    const updated: AIUsage = isPremium
-      ? { ...u, monthCount:    u.monthCount    + 1 }
-      : { ...u, lifetimeCount: u.lifetimeCount + 1 }
-    setUsage(updated)
-    upsertSetting('ai_usage', JSON.stringify(updated)).catch(console.error)
+    try {
+      const raw = await getSetting('ai_usage')
+      const parsed = raw ? JSON.parse(raw) : DEFAULT_USAGE
+      setUsage({ ...DEFAULT_USAGE, ...parsed })
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   /** True if the user is within the free-tier count limit for programmes/templates. */

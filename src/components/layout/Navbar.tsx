@@ -3,11 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { Menu, X, LogOut } from 'lucide-react'
+import { Menu, X, LogOut, User as UserIcon } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { signOut, getUsername } from '@/lib/auth'
 
 const navLinks = [
+  { href: '/get-started', label: 'Get Started' },
   { href: '/programmes', label: 'Programmes' },
   { href: '/programme-review', label: 'AI Coach' },
   { href: '/templates', label: 'Templates' },
@@ -105,6 +106,16 @@ export default function Navbar() {
                           <p style={{ fontSize: '13px', fontWeight: 700, color: '#F5F5F5', margin: 0, fontFamily: 'Inter, sans-serif' }}>{username}</p>
                           <p style={{ fontSize: '11px', color: '#606060', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{user?.email}</p>
                         </div>
+                        <Link
+                          href="/profile"
+                          onClick={() => setUserMenuOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 14px', color: '#A0A0A0', fontSize: '13px', fontFamily: 'Inter, sans-serif', textDecoration: 'none', borderBottom: '1px solid #2E2E2E' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#2E2E2E'; e.currentTarget.style.color = '#F5F5F5' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#A0A0A0' }}
+                        >
+                          <UserIcon size={14} />
+                          Athlete Profile
+                        </Link>
                         <button
                           onClick={handleSignOut}
                           style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 14px', background: 'none', border: 'none', color: '#A0A0A0', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
@@ -175,6 +186,15 @@ export default function Navbar() {
                     style={{ background: '#C8102E', color: '#F5F5F5' }}
                   >
                     + Today
+                  </Link>
+                  <Link
+                    href="/profile"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center gap-2 w-full px-4 py-3 rounded text-sm mt-2"
+                    style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}
+                  >
+                    <UserIcon size={14} />
+                    Athlete Profile
                   </Link>
                   <button
                     onClick={handleSignOut}

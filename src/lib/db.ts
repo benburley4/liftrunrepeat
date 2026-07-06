@@ -28,7 +28,7 @@ export async function upsertSession(session: StoredSession): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   const { error } = await supabase
     .from('sessions')
-    .upsert({ saved_at: session.savedAt, data: session, user_id: user?.id }, { onConflict: 'saved_at' })
+    .upsert({ saved_at: session.savedAt, data: session, user_id: user?.id }, { onConflict: 'user_id,saved_at' })
   throwIfError(error)
 }
 
@@ -45,7 +45,7 @@ export async function upsertAllSessions(sessions: StoredSession[]): Promise<void
   const rows = sessions.map(s => ({ saved_at: s.savedAt, data: s, user_id: user?.id }))
   const { error } = await supabase
     .from('sessions')
-    .upsert(rows, { onConflict: 'saved_at' })
+    .upsert(rows, { onConflict: 'user_id,saved_at' })
   throwIfError(error)
 }
 

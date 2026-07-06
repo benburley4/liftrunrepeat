@@ -1,4 +1,4 @@
-import { DayPreview } from '@/lib/mockData'
+import { DayPreview } from '@/lib/exerciseLibrary'
 import { cn } from '@/lib/utils'
 
 interface WeekPreviewProps {

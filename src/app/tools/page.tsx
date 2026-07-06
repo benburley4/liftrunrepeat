@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
-import { exercises } from '@/lib/mockData'
+import { exercises } from '@/lib/exerciseLibrary'
 import { formatTimeInput } from '@/lib/utils'
 
 type TabId = '1rm' | 'wilks' | 'vo2' | 'macro' | '531'

@@ -9,7 +9,7 @@
 // name-based fallback for custom/typed names. Analytics additionally treats an
 // exercise whose sets are mostly logged at zero weight as bodyweight.
 
-import { exercises } from './mockData'
+import { exercises } from './exerciseLibrary'
 import { getSetting, upsertSetting } from './db'
 
 const BW_LIBRARY_NAMES = new Set(

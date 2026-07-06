@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Plus, Trash2, ChevronDown, X } from 'lucide-react'
-import { exercises } from '@/lib/mockData'
+import { exercises } from '@/lib/exerciseLibrary'
 import { cn } from '@/lib/utils'
 
 interface SetRow {

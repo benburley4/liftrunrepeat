@@ -1,11 +1,7 @@
-import OpenAI from 'openai'
+import { requireUser, checkAndRecordAIUse } from '@/lib/server/requireUser'
+import { streamChat, deepseekConfigured } from '@/lib/server/deepseek'
 
 export const maxDuration = 60
-
-const client = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY,
-})
 
 const SYSTEM_PROMPT = `You are an expert hybrid strength & endurance coach with 15+ years experience designing periodised programmes for runners, hikers and lifters.
 
@@ -72,11 +68,16 @@ Coaching rules:
 - CRITICAL for run segments: "value" must always be a non-empty string representing minutes (for time) or km (for distance). Use the CURRENT RUN SESSION VOLUMES as the baseline. Example: warm-up "10", easy "30", cool-down "5". Never output empty string or "0" for value.`
 
 export async function POST(req: Request) {
-  if (!process.env.DEEPSEEK_API_KEY) {
+  if (!deepseekConfigured()) {
     return new Response('DEEPSEEK_API_KEY is not configured', { status: 500 })
   }
 
-  const { programme, review } = await req.json()
+  const auth = await requireUser(req)
+  if ('error' in auth) return auth.error
+  const limitError = await checkAndRecordAIUse(auth.user.id)
+  if (limitError) return limitError
+
+  const { programme, review, profile } = await req.json()
 
   if (!programme || !review) {
     return new Response('programme and review are required', { status: 400 })
@@ -137,7 +138,7 @@ export async function POST(req: Request) {
 ORIGINAL PROGRAMME: ${programme.name}
 TRAINING DAYS: ${selectedDays} (d indices: ${trainingDays.join(', ')})
 PROGRAMME LENGTH: ${programme.weeks} weeks
-${weightsSection}${runSection}
+${profile ? `\n${profile}\n` : ''}${weightsSection}${runSection}
 AI COACH REVIEW RECOMMENDATIONS:
 ${review}
 
@@ -147,33 +148,7 @@ The revamped programme name should start with "AI Coach Updated — ".
 Output ONLY the JSON object now.`
 
   try {
-    const stream = await client.chat.completions.create({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      stream: true,
-      max_tokens: 8000,
-    })
-
-    const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            const text = chunk.choices[0]?.delta?.content ?? ''
-            if (text) controller.enqueue(encoder.encode(text))
-          }
-        } finally {
-          controller.close()
-        }
-      },
-    })
-
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
+    return await streamChat({ system: SYSTEM_PROMPT, user: userMessage, maxTokens: 8000, jsonMode: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('Revamp programme error:', message)

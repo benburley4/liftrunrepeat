@@ -1,11 +1,7 @@
-import OpenAI from 'openai'
+import { requireUser, checkAndRecordAIUse } from '@/lib/server/requireUser'
+import { streamChat, deepseekConfigured } from '@/lib/server/deepseek'
 
 export const maxDuration = 60
-
-const client = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY,
-})
 
 const SYSTEM_PROMPT = `You are an expert hybrid strength & endurance coach with 15+ years experience designing periodised programmes for runners, hikers and lifters.
 
@@ -67,14 +63,20 @@ Coaching rules:
 - Never place two hard sessions (RPE 8+) on consecutive days
 - Compound movements (squat, deadlift, bench, row, overhead press) form the strength backbone
 - Start weights conservatively — athlete can add if too easy
-- Running: 80% easy pace; long runs on weekends where possible`
+- Running: 80% easy pace; long runs on weekends where possible
+- If an ATHLETE PROFILE is provided: anchor week 1 working weights to the stated 1RMs (roughly 65-80% for main lifts), avoid exercises that conflict with listed injuries, and periodise toward the goal race date (peak fitness ~1-2 weeks before, taper into it)`
 
 export async function POST(req: Request) {
-  if (!process.env.DEEPSEEK_API_KEY) {
+  if (!deepseekConfigured()) {
     return new Response('DEEPSEEK_API_KEY is not configured', { status: 500 })
   }
 
-  const { goal, weeks, trainingDays, constraints, library } = await req.json()
+  const auth = await requireUser(req)
+  if ('error' in auth) return auth.error
+  const limitError = await checkAndRecordAIUse(auth.user.id)
+  if (limitError) return limitError
+
+  const { goal, weeks, trainingDays, constraints, library, profile } = await req.json()
 
   if (!weeks || !trainingDays?.length) {
     return new Response('weeks and trainingDays are required', { status: 400 })
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
     : '- Back Squat\n- Conventional Deadlift\n- Bench Press\n- Overhead Press\n- Barbell Row\n- Pull-ups\n- Romanian Deadlift\n- Easy Run\n- Tempo Run\n- Long Run'
 
   const userMessage = `Generate a ${weeks}-week training programme.
-
+${profile ? `\n${profile}\n` : ''}
 GOAL & STANDARDS:
 ${goal || 'General hybrid fitness improvement'}
 
@@ -103,33 +105,7 @@ ${libraryText}
 Output ONLY the JSON object now.`
 
   try {
-    const stream = await client.chat.completions.create({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      stream: true,
-      max_tokens: 8000,
-    })
-
-    const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            const text = chunk.choices[0]?.delta?.content ?? ''
-            if (text) controller.enqueue(encoder.encode(text))
-          }
-        } finally {
-          controller.close()
-        }
-      },
-    })
-
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
+    return await streamChat({ system: SYSTEM_PROMPT, user: userMessage, maxTokens: 8000, jsonMode: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('Generate programme error:', message)

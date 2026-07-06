@@ -28,9 +28,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { computeStats, SessionData } from '@/lib/computeStats'
 import { COACH_SYSTEM_PROMPT } from '@/lib/coachPrompt'
+import { completeChat, deepseekConfigured } from '@/lib/server/deepseek'
+import { profileToPrompt, AthleteProfile } from '@/lib/athleteProfile'
 
-const DEEPSEEK_KEY = process.env.DEEPSEEK_API_KEY ?? ''
-const CRON_SECRET  = process.env.CRON_SECRET ?? ''
+const CRON_SECRET = process.env.CRON_SECRET ?? ''
 
 // Most recent Sunday (or today if today is Sunday) — the week that just ended
 function currentWeekEnding(): string {
@@ -41,7 +42,11 @@ function currentWeekEnding(): string {
   return d.toISOString().split('T')[0]
 }
 
-async function generateReport(stats: ReturnType<typeof computeStats>): Promise<string> {
+async function generateReport(
+  stats: ReturnType<typeof computeStats>,
+  profileText: string,
+  previousRecommendations: string,
+): Promise<string> {
   const { overview, totalSessions, strengthSummary, runSummary, breakdown, balance } = stats
 
   const pplTotal = breakdown?.hasData ? (breakdown.pplSlices.reduce((s: number, sl: { value: number }) => s + sl.value, 0) || 1) : 1
@@ -76,30 +81,38 @@ async function generateReport(stats: ReturnType<typeof computeStats>): Promise<s
          `- Body parts: ${breakdown.bodySlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / bodyTotal) * 100)}%`).join(', ')}`].join('\n')
       : '',
     balance ? `SESSION BALANCE: ${balance.liftPct}% strength, ${balance.runPct}% running` : '',
+    profileText ? `\n${profileText}` : '',
+    previousRecommendations
+      ? `\nLAST WEEK'S COACH RECOMMENDATIONS (follow up on these — acknowledge what the athlete acted on and what they ignored):\n${previousRecommendations}`
+      : '',
   ]
 
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${DEEPSEEK_KEY}` },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      stream: false,
-      max_tokens: 1500,
-      messages: [
-        { role: 'system', content: COACH_SYSTEM_PROMPT },
-        { role: 'user',   content: lines.filter(Boolean).join('\n') },
-      ],
-    }),
+  return completeChat({
+    system: COACH_SYSTEM_PROMPT,
+    user: lines.filter(Boolean).join('\n'),
+    maxTokens: 1500,
   })
-  if (!res.ok) throw new Error(`DeepSeek error: ${res.status}`)
-  const json = await res.json()
-  return json.choices?.[0]?.message?.content ?? ''
+}
+
+/** Pulls the KEY RECOMMENDATIONS section out of a previous report (falls back to last 800 chars). */
+function extractRecommendations(reportText: string): string {
+  const m = reportText.match(/## KEY RECOMMENDATIONS([\s\S]*?)(?=\n## |$)/)
+  const section = m ? m[1].trim() : ''
+  return section || reportText.slice(-800)
 }
 
 export async function GET(req: NextRequest) {
+  // Fail closed: without a configured secret this endpoint must not run —
+  // it uses the service-role key and spends AI credits for every user.
+  if (!CRON_SECRET) {
+    return NextResponse.json({ error: 'CRON_SECRET is not configured' }, { status: 500 })
+  }
+  if (!deepseekConfigured()) {
+    return NextResponse.json({ error: 'DEEPSEEK_API_KEY is not configured' }, { status: 500 })
+  }
   // Vercel sends CRON_SECRET as "Authorization: Bearer <secret>"
   const auth = req.headers.get('authorization') ?? ''
-  if (CRON_SECRET && auth !== `Bearer ${CRON_SECRET}`) {
+  if (auth !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -137,8 +150,32 @@ export async function GET(req: NextRequest) {
       const history = (sessionRows ?? []).map(r => r.data as SessionData)
       if (history.length === 0) { results.push({ userId, status: 'skipped (no sessions)' }); continue }
 
+      // Athlete profile (B1) — so the coach knows goals, 1RMs, race date, injuries
+      const { data: profileRow } = await supabaseAdmin
+        .from('user_settings')
+        .select('value')
+        .eq('user_id', userId)
+        .eq('key', 'athlete_profile')
+        .maybeSingle()
+      let profileText = ''
+      try {
+        profileText = profileRow?.value ? profileToPrompt(JSON.parse(profileRow.value) as AthleteProfile) : ''
+      } catch { /* malformed profile — skip */ }
+
+      // Previous report (B2) — so the coach follows up on its own advice
+      const { data: prevRows } = await supabaseAdmin
+        .from('coach_reports')
+        .select('report_text')
+        .eq('user_id', userId)
+        .lt('week_ending', weekEnding)
+        .order('week_ending', { ascending: false })
+        .limit(1)
+      const previousRecommendations = prevRows?.[0]?.report_text
+        ? extractRecommendations(prevRows[0].report_text)
+        : ''
+
       const stats = computeStats(history, weekEnding)
-      const reportText = await generateReport(stats)
+      const reportText = await generateReport(stats, profileText, previousRecommendations)
 
       const { error: saveErr } = await supabaseAdmin
         .from('coach_reports')

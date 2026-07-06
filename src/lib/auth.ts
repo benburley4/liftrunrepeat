@@ -31,3 +31,16 @@ export async function signOut() {
 export function getUsername(user: { user_metadata?: { username?: string }; email?: string } | null): string {
   return user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'User'
 }
+
+/**
+ * Headers for calling the app's AI API routes — includes the Supabase access
+ * token so the server can verify the caller. Throws if not signed in.
+ */
+export async function authHeaders(): Promise<Record<string, string>> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) throw new Error('You must be signed in to use AI features')
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${session.access_token}`,
+  }
+}

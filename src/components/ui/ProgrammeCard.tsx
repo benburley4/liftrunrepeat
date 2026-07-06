@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Clock, Zap, TrendingUp, Pencil, Trash2 } from 'lucide-react'
-import { Programme } from '@/lib/mockData'
+import { Programme } from '@/lib/exerciseLibrary'
 import SessionTypeChip from './SessionTypeChip'
 import WeekPreview from './WeekPreview'
 

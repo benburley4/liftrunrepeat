@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Plus, Trash2, X } from 'lucide-react'
-import { exercises, Exercise } from '@/lib/mockData'
+import { exercises, Exercise } from '@/lib/exerciseLibrary'
 import { getCustomExercises } from '@/lib/db'
 import { formatTimeInput } from '@/lib/utils'
 

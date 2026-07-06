@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Search, ChevronDown, ChevronUp, Plus, X, Check, Trash2 } from 'lucide-react'
-import { exercises as builtInExercises, Exercise } from '@/lib/mockData'
+import { exercises as builtInExercises, Exercise } from '@/lib/exerciseLibrary'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import MuscleBodyMap from '@/components/ui/MuscleBodyMap'
 import { getCustomExercises, upsertCustomExercise, deleteCustomExercise } from '@/lib/db'
@@ -287,6 +287,23 @@ export default function LibraryPage() {
                               <span className="text-xs leading-relaxed" style={{ color: '#A0A0A0' }}>{cue}</span>
                             </div>
                           ))}
+                          {(ex.mistakes?.length ?? 0) > 0 && (
+                            <div className="pt-2">
+                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>Common mistakes</p>
+                              {ex.mistakes!.map((m, i) => (
+                                <div key={i} className="flex items-start gap-2">
+                                  <span className="mt-0.5 text-xs" style={{ color: '#C8102E' }}>✕</span>
+                                  <span className="text-xs leading-relaxed" style={{ color: '#A0A0A0' }}>{m}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {(ex.substitutions?.length ?? 0) > 0 && (
+                            <div className="pt-2">
+                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Substitutions</p>
+                              <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0' }}>{ex.substitutions!.join(' · ')}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

@@ -7,6 +7,9 @@ import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, segDerivedKm } from '@/co
 import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTemplate, getSetting, upsertSetting } from '@/lib/db'
 import { usePremium } from '@/hooks/usePremium'
 import { FEATURES } from '@/lib/features'
+import { authHeaders } from '@/lib/auth'
+import { loadProfile, profileToPrompt } from '@/lib/athleteProfile'
+import { validateAIProgramme } from '@/lib/programmeSchema'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1026,10 +1029,11 @@ export default function ProgrammesPage() {
           : `Training split: ${100 - genBalance}% Lifting / ${genBalance}% Running (endurance focused)`
       const goal = [goalLines, balanceDesc].filter(Boolean).join('\n')
 
+      const profile = profileToPrompt(await loadProfile().catch(() => null))
       const res = await fetch('/api/generate-programme', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal, weeks: genWeeks, trainingDays: genDays, constraints: genConstraints, library }),
+        headers: await authHeaders(),
+        body: JSON.stringify({ goal, weeks: genWeeks, trainingDays: genDays, constraints: genConstraints, library, profile }),
       })
       if (!res.ok) { setGenError(await res.text()); return }
 
@@ -1052,7 +1056,7 @@ export default function ProgrammesPage() {
       // Extract JSON (strip any accidental markdown fences)
       const jsonMatch = raw.match(/\{[\s\S]*\}/)
       if (!jsonMatch) { setGenError('Could not parse AI response — please try again'); return }
-      const data = JSON.parse(jsonMatch[0])
+      const data = validateAIProgramme(JSON.parse(jsonMatch[0]))
 
       // Expand phase templates into full week-by-week cells with progressive overload
       type AISession = { rpe: number; template: { name: string; type: string; exerciseRows?: { exerciseName: string; category: string; sets: { reps: string; weight: string }[] }[]; runRows?: { segmentType: string; metric: string; value: string }[] } }

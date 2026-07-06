@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, Copy, Share2, Plus, Check, X, Pencil, Trash2, B
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RepeatBlock, RunSegment, SEGMENT_TYPES, METRIC_CONFIG } from '@/components/templates/ExerciseBuilder'
 import HikeBuilder, { HikeData } from '@/components/templates/HikeBuilder'
-import { programmes as staticProgrammes, exercises as libraryExercises } from '@/lib/mockData'
+import { programmes as staticProgrammes, exercises as libraryExercises } from '@/lib/exerciseLibrary'
 import { getTemplates, upsertTemplate, deleteTemplate } from '@/lib/db'
 import { usePremium } from '@/hooks/usePremium'
 import { FEATURES } from '@/lib/features'

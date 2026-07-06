@@ -1,9 +1,7 @@
-import OpenAI from 'openai'
+import { requireUser, checkAndRecordAIUse } from '@/lib/server/requireUser'
+import { streamChat, deepseekConfigured } from '@/lib/server/deepseek'
 
-const client = new OpenAI({
-  baseURL: 'https://api.deepseek.com',
-  apiKey: process.env.DEEPSEEK_API_KEY,
-})
+export const maxDuration = 60
 
 const SYSTEM_PROMPT = `You are an expert strength & conditioning coach specialising in hybrid training (strength + running). Give honest, direct, evidence-based feedback. Keep language simple and practical — no jargon. Be encouraging but concise.
 
@@ -134,43 +132,25 @@ Provide a priority table:
 If any data is missing, note it briefly and give your best recommendation. Keep every section tight — bullet points over paragraphs wherever possible.`
 
 export async function POST(req: Request) {
-  if (!process.env.DEEPSEEK_API_KEY) {
+  if (!deepseekConfigured()) {
     return new Response('DEEPSEEK_API_KEY is not configured', { status: 500 })
   }
 
-  const { programmeText, context } = await req.json()
+  const auth = await requireUser(req)
+  if ('error' in auth) return auth.error
+  const limitError = await checkAndRecordAIUse(auth.user.id)
+  if (limitError) return limitError
+
+  const { programmeText, context, profile } = await req.json()
 
   if (!programmeText) {
     return new Response('Programme data required', { status: 400 })
   }
 
-  const userMessage = `Here is my current training programme:\n\n${programmeText}${context ? `\n\nAdditional context:\n${context}` : ''}`
+  const userMessage = `Here is my current training programme:\n\n${programmeText}${profile ? `\n\n${profile}` : ''}${context ? `\n\nAdditional context:\n${context}` : ''}`
 
   try {
-    const stream = await client.chat.completions.create({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      stream: true,
-      max_tokens: 4000,
-    })
-
-    const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of stream) {
-          const text = chunk.choices[0]?.delta?.content ?? ''
-          if (text) controller.enqueue(encoder.encode(text))
-        }
-        controller.close()
-      },
-    })
-
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    })
+    return await streamChat({ system: SYSTEM_PROMPT, user: userMessage, maxTokens: 4000 })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('DeepSeek API error:', message)

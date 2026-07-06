@@ -181,17 +181,37 @@ export interface Exercise {
   category: 'barbell' | 'dumbbell' | 'machine' | 'bodyweight' | 'run-drill' | 'mobility'
   primaryMuscles: string[]
   cues: string[]
+  /** Equipment-based alternatives, e.g. "No barbell → Goblet Squat" */
+  substitutions?: string[]
+  /** Common technique errors to avoid */
+  mistakes?: string[]
 }
 
 export const exercises: Exercise[] = [
-  { id: 'squat', name: 'Back Squat', category: 'barbell', primaryMuscles: ['Quads', 'Glutes', 'Hamstrings'], cues: ['Bar on traps, not neck', 'Chest up, brace core', 'Drive knees out', 'Break parallel'] },
-  { id: 'bench', name: 'Bench Press', category: 'barbell', primaryMuscles: ['Chest', 'Triceps', 'Front Delts'], cues: ['Arch naturally, not excessively', 'Tuck elbows 45°', 'Bar to lower chest', 'Drive feet into floor'] },
-  { id: 'deadlift', name: 'Conventional Deadlift', category: 'barbell', primaryMuscles: ['Hamstrings', 'Glutes', 'Back'], cues: ['Bar over mid-foot', 'Lat pulldown cue', 'Push floor away', 'Lock hips at top'] },
-  { id: 'ohp', name: 'Overhead Press', category: 'barbell', primaryMuscles: ['Shoulders', 'Triceps', 'Upper Chest'], cues: ['Bar at clavicle start', 'Brace and squeeze glutes', 'Press slightly back overhead', 'Full lockout'] },
-  { id: 'row', name: 'Barbell Row', category: 'barbell', primaryMuscles: ['Lats', 'Rhomboids', 'Biceps'], cues: ['Hinge 45° forward', 'Pull to lower chest', 'Drive elbows back', 'Squeeze at top'] },
-  { id: 'rdl', name: 'Romanian Deadlift', category: 'barbell', primaryMuscles: ['Hamstrings', 'Glutes'], cues: ['Soft knee bend', 'Push hips back', 'Bar drags down legs', 'Feel stretch before reversing'] },
-  { id: 'incline-press', name: 'Incline Bench Press', category: 'barbell', primaryMuscles: ['Upper Chest', 'Front Delts', 'Triceps'], cues: ['30-45° incline', 'Same bench cues apply', 'Slightly wider grip'] },
-  { id: 'pullup', name: 'Pull-up', category: 'bodyweight', primaryMuscles: ['Lats', 'Biceps', 'Core'], cues: ['Dead hang start', 'Pull chest to bar', 'Full range of motion', 'Controlled descent'] },
+  { id: 'squat', name: 'Back Squat', category: 'barbell', primaryMuscles: ['Quads', 'Glutes', 'Hamstrings'], cues: ['Bar on traps, not neck', 'Chest up, brace core', 'Drive knees out', 'Break parallel'],
+    substitutions: ['No barbell → Goblet Squat', 'Knee niggles → Leg Press or Wall Sit', 'Home gym → Dumbbell Bulgarian Split Squat'],
+    mistakes: ['Knees caving inward on the way up', 'Heels lifting — weight drifting to toes', 'Cutting depth as the weight gets heavy', 'Losing brace and folding forward'] },
+  { id: 'bench', name: 'Bench Press', category: 'barbell', primaryMuscles: ['Chest', 'Triceps', 'Front Delts'], cues: ['Arch naturally, not excessively', 'Tuck elbows 45°', 'Bar to lower chest', 'Drive feet into floor'],
+    substitutions: ['No barbell → Dumbbell Bench Press', 'No bench → Push Ups (weighted if too easy)', 'Shoulder issues → Chest Press Machine'],
+    mistakes: ['Bouncing the bar off the chest', 'Elbows flared to 90° — shoulder strain', 'Feet moving instead of planted', 'Wrists bent back instead of stacked over forearms'] },
+  { id: 'deadlift', name: 'Conventional Deadlift', category: 'barbell', primaryMuscles: ['Hamstrings', 'Glutes', 'Back'], cues: ['Bar over mid-foot', 'Lat pulldown cue', 'Push floor away', 'Lock hips at top'],
+    substitutions: ['Back concerns → Hex Bar Deadlift', 'Mobility limits → Romanian Deadlift', 'Lighter option → Sumo Deadlift'],
+    mistakes: ['Rounding the lower back off the floor', 'Bar drifting away from the shins', 'Jerking the bar instead of taking the slack out first', 'Hyperextending at lockout'] },
+  { id: 'ohp', name: 'Overhead Press', category: 'barbell', primaryMuscles: ['Shoulders', 'Triceps', 'Upper Chest'], cues: ['Bar at clavicle start', 'Brace and squeeze glutes', 'Press slightly back overhead', 'Full lockout'],
+    substitutions: ['No barbell → Dumbbell Shoulder Press', 'Shoulder issues → Machine Shoulder Press', 'Stronger stimulus → Push Press'],
+    mistakes: ['Excessive lean back — turns it into an incline press', 'Pressing around the face instead of moving the head back', 'No glute/core brace — lower back takes the load'] },
+  { id: 'row', name: 'Barbell Row', category: 'barbell', primaryMuscles: ['Lats', 'Rhomboids', 'Biceps'], cues: ['Hinge 45° forward', 'Pull to lower chest', 'Drive elbows back', 'Squeeze at top'],
+    substitutions: ['Lower-back fatigue → Seated Cable Row or T-Bar Row', 'No barbell → Dumbbell Row', 'Bodyweight option → Pull-up'],
+    mistakes: ['Standing too upright — becomes a shrug', 'Heaving with momentum instead of pulling', 'Half range — bar never reaches the torso'] },
+  { id: 'rdl', name: 'Romanian Deadlift', category: 'barbell', primaryMuscles: ['Hamstrings', 'Glutes'], cues: ['Soft knee bend', 'Push hips back', 'Bar drags down legs', 'Feel stretch before reversing'],
+    substitutions: ['No barbell → dumbbells work identically', 'Grip limits → Seated or Lying Leg Curl', 'Glute focus → Hip Thrust'],
+    mistakes: ['Bending the knees into a squat pattern', 'Bar drifting forward away from the legs', 'Rounding the back to chase extra depth'] },
+  { id: 'incline-press', name: 'Incline Bench Press', category: 'barbell', primaryMuscles: ['Upper Chest', 'Front Delts', 'Triceps'], cues: ['30-45° incline', 'Same bench cues apply', 'Slightly wider grip'],
+    substitutions: ['No barbell → Incline Dumbbell Bench Press', 'No incline bench → Pike Push Up'],
+    mistakes: ['Incline set too steep — becomes a shoulder press', 'Bouncing off the upper chest'] },
+  { id: 'pullup', name: 'Pull-up', category: 'bodyweight', primaryMuscles: ['Lats', 'Biceps', 'Core'], cues: ['Dead hang start', 'Pull chest to bar', 'Full range of motion', 'Controlled descent'],
+    substitutions: ['Not there yet → Lat Pulldown or band-assisted pull-ups', 'Easier grip → Chin Ups or Neutral Grip Pull Ups', 'Too easy → add weight'],
+    mistakes: ['Kipping/swinging for extra reps', 'Chin poking over the bar without the chest rising', 'Skipping the dead hang — half reps at the bottom'] },
   { id: 'dip', name: 'Tricep Dip', category: 'bodyweight', primaryMuscles: ['Triceps', 'Chest', 'Front Delts'], cues: ['Lean slightly forward', 'Elbows flared slightly', 'Full depth'] },
   { id: 'lunge', name: 'Walking Lunge', category: 'bodyweight', primaryMuscles: ['Quads', 'Glutes', 'Hamstrings'], cues: ['Long stride', 'Back knee near floor', 'Keep torso upright'] },
   { id: 'hip-thrust', name: 'Hip Thrust', category: 'machine', primaryMuscles: ['Glutes', 'Hamstrings'], cues: ['Bench at shoulder blade height', 'Drive hips to parallel', 'Squeeze glutes at top'] },
@@ -308,44 +328,3 @@ export const exercises: Exercise[] = [
   { id: 'worlds-greatest-stretch', name: "World's Greatest Stretch", category: 'mobility', primaryMuscles: ['Hip Flexors', 'Thoracic Spine', 'Hamstrings'], cues: ['Lunge forward, same hand to floor', 'Rotate upper arm to ceiling', 'Then reach arm under for thoracic rotation', 'Full sequence one side before switching'] },
 ]
 
-export interface AnalyticsWeek {
-  week: string
-  squatRM: number
-  benchRM: number
-  deadliftRM: number
-  weeklyKm: number
-  volume: number
-  vdot: number
-}
-
-export const analyticsData: AnalyticsWeek[] = [
-  { week: 'W1',  squatRM: 111, benchRM: 75,  deadliftRM: 143, weeklyKm: 24,  volume: 14500, vdot: 44.0 },
-  { week: 'W2',  squatRM: 113, benchRM: 76,  deadliftRM: 145, weeklyKm: 27,  volume: 15200, vdot: 44.2 },
-  { week: 'W3',  squatRM: 116, benchRM: 77,  deadliftRM: 147, weeklyKm: 32,  volume: 15500, vdot: 44.5 },
-  { week: 'W4',  squatRM: 118, benchRM: 78,  deadliftRM: 150, weeklyKm: 35,  volume: 15900, vdot: 44.8 },
-  { week: 'W5',  squatRM: 120, benchRM: 79,  deadliftRM: 152, weeklyKm: 40,  volume: 16300, vdot: 45.1 },
-  { week: 'W6',  squatRM: 122, benchRM: 80,  deadliftRM: 154, weeklyKm: 45,  volume: 16800, vdot: 45.5 },
-  { week: 'W7',  squatRM: 122, benchRM: 81,  deadliftRM: 155, weeklyKm: 56,  volume: 16600, vdot: 46.0 },
-  { week: 'W8',  squatRM: 121, benchRM: 81,  deadliftRM: 154, weeklyKm: 61,  volume: 16200, vdot: 46.3 },
-  { week: 'W9',  squatRM: 122, benchRM: 81,  deadliftRM: 155, weeklyKm: 58,  volume: 16300, vdot: 46.5 },
-  { week: 'W10', squatRM: 125, benchRM: 82,  deadliftRM: 156, weeklyKm: 45,  volume: 16900, vdot: 46.4 },
-  { week: 'W11', squatRM: 127, benchRM: 83,  deadliftRM: 159, weeklyKm: 35,  volume: 17500, vdot: 46.2 },
-  { week: 'W12', squatRM: 129, benchRM: 84,  deadliftRM: 161, weeklyKm: 29,  volume: 18100, vdot: 46.0 },
-]
-
-export interface Session {
-  id: string
-  date: string
-  type: 'lift' | 'run' | 'hybrid'
-  name: string
-  details: string
-  duration: number
-}
-
-export const recentSessions: Session[] = [
-  { id: '1', date: '2026-03-18', type: 'lift', name: 'Squat Day', details: 'Squat 138×5×3, RDL 102×8×3, Leg Press 163×12×3', duration: 65 },
-  { id: '2', date: '2026-03-17', type: 'run', name: 'Easy Run', details: '10 km @ 5:33/km — Zone 2 aerobic', duration: 55 },
-  { id: '3', date: '2026-03-16', type: 'hybrid', name: 'Upper + Tempo', details: 'Bench 84×5×3, OHP 61×5×3 → Tempo 6km @ 4:33/km', duration: 95 },
-  { id: '4', date: '2026-03-14', type: 'lift', name: 'Deadlift Day', details: 'Deadlift 156×3×3, Row 84×8×3, Pull-ups 3×8', duration: 70 },
-  { id: '5', date: '2026-03-13', type: 'run', name: 'Long Run', details: '22.5 km @ 5:42/km — Weekly long run', duration: 128 },
-]
