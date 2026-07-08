@@ -77,16 +77,21 @@ create table if not exists coach_reports (
 -- generated, so without the update check a user could upsert onto another
 -- user's row id.
 
+-- NOTE: this drops EVERY existing policy on these tables first. Postgres ORs
+-- permissive policies together, so a single leftover "allow all" policy from
+-- early development silently defeats the strict ones (found live on
+-- `sessions` 2026-07-08 — anonymous clients could read every row).
+-- Service-role access is unaffected (it bypasses RLS entirely).
 do $$
-declare t text;
+declare t text; pol record;
 begin
   foreach t in array array['sessions','programmes','templates','custom_exercises','ai_reports','user_settings','coach_reports']
   loop
     execute format('alter table %I enable row level security', t);
-    execute format('drop policy if exists "own rows select" on %I', t);
-    execute format('drop policy if exists "own rows insert" on %I', t);
-    execute format('drop policy if exists "own rows update" on %I', t);
-    execute format('drop policy if exists "own rows delete" on %I', t);
+    for pol in select policyname from pg_policies where schemaname = 'public' and tablename = t
+    loop
+      execute format('drop policy %I on %I', pol.policyname, t);
+    end loop;
     execute format('create policy "own rows select" on %I for select using (auth.uid() = user_id)', t);
     execute format('create policy "own rows insert" on %I for insert with check (auth.uid() = user_id)', t);
     execute format('create policy "own rows update" on %I for update using (auth.uid() = user_id) with check (auth.uid() = user_id)', t);
