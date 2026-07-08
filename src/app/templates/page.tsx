@@ -272,7 +272,7 @@ function ProgrammeOption({ name, onSelect }: { name: string; onSelect: () => voi
       onMouseEnter={e => (e.currentTarget.style.background = '#242424')}
       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
     >
-      <span className="text-sm" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif', whiteSpace: 'normal', lineHeight: '1.3' }}>
+      <span className="text-sm" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)', whiteSpace: 'normal', lineHeight: '1.3' }}>
         {name}
       </span>
       <Plus size={12} style={{ color: '#606060', flexShrink: 0 }} />
@@ -315,7 +315,7 @@ function AddToProgrammeButton({ onSuccess }: { onSuccess: (msg: string) => void 
         style={{
           color: open ? '#00BFA5' : '#606060',
           background: open ? '#00BFA508' : 'transparent',
-          fontFamily: 'Inter, sans-serif',
+          fontFamily: 'var(--font-sans)',
           borderRight: '1px solid #2E2E2E',
         }}
         onMouseEnter={e => { if (!open) e.currentTarget.style.background = '#242424' }}
@@ -342,15 +342,15 @@ function AddToProgrammeButton({ onSuccess }: { onSuccess: (msg: string) => void 
           }}
         >
           <div className="px-4 py-2.5" style={{ borderBottom: '1px solid #2E2E2E', background: '#242424' }}>
-            <p className="text-xs uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-xs uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
               Add to Programme
             </p>
           </div>
 
           {programmes.length === 0 ? (
             <div className="px-4 py-5 text-center">
-              <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No programmes yet</p>
-              <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>
+              <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No programmes yet</p>
+              <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>
                 Create one under Programmes first
               </p>
             </div>
@@ -360,7 +360,7 @@ function AddToProgrammeButton({ onSuccess }: { onSuccess: (msg: string) => void 
               {programmes.some(p => p.isCustom) && (
                 <>
                   <div className="px-4 pt-3 pb-1">
-                    <p className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                    <p className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                       My Programmes
                     </p>
                   </div>
@@ -372,7 +372,7 @@ function AddToProgrammeButton({ onSuccess }: { onSuccess: (msg: string) => void 
 
               {/* Library section */}
               <div className="px-4 pt-3 pb-1" style={{ borderTop: programmes.some(p => p.isCustom) ? '1px solid #2E2E2E' : 'none' }}>
-                <p className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   Programme Library
                 </p>
               </div>
@@ -391,7 +391,7 @@ function AddToProgrammeButton({ onSuccess }: { onSuccess: (msg: string) => void 
 
 function EffortBadge({ effort, color }: { effort: string; color: string }) {
   return (
-    <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: `${color}18`, color, border: `1px solid ${color}33`, fontFamily: 'Inter, sans-serif' }}>
+    <span className="px-2 py-0.5 rounded text-xs font-semibold" style={{ background: `${color}18`, color, border: `1px solid ${color}33`, fontFamily: 'var(--font-sans)' }}>
       {effort}
     </span>
   )
@@ -399,9 +399,9 @@ function EffortBadge({ effort, color }: { effort: string; color: string }) {
 
 function Toast({ message }: { message: string }) {
   return (
-    <div className="fixed bottom-24 right-6 z-50 px-4 py-3 rounded-xl flex items-center gap-2" style={{ background: '#1A1A1A', border: '1px solid #00BFA5', boxShadow: '0 0 20px rgba(0,229,200,0.2)' }}>
+    <div className="fixed bottom-24 right-6 z-50 px-4 py-3 rounded-xl flex items-center gap-2" style={{ background: '#1A1A1A', border: '1px solid #00BFA5', boxShadow: '0 0 20px rgba(0,191,165,0.2)' }}>
       <Check size={14} style={{ color: '#00BFA5' }} />
-      <span className="text-sm" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{message}</span>
+      <span className="text-sm" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{message}</span>
     </div>
   )
 }
@@ -409,7 +409,7 @@ function Toast({ message }: { message: string }) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <label className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{label}</label>
+      <label className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{label}</label>
       {children}
     </div>
   )
@@ -460,10 +460,10 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
           <div>
-            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
               {isEditing ? 'Edit Template' : 'New Template'}
             </p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               {isEditing ? 'Edit Template' : 'Create Template'}
             </h2>
           </div>
@@ -481,7 +481,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
               value={name}
               onChange={e => setName(e.target.value)}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-              style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}
+              style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
               onFocus={e => (e.target.style.borderColor = '#00BFA544')}
               onBlur={e  => (e.target.style.borderColor = '#2E2E2E')}
             />
@@ -498,7 +498,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
                     background: type === opt.value ? opt.bg : '#242424',
                     color: type === opt.value ? opt.color : '#606060',
                     border: type === opt.value ? `1px solid ${opt.color}44` : '1px solid #2E2E2E',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-sans)',
                   }}
                 >
                   {opt.label}
@@ -534,7 +534,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid #2E2E2E' }}>
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Cancel
           </button>
           <button
@@ -544,7 +544,7 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
             style={{
               background: name.trim() ? '#00BFA5' : '#1A1A1A',
               color: name.trim() ? '#0D0D0D' : '#606060',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
               cursor: name.trim() ? 'pointer' : 'not-allowed',
             }}
           >
@@ -576,14 +576,14 @@ function CustomTemplateCard({
       <div className="p-5">
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-black uppercase leading-tight" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h3 className="text-xl font-black uppercase leading-tight" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               {template.name}
             </h3>
             {template.duration && (
-              <span className="text-xs" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{template.duration}</span>
+              <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>{template.duration}</span>
             )}
           </div>
-          <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap" style={{ background: `${typeColor}18`, color: typeColor, border: `1px solid ${typeColor}44`, fontFamily: 'Inter, sans-serif' }}>
+          <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap" style={{ background: `${typeColor}18`, color: typeColor, border: `1px solid ${typeColor}44`, fontFamily: 'var(--font-sans)' }}>
             {typeLabel}
           </span>
         </div>
@@ -609,11 +609,11 @@ function CustomTemplateCard({
                       return (
                         <div key={row.id} className="rounded-lg overflow-hidden" style={{ border: '1px solid #2E2E2E' }}>
                           <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#1A1A1A', borderBottom: '1px solid #2E2E2E' }}>
-                            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>{i + 1}</span>
-                            <span className="text-sm font-medium flex-1" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>
+                            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>{i + 1}</span>
+                            <span className="text-sm font-medium flex-1" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>
                               {row.exerciseName || <span style={{ color: '#3E3E3E' }}>Unnamed</span>}
                             </span>
-                            <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                            <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                               {filledSets.length} set{filledSets.length !== 1 ? 's' : ''}
                             </span>
                           </div>
@@ -622,8 +622,8 @@ function CustomTemplateCard({
                               {filledSets.map((set, si) => (
                                 <div key={set.id} className="flex items-center gap-3 px-3 py-1.5"
                                   style={{ borderBottom: si < filledSets.length - 1 ? '1px solid #1A1A1A' : 'none' }}>
-                                  <span className="text-xs w-10 flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>Set {si + 1}</span>
-                                  <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>
+                                  <span className="text-xs w-10 flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>Set {si + 1}</span>
+                                  <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>
                                     {set.reps ? `${set.reps} reps` : ''}{set.reps && set.weight ? ' · ' : ''}{set.weight ? `${set.weight} kg` : ''}
                                   </span>
                                 </div>
@@ -640,7 +640,7 @@ function CustomTemplateCard({
                 {template.runRows && template.runRows.length > 0 && (
                   <div className="space-y-1.5">
                     {template.exerciseRows && template.exerciseRows.length > 0 && (
-                      <p className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Run Structure</p>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Run Structure</p>
                     )}
                     {template.runRows.map((entry, i) => {
                       function segDisplay(lap: RunSegment) {
@@ -655,11 +655,11 @@ function CustomTemplateCard({
                         return (
                           <div key={block.id} className="rounded-lg overflow-hidden" style={{ border: '1px solid #EF444433', background: '#EF44440A' }}>
                             <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: '1px solid #EF444422' }}>
-                              <span className="text-xs font-bold" style={{ color: '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>
+                              <span className="text-xs font-bold" style={{ color: '#EF4444', fontFamily: 'var(--font-mono)' }}>
                                 ×{block.count || '?'} Repeat
                               </span>
                               {lapKm > 0 && count > 0 && (
-                                <span className="text-xs" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                                <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
                                   {(lapKm * count) % 1 === 0 ? lapKm * count : (lapKm * count).toFixed(1)} km total
                                 </span>
                               )}
@@ -670,10 +670,10 @@ function CustomTemplateCard({
                                 return (
                                   <div key={lap.id} className="flex items-center gap-2 text-xs">
                                     <span className="px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
-                                      style={{ background: `${t.color}18`, color: t.color, border: `1px solid ${t.color}44`, fontFamily: 'Inter, sans-serif' }}>
+                                      style={{ background: `${t.color}18`, color: t.color, border: `1px solid ${t.color}44`, fontFamily: 'var(--font-sans)' }}>
                                       {t.label}
                                     </span>
-                                    <span style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{segDisplay(lap)}</span>
+                                    <span style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{segDisplay(lap)}</span>
                                   </div>
                                 )
                               })}
@@ -684,12 +684,12 @@ function CustomTemplateCard({
                       const typeInfo = SEGMENT_TYPES.find(t => t.value === entry.segmentType) ?? SEGMENT_TYPES[1]
                       return (
                         <div key={entry.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
-                          <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace', width: '16px', flexShrink: 0 }}>{i + 1}</span>
+                          <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)', width: '16px', flexShrink: 0 }}>{i + 1}</span>
                           <span className="text-xs font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
-                            style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'Inter, sans-serif' }}>
+                            style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'var(--font-sans)' }}>
                             {typeInfo.label}
                           </span>
-                          <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{segDisplay(entry as RunSegment)}</span>
+                          <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{segDisplay(entry as RunSegment)}</span>
                         </div>
                       )
                     })}
@@ -721,15 +721,15 @@ function CustomTemplateCard({
                       return (
                         <div className="flex items-center gap-4 px-1 pt-1" style={{ borderTop: '1px solid #2E2E2E' }}>
                           <div className="flex items-center gap-2 flex-1">
-                            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Distance</span>
-                            <span className="text-xs font-bold ml-auto" style={{ color: totalKm > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Distance</span>
+                            <span className="text-xs font-bold ml-auto" style={{ color: totalKm > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
                               {totalKm > 0 ? `${totalKm % 1 === 0 ? totalKm : totalKm.toFixed(1)} km` : '—'}
                             </span>
                           </div>
                           <div className="w-px self-stretch" style={{ background: '#2E2E2E' }} />
                           <div className="flex items-center gap-2 flex-1">
-                            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Time</span>
-                            <span className="text-xs font-bold ml-auto" style={{ color: totalSecs > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Time</span>
+                            <span className="text-xs font-bold ml-auto" style={{ color: totalSecs > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
                               {fmt(totalSecs)}
                             </span>
                           </div>
@@ -747,14 +747,14 @@ function CustomTemplateCard({
           <button
             onClick={onEdit}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
-            style={{ background: '#00BFA518', color: '#00BFA5', border: '1px solid #00BFA544', fontFamily: 'Inter, sans-serif' }}
+            style={{ background: '#00BFA518', color: '#00BFA5', border: '1px solid #00BFA544', fontFamily: 'var(--font-sans)' }}
           >
             <Pencil size={11} /> Edit
           </button>
           <button
             onClick={onDelete}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
-            style={{ background: '#C8102E18', color: '#C8102E', border: '1px solid #C8102E44', fontFamily: 'Inter, sans-serif' }}
+            style={{ background: '#C8102E18', color: '#C8102E', border: '1px solid #C8102E44', fontFamily: 'var(--font-sans)' }}
           >
             <Trash2 size={11} /> Delete
           </button>
@@ -842,13 +842,13 @@ export default function TemplatesPage() {
       <div className="pt-16 pb-6" style={{ background: '#0A0A0A', borderBottom: '1px solid #1A1A1A' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Library</p>
-            <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Templates</h1>
+            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Library</p>
+            <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Templates</h1>
           </div>
           <button
             onClick={() => { setEditingTemplate(null); setShowModal(true); setActiveTab('mine') }}
             className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
-            style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+            style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
           >
             <Plus size={16} /> Create Your Own
           </button>
@@ -864,11 +864,11 @@ export default function TemplatesPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className="px-4 py-4 text-sm font-medium transition-colors relative flex items-center gap-1.5"
-                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'var(--font-sans)' }}
               >
                 {tab.label}
                 {tab.count !== undefined && (
-                  <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: '#00BFA520', color: '#00BFA5', fontFamily: 'Inter, sans-serif', fontSize: '10px' }}>
+                  <span className="px-1.5 py-0.5 rounded-full text-xs" style={{ background: '#00BFA520', color: '#00BFA5', fontFamily: 'var(--font-sans)', fontSize: '10px' }}>
                     {tab.count}
                   </span>
                 )}
@@ -889,8 +889,8 @@ export default function TemplatesPage() {
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{t.name}</h3>
-                      <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>{t.days}</span>
+                      <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{t.name}</h3>
+                      <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>{t.days}</span>
                     </div>
                     <span className="text-xs px-2 py-1 rounded" style={{ background: '#242424', color: '#606060', border: '1px solid #2E2E2E' }}>{t.scheme}</span>
                   </div>
@@ -952,7 +952,7 @@ export default function TemplatesPage() {
                       {t.exercises.map((ex, i) => (
                         <div key={i} className="flex items-center gap-2">
                           <div className="w-1 h-1 rounded-full" style={{ background: '#00BFA5' }} />
-                          <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{ex}</span>
+                          <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{ex}</span>
                         </div>
                       ))}
                     </div>
@@ -976,10 +976,10 @@ export default function TemplatesPage() {
                 <div key={t.id} className="rounded-xl overflow-hidden flex flex-col" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                   <div className="p-5 flex-1">
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{t.name}</h3>
+                      <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{t.name}</h3>
                       <EffortBadge effort={t.effort} color={t.effortColor} />
                     </div>
-                    <p className="text-xs mb-2" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{t.duration}</p>
+                    <p className="text-xs mb-2" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>{t.duration}</p>
                     <p className="text-sm mb-3 leading-relaxed" style={{ color: '#A0A0A0' }}>{t.description}</p>
                     <div className="rounded p-2.5 text-xs mb-3" style={{ background: '#242424', color: '#A0A0A0', fontStyle: 'italic', border: '1px solid #2E2E2E' }}>
                       💡 {t.tip}
@@ -1021,7 +1021,7 @@ export default function TemplatesPage() {
                             return (
                               <div key={block.id} className="rounded-lg overflow-hidden" style={{ border: '1px solid #EF444433', background: '#EF44440A' }}>
                                 <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: '1px solid #EF444422' }}>
-                                  <span className="text-xs font-bold" style={{ color: '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>
+                                  <span className="text-xs font-bold" style={{ color: '#EF4444', fontFamily: 'var(--font-mono)' }}>
                                     ×{block.count || '?'} Repeat
                                   </span>
                                 </div>
@@ -1031,10 +1031,10 @@ export default function TemplatesPage() {
                                     return (
                                       <div key={lap.id} className="flex items-center gap-2 text-xs">
                                         <span className="px-1.5 py-0.5 rounded font-semibold flex-shrink-0"
-                                          style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'Inter, sans-serif' }}>
+                                          style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'var(--font-sans)' }}>
                                           {typeInfo.label}
                                         </span>
-                                        <span style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{segDisplay(lap)}</span>
+                                        <span style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{segDisplay(lap)}</span>
                                       </div>
                                     )
                                   })}
@@ -1046,12 +1046,12 @@ export default function TemplatesPage() {
                           const typeInfo = SEGMENT_TYPES.find(s => s.value === seg.segmentType) ?? SEGMENT_TYPES[1]
                           return (
                             <div key={seg.id} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
-                              <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace', width: '16px', flexShrink: 0 }}>{i + 1}</span>
+                              <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)', width: '16px', flexShrink: 0 }}>{i + 1}</span>
                               <span className="text-xs font-semibold px-1.5 py-0.5 rounded flex-shrink-0"
-                                style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'Inter, sans-serif' }}>
+                                style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'var(--font-sans)' }}>
                                 {typeInfo.label}
                               </span>
-                              <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{segDisplay(seg)}</span>
+                              <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{segDisplay(seg)}</span>
                             </div>
                           )
                         })}
@@ -1072,8 +1072,8 @@ export default function TemplatesPage() {
               <div key={t.id} className="rounded-xl overflow-hidden flex flex-col" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                 <div className="p-5 flex-1">
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{t.name}</h3>
-                    <span className="px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ml-2" style={{ background: `${t.difficultyColor}18`, color: t.difficultyColor, border: `1px solid ${t.difficultyColor}33`, fontFamily: 'Inter, sans-serif' }}>
+                    <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{t.name}</h3>
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ml-2" style={{ background: `${t.difficultyColor}18`, color: t.difficultyColor, border: `1px solid ${t.difficultyColor}33`, fontFamily: 'var(--font-sans)' }}>
                       {t.difficulty}
                     </span>
                   </div>
@@ -1085,8 +1085,8 @@ export default function TemplatesPage() {
                       { label: 'Terrain', value: t.terrain },
                     ].map(({ label, value }) => (
                       <div key={label} className="px-2 py-1.5 rounded" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
-                        <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{label}</p>
-                        <p className="text-xs font-semibold" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{value}</p>
+                        <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{label}</p>
+                        <p className="text-xs font-semibold" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{value}</p>
                       </div>
                     ))}
                   </div>
@@ -1106,16 +1106,16 @@ export default function TemplatesPage() {
               <div key={t.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                 <div className="p-5">
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{t.name}</h3>
-                    <span className="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap" style={{ background: `${t.interferenceColor}18`, color: t.interferenceColor, border: `1px solid ${t.interferenceColor}33`, fontFamily: 'Inter, sans-serif' }}>
+                    <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{t.name}</h3>
+                    <span className="px-2 py-1 rounded text-xs font-semibold whitespace-nowrap" style={{ background: `${t.interferenceColor}18`, color: t.interferenceColor, border: `1px solid ${t.interferenceColor}33`, fontFamily: 'var(--font-sans)' }}>
                       {t.interference} interference
                     </span>
                   </div>
-                  <div className="px-3 py-2 rounded mb-3 text-xs" style={{ background: '#242424', color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace', border: '1px solid #2E2E2E' }}>
+                  <div className="px-3 py-2 rounded mb-3 text-xs" style={{ background: '#242424', color: '#A0A0A0', fontFamily: 'var(--font-mono)', border: '1px solid #2E2E2E' }}>
                     {t.order}
                   </div>
                   <p className="text-sm mb-3 leading-relaxed" style={{ color: '#A0A0A0' }}>{t.description}</p>
-                  <div className="rounded p-2.5 text-xs" style={{ background: 'rgba(0,229,200,0.06)', color: '#A0A0A0', border: '1px solid rgba(0,229,200,0.1)' }}>
+                  <div className="rounded p-2.5 text-xs" style={{ background: 'rgba(0,191,165,0.06)', color: '#A0A0A0', border: '1px solid rgba(0,191,165,0.1)' }}>
                     Recovery: {t.recoveryNotes}
                   </div>
                 </div>
@@ -1129,9 +1129,9 @@ export default function TemplatesPage() {
           <div>
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>My Templates</h2>
+                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>My Templates</h2>
                 {customTemplates.length > 0 && (
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#00BFA520', color: '#00BFA5', border: '1px solid #00BFA544', fontFamily: 'Inter, sans-serif' }}>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold" style={{ background: '#00BFA520', color: '#00BFA5', border: '1px solid #00BFA544', fontFamily: 'var(--font-sans)' }}>
                     {customTemplates.length}
                   </span>
                 )}
@@ -1139,7 +1139,7 @@ export default function TemplatesPage() {
               <button
                 onClick={() => { setEditingTemplate(null); setShowModal(true) }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
-                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
               >
                 <Plus size={14} /> New Template
               </button>
@@ -1150,7 +1150,7 @@ export default function TemplatesPage() {
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6" style={{ background: '#1A1A1A', border: '2px dashed #2E2E2E' }}>
                   <Plus size={32} style={{ color: '#2E2E2E' }} />
                 </div>
-                <h3 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#606060' }}>
+                <h3 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#606060' }}>
                   No Templates Yet
                 </h3>
                 <p className="text-sm mb-6" style={{ color: '#606060', maxWidth: '320px' }}>
@@ -1160,14 +1160,14 @@ export default function TemplatesPage() {
                   <button
                     onClick={() => { setEditingTemplate(null); setShowModal(true) }}
                     className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                    style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+                    style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
                   >
                     Create Template
                   </button>
                   <button
                     onClick={() => setActiveTab('lifting')}
                     className="px-5 py-2.5 rounded-xl text-sm font-semibold"
-                    style={{ background: '#1A1A1A', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+                    style={{ background: '#1A1A1A', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
                   >
                     Browse Library
                   </button>

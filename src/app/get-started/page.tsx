@@ -130,21 +130,21 @@ export default function GetStartedPage() {
         {/* Quiz */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
           <Compass size={20} style={{ color: '#00BFA5' }} />
-          <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#F5F5F5', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
             Get Started
           </h1>
         </div>
-        <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', marginBottom: '28px' }}>
+        <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', marginBottom: '28px' }}>
           Four quick questions and we&apos;ll point you at the right programme. New to the jargon? The glossary below explains every term you&apos;ll meet.
         </p>
 
         <div style={{ borderRadius: '20px', background: '#141414', border: '1px solid #2E2E2E', padding: '28px', marginBottom: '32px' }}>
           {!done ? (
             <>
-              <p style={{ fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'Inter, sans-serif', marginBottom: '10px' }}>
+              <p style={{ fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-sans)', marginBottom: '10px' }}>
                 Question {step + 1} of {QUESTIONS.length}
               </p>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'var(--font-heading)', marginBottom: '20px' }}>
                 {QUESTIONS[step].question}
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -155,7 +155,7 @@ export default function GetStartedPage() {
                     style={{
                       textAlign: 'left', padding: '14px 18px', borderRadius: '12px',
                       background: '#1E1E1E', border: '1px solid #2E2E2E',
-                      color: '#F5F5F5', fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                      color: '#F5F5F5', fontSize: '14px', cursor: 'pointer', fontFamily: 'var(--font-sans)',
                     }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = '#00BFA5'; e.currentTarget.style.background = 'rgba(0,191,165,0.06)' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.background = '#1E1E1E' }}
@@ -166,35 +166,35 @@ export default function GetStartedPage() {
               </div>
               {step > 0 && (
                 <button onClick={() => setStep(s => s - 1)}
-                  style={{ marginTop: '16px', background: 'none', border: 'none', color: '#606060', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  style={{ marginTop: '16px', background: 'none', border: 'none', color: '#606060', fontSize: '13px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
                   ← Back
                 </button>
               )}
             </>
           ) : recommendation && (
             <>
-              <p style={{ fontSize: '11px', color: '#00BFA5', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'Inter, sans-serif', marginBottom: '14px', fontWeight: 700 }}>
+              <p style={{ fontSize: '11px', color: '#00BFA5', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-sans)', marginBottom: '14px', fontWeight: 700 }}>
                 Our recommendation for you
               </p>
               <ProgrammeCard programme={recommendation} onStart={user ? handleStart : undefined} />
-              {startError && <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'Inter, sans-serif', marginTop: '12px' }}>{startError}</p>}
+              {startError && <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'var(--font-sans)', marginTop: '12px' }}>{startError}</p>}
               <div style={{ display: 'flex', gap: '12px', marginTop: '18px', alignItems: 'center', flexWrap: 'wrap' }}>
                 {user ? (
                   <button onClick={handleStart} disabled={starting}
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', background: starting ? '#1A1A1A' : '#00BFA5', color: starting ? '#606060' : '#0D0D0D', fontWeight: 800, fontSize: '14px', border: 'none', cursor: starting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 24px', borderRadius: '12px', background: starting ? '#1A1A1A' : '#00BFA5', color: starting ? '#606060' : '#0D0D0D', fontWeight: 800, fontSize: '14px', border: 'none', cursor: starting ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-sans)' }}>
                     {starting ? 'Starting…' : 'Start This Programme'} <ArrowRight size={15} />
                   </button>
                 ) : (
                   <Link href="/login"
-                    style={{ padding: '12px 24px', borderRadius: '12px', background: '#00BFA5', color: '#0D0D0D', fontWeight: 800, fontSize: '14px', fontFamily: 'Inter, sans-serif', textDecoration: 'none' }}>
+                    style={{ padding: '12px 24px', borderRadius: '12px', background: '#00BFA5', color: '#0D0D0D', fontWeight: 800, fontSize: '14px', fontFamily: 'var(--font-sans)', textDecoration: 'none' }}>
                     Sign Up to Start
                   </Link>
                 )}
                 <button onClick={() => { setStep(0); setAnswers({}) }}
-                  style={{ background: 'none', border: 'none', color: '#606060', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  style={{ background: 'none', border: 'none', color: '#606060', fontSize: '13px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
                   Retake quiz
                 </button>
-                <Link href="/" style={{ color: '#606060', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+                <Link href="/" style={{ color: '#606060', fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
                   Browse all programmes
                 </Link>
               </div>
@@ -205,15 +205,15 @@ export default function GetStartedPage() {
         {/* Glossary */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <BookOpen size={18} style={{ color: '#A78BFA' }} />
-          <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 900, color: '#F5F5F5', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
             Training Glossary
           </h2>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {GLOSSARY.map(g => (
             <div key={g.term} style={{ borderRadius: '14px', background: '#141414', border: '1px solid #2E2E2E', padding: '16px 20px' }}>
-              <p style={{ fontSize: '13px', fontWeight: 800, color: '#00BFA5', fontFamily: 'Inter, sans-serif', margin: '0 0 4px' }}>{g.term}</p>
-              <p style={{ fontSize: '13px', color: '#A0A0A0', lineHeight: 1.6, fontFamily: 'Inter, sans-serif', margin: 0 }}>{g.def}</p>
+              <p style={{ fontSize: '13px', fontWeight: 800, color: '#00BFA5', fontFamily: 'var(--font-sans)', margin: '0 0 4px' }}>{g.term}</p>
+              <p style={{ fontSize: '13px', color: '#A0A0A0', lineHeight: 1.6, fontFamily: 'var(--font-sans)', margin: 0 }}>{g.def}</p>
             </div>
           ))}
         </div>

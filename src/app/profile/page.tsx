@@ -12,7 +12,7 @@ const inputStyle: React.CSSProperties = {
   border: '1px solid #2E2E2E',
   color: '#F5F5F5',
   fontSize: '14px',
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'var(--font-sans)',
   outline: 'none',
   boxSizing: 'border-box',
 }
@@ -24,7 +24,7 @@ const labelStyle: React.CSSProperties = {
   textTransform: 'uppercase',
   letterSpacing: '0.06em',
   marginBottom: '6px',
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'var(--font-sans)',
 }
 
 function Field({ label, value, onChange, placeholder, type = 'text' }: {
@@ -54,7 +54,7 @@ function SectionCard({ title, children }: { title: string; children: React.React
   return (
     <div style={{ borderRadius: '20px', background: '#141414', border: '1px solid #2E2E2E', overflow: 'hidden', marginBottom: '20px' }}>
       <div style={{ padding: '14px 24px', borderBottom: '1px solid #2E2E2E' }}>
-        <p style={{ fontSize: '13px', fontWeight: 700, color: '#00BFA5', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+        <p style={{ fontSize: '13px', fontWeight: 700, color: '#00BFA5', fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
           {title}
         </p>
       </div>
@@ -98,17 +98,17 @@ export default function ProfilePage() {
       <div style={{ maxWidth: '760px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
           <User size={20} style={{ color: '#00BFA5' }} />
-          <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
+          <h1 style={{ fontSize: '24px', fontWeight: 900, color: '#F5F5F5', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0 }}>
             Athlete Profile
           </h1>
         </div>
-        <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', marginBottom: '28px', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Sparkles size={14} style={{ color: '#A78BFA' }} />
           Everything here feeds your AI coach — programme generation, weekly reports, and reviews are all tailored to this profile.
         </p>
 
         {loading ? (
-          <p style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Loading…</p>
+          <p style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Loading…</p>
         ) : (
           <>
             <SectionCard title="About You">
@@ -137,7 +137,7 @@ export default function ProfilePage() {
                 <Field label="Recent race result" value={profile.recentRaceResult ?? ''} onChange={set('recentRaceResult')} placeholder="e.g. 10K in 48:30 (May 2026)" />
               </div>
               {raceDays !== null && (
-                <p style={{ marginTop: '16px', marginBottom: 0, color: '#00BFA5', fontSize: '13px', fontWeight: 700, fontFamily: 'Inter, sans-serif' }}>
+                <p style={{ marginTop: '16px', marginBottom: 0, color: '#00BFA5', fontSize: '13px', fontWeight: 700, fontFamily: 'var(--font-sans)' }}>
                   {raceDays === 0 ? 'Race day is today — good luck!' : `${raceDays} days to race day`}
                 </p>
               )}
@@ -172,7 +172,7 @@ export default function ProfilePage() {
               </div>
             </SectionCard>
 
-            {error && <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>{error}</p>}
+            {error && <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'var(--font-sans)' }}>{error}</p>}
 
             <button
               onClick={handleSave}
@@ -185,7 +185,7 @@ export default function ProfilePage() {
                 border: saved ? '1px solid #00BFA544' : 'none',
                 fontWeight: 800, fontSize: '14px',
                 cursor: saving ? 'not-allowed' : 'pointer',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-sans)',
               }}
             >
               <Save size={16} />

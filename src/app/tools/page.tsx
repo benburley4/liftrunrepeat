@@ -219,7 +219,7 @@ export default function ToolsPage() {
     background: '#242424',
     color: '#F5F5F5',
     border: '1px solid #2E2E2E',
-    fontFamily: 'JetBrains Mono, monospace',
+    fontFamily: 'var(--font-mono)',
   }
 
   return (
@@ -229,7 +229,7 @@ export default function ToolsPage() {
       <div className="pt-16 pb-6" style={{ background: '#0A0A0A', borderBottom: '1px solid #1A1A1A' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8">
           <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5' }}>Calculators</p>
-          <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Tools
           </h1>
         </div>
@@ -244,7 +244,7 @@ export default function ToolsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className="px-4 py-4 text-sm font-medium whitespace-nowrap relative"
-                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'var(--font-sans)' }}
               >
                 {tab.label}
                 {activeTab === tab.id && (
@@ -262,7 +262,7 @@ export default function ToolsPage() {
         {activeTab === '1rm' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 1 Rep Max Calculator
               </h2>
               <p className="text-sm" style={{ color: '#A0A0A0' }}>
@@ -308,7 +308,7 @@ export default function ToolsPage() {
                     style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}
                   >
                     <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060' }}>{name}</p>
-                    <p className="text-4xl font-black" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>
+                    <p className="text-4xl font-black" style={{ color, fontFamily: 'var(--font-mono)' }}>
                       {value ?? '—'}
                     </p>
                     <p className="text-xs mt-1" style={{ color: '#606060' }}>{value ? 'kg' : 'Reps too high'}</p>
@@ -328,7 +328,7 @@ export default function ToolsPage() {
                   {[100, 95, 90, 85, 80, 75, 70, 65, 60, 55].map(pct => (
                     <div key={pct} className="text-center rounded p-2" style={{ background: '#242424' }}>
                       <p className="text-xs" style={{ color: '#606060' }}>{pct}%</p>
-                      <p className="text-xs font-bold mt-0.5" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <p className="text-xs font-bold mt-0.5" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
                         {Math.round(oneRMs.epley * pct / 100)}
                       </p>
                     </div>
@@ -345,9 +345,9 @@ export default function ToolsPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', background: '#141414' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #2E2E2E' }}>
-                      <th className="text-left px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Reps</th>
-                      <th className="text-right px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>Weight (kg)</th>
-                      <th className="text-right px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', fontWeight: 600 }}>% of 1RM</th>
+                      <th className="text-left px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)', fontWeight: 600 }}>Reps</th>
+                      <th className="text-right px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)', fontWeight: 600 }}>Weight (kg)</th>
+                      <th className="text-right px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)', fontWeight: 600 }}>% of 1RM</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -357,13 +357,13 @@ export default function ToolsPage() {
                       const isInput = reps === r
                       return (
                         <tr key={reps} style={{ borderBottom: '1px solid #1E1E1E', background: isInput ? '#00BFA510' : 'transparent' }}>
-                          <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: isInput ? '#00BFA5' : '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+                          <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: isInput ? '#00BFA5' : '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                             {reps} {reps === 1 ? 'rep' : 'reps'}{isInput ? ' ←' : ''}
                           </td>
-                          <td className="px-4 py-2.5 text-right text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <td className="px-4 py-2.5 text-right text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
                             {weight} kg
                           </td>
-                          <td className="px-4 py-2.5 text-right text-xs" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <td className="px-4 py-2.5 text-right text-xs" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
                             {pct}%
                           </td>
                         </tr>
@@ -380,7 +380,7 @@ export default function ToolsPage() {
         {activeTab === 'wilks' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Wilks Calculator
               </h2>
               <p className="text-sm" style={{ color: '#A0A0A0' }}>
@@ -398,7 +398,7 @@ export default function ToolsPage() {
                   style={{
                     background: wilksMale === value ? '#00BFA5' : '#1A1A1A',
                     color: wilksMale === value ? '#0D0D0D' : '#A0A0A0',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-sans)',
                   }}
                 >
                   {label}
@@ -429,7 +429,7 @@ export default function ToolsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-1 rounded-xl p-6 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                   <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#606060' }}>Wilks Score</p>
-                  <p className="text-5xl font-black" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <p className="text-5xl font-black" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                     {wilks}
                   </p>
                   <p className="text-xs mt-2" style={{ color: '#A0A0A0' }}>
@@ -447,7 +447,7 @@ export default function ToolsPage() {
                   ].map(({ label, range, color }) => (
                     <div key={label} className="flex justify-between py-1.5" style={{ borderBottom: '1px solid #1A1A1A' }}>
                       <span className="text-xs" style={{ color }}>{label}</span>
-                      <span className="text-xs font-bold" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>{range}</span>
+                      <span className="text-xs font-bold" style={{ color, fontFamily: 'var(--font-mono)' }}>{range}</span>
                     </div>
                   ))}
                 </div>
@@ -460,7 +460,7 @@ export default function ToolsPage() {
         {activeTab === 'vo2' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 VO2max Estimator
               </h2>
               <p className="text-sm" style={{ color: '#A0A0A0' }}>
@@ -489,11 +489,11 @@ export default function ToolsPage() {
                   onClick={() => setVo2Method(m.id)}
                   className="p-4 rounded-xl text-left"
                   style={{
-                    background: vo2Method === m.id ? 'rgba(255,107,53,0.08)' : '#1A1A1A',
+                    background: vo2Method === m.id ? 'rgba(200,16,46,0.08)' : '#1A1A1A',
                     border: vo2Method === m.id ? '2px solid #C8102E' : '1px solid #2E2E2E',
                   }}
                 >
-                  <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '15px' }}>
+                  <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', fontSize: '15px' }}>
                     {m.label.toUpperCase()}
                   </p>
                   <p className="text-xs mt-1" style={{ color: '#606060' }}>{m.desc}</p>
@@ -525,7 +525,7 @@ export default function ToolsPage() {
                 <div className="flex items-center gap-6 mb-5">
                   <div>
                     <p className="text-xs uppercase tracking-wider" style={{ color: '#606060' }}>VO2max Estimate</p>
-                    <p className="text-5xl font-black" style={{ color: vo2Cat.color, fontFamily: 'JetBrains Mono, monospace' }}>
+                    <p className="text-5xl font-black" style={{ color: vo2Cat.color, fontFamily: 'var(--font-mono)' }}>
                       {calculatedVo2}
                     </p>
                     <p className="text-sm" style={{ color: '#A0A0A0' }}>mL/kg/min</p>
@@ -549,7 +549,7 @@ export default function ToolsPage() {
                   ].map(({ label, pace, color }) => (
                     <div key={label} className="rounded-lg p-3 text-center" style={{ background: '#242424' }}>
                       <p className="text-xs" style={{ color: '#606060' }}>{label}</p>
-                      <p className="text-sm font-bold mt-1" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>{pace}</p>
+                      <p className="text-sm font-bold mt-1" style={{ color, fontFamily: 'var(--font-mono)' }}>{pace}</p>
                     </div>
                   ))}
                 </div>
@@ -562,7 +562,7 @@ export default function ToolsPage() {
         {activeTab === 'macro' && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Macro Calculator
               </h2>
               <p className="text-sm" style={{ color: '#A0A0A0' }}>
@@ -616,7 +616,7 @@ export default function ToolsPage() {
                       style={{
                         background: macroGoal === v ? color : '#1A1A1A',
                         color: macroGoal === v ? '#0D0D0D' : '#A0A0A0',
-                        fontFamily: 'Inter, sans-serif',
+                        fontFamily: 'var(--font-sans)',
                       }}
                     >
                       {label}
@@ -639,7 +639,7 @@ export default function ToolsPage() {
                     onClick={() => setMacroActivity(v)}
                     className="p-3 rounded-xl text-left"
                     style={{
-                      background: macroActivity === v ? 'rgba(0,229,200,0.08)' : '#1A1A1A',
+                      background: macroActivity === v ? 'rgba(0,191,165,0.08)' : '#1A1A1A',
                       border: macroActivity === v ? '2px solid #00BFA5' : '1px solid #2E2E2E',
                     }}
                   >
@@ -660,7 +660,7 @@ export default function ToolsPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-black" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{macros.calories}</p>
+                    <p className="text-3xl font-black" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{macros.calories}</p>
                     <p className="text-xs" style={{ color: '#606060' }}>kcal/day</p>
                   </div>
                 </div>
@@ -673,7 +673,7 @@ export default function ToolsPage() {
                   ].map(({ label, value, unit, color, tip }) => (
                     <div key={label} className="p-4 text-center" style={{ borderColor: '#2E2E2E' }}>
                       <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060' }}>{label}</p>
-                      <p className="text-3xl font-black" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>{value > 0 ? value : 0}</p>
+                      <p className="text-3xl font-black" style={{ color, fontFamily: 'var(--font-mono)' }}>{value > 0 ? value : 0}</p>
                       <p className="text-xs" style={{ color: '#606060' }}>{unit}</p>
                       <p className="text-xs mt-1" style={{ color: '#A0A0A0' }}>{tip}</p>
                     </div>
@@ -721,7 +721,7 @@ export default function ToolsPage() {
           return (
             <div className="space-y-6">
               <div>
-                <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>5/3/1 Calculator</h2>
+                <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>5/3/1 Calculator</h2>
                 <p className="text-sm" style={{ color: '#A0A0A0' }}>
                   Jim Wendler&apos;s 5/3/1 programme. Enter your 1RM for each lift and set your training max percentage.
                 </p>
@@ -736,20 +736,20 @@ export default function ToolsPage() {
                   >
                     <span style={{ position: 'absolute', top: '3px', left: use531TM ? '21px' : '3px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s' }} />
                   </button>
-                  <span className="text-sm" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+                  <span className="text-sm" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                     {use531TM ? 'Input is training max' : 'Input is 1RM'}
                   </span>
                 </div>
                 {!use531TM && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Training max =</span>
+                    <span className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Training max =</span>
                     <input
                       type="number" value={tm531Pct} onChange={e => setTm531Pct(e.target.value)}
                       min="1" max="100"
                       className="px-3 py-1.5 rounded-lg outline-none text-center text-sm"
                       style={{ ...inputStyle, width: '64px' }}
                     />
-                    <span className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>%</span>
+                    <span className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>%</span>
                   </div>
                 )}
               </div>
@@ -772,7 +772,7 @@ export default function ToolsPage() {
                       style={{ ...inputStyle }}
                     />
                     {tm(l.value) && (
-                      <p className="text-xs text-center mt-1" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <p className="text-xs text-center mt-1" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
                         TM: {tm(l.value)} kg
                       </p>
                     )}
@@ -786,7 +786,7 @@ export default function ToolsPage() {
                               autoFocus
                               type="text" value={liftSearch} onChange={e => setLiftSearch(e.target.value)}
                               placeholder="Search exercises…"
-                              style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontSize: '12px', outline: 'none', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+                              style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontSize: '12px', outline: 'none', fontFamily: 'var(--font-sans)', boxSizing: 'border-box' }}
                             />
                           </div>
                           <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
@@ -796,7 +796,7 @@ export default function ToolsPage() {
                                   setLift531Names(prev => ({ ...prev, [l.key]: ex.name }))
                                   setEditingLiftKey(null)
                                 }}
-                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', color: '#A0A0A0', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', color: '#A0A0A0', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
                                 onMouseEnter={e => { e.currentTarget.style.background = '#2E2E2E'; e.currentTarget.style.color = '#F5F5F5' }}
                                 onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#A0A0A0' }}
                               >
@@ -804,7 +804,7 @@ export default function ToolsPage() {
                               </button>
                             ))}
                             {filteredLibrary.length === 0 && (
-                              <p style={{ padding: '12px', fontSize: '12px', color: '#606060', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>No exercises found</p>
+                              <p style={{ padding: '12px', fontSize: '12px', color: '#606060', textAlign: 'center', fontFamily: 'var(--font-sans)' }}>No exercises found</p>
                             )}
                           </div>
                         </div>
@@ -818,14 +818,14 @@ export default function ToolsPage() {
               {anyFilled && weeks.map(week => (
                 <div key={week.label} className="rounded-xl overflow-hidden" style={{ border: '1px solid #2E2E2E' }}>
                   <div className="px-4 py-3" style={{ background: '#1A1A1A', borderBottom: '1px solid #2E2E2E' }}>
-                    <p className="text-xs uppercase tracking-wider font-bold" style={{ color: week.label.includes('Deload') ? '#606060' : '#00BFA5', fontFamily: 'Inter, sans-serif' }}>{week.label}</p>
+                    <p className="text-xs uppercase tracking-wider font-bold" style={{ color: week.label.includes('Deload') ? '#606060' : '#00BFA5', fontFamily: 'var(--font-sans)' }}>{week.label}</p>
                   </div>
                   <table style={{ width: '100%', borderCollapse: 'collapse', background: '#141414' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #2E2E2E' }}>
-                        <th className="text-left px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Lift</th>
+                        <th className="text-left px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Lift</th>
                         {week.sets.map((s, i) => (
-                          <th key={i} className="text-right px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                          <th key={i} className="text-right px-4 py-2 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                             Set {i + 1} · {s.reps} reps
                           </th>
                         ))}
@@ -837,14 +837,14 @@ export default function ToolsPage() {
                         if (!trainingMax) return null
                         return (
                           <tr key={l.key} style={{ borderBottom: li < lifts.length - 1 ? '1px solid #1E1E1E' : 'none' }}>
-                            <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{l.label}</td>
+                            <td className="px-4 py-2.5 text-sm font-semibold" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{l.label}</td>
                             {week.sets.map((s, i) => {
                               const kg = l.key === 'ohp'
                                 ? roundToOHPSequence(trainingMax * s.pct)
                                 : Math.round(trainingMax * s.pct / l.round) * l.round
                               const isAmrap = s.reps.includes('+')
                               return (
-                                <td key={i} className="px-4 py-2.5 text-right" style={{ fontFamily: 'JetBrains Mono, monospace' }}>
+                                <td key={i} className="px-4 py-2.5 text-right" style={{ fontFamily: 'var(--font-mono)' }}>
                                   <span className="text-sm font-bold" style={{ color: isAmrap ? '#00BFA5' : '#F5F5F5' }}>{kg} kg</span>
                                   <span className="text-xs ml-1" style={{ color: '#606060' }}>{Math.round(s.pct * 100)}%</span>
                                 </td>
@@ -860,7 +860,7 @@ export default function ToolsPage() {
 
               {!anyFilled && (
                 <div className="rounded-xl p-10 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                  <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Enter at least one lift to generate your programme.</p>
+                  <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Enter at least one lift to generate your programme.</p>
                 </div>
               )}
             </div>

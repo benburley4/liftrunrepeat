@@ -173,7 +173,7 @@ function MarkdownTable({ rows }: { rows: string[] }) {
           <tr style={{ borderBottom: '1px solid #3E3E3E' }}>
             {headers.map((h, i) => (
               <th key={i} className="px-3 py-2 text-left font-bold uppercase tracking-wider"
-                style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+                style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>
                 {renderInline(h)}
               </th>
             ))}
@@ -183,7 +183,7 @@ function MarkdownTable({ rows }: { rows: string[] }) {
           {parsed.map((row, ri) => (
             <tr key={ri} style={{ borderBottom: '1px solid #2E2E2E', background: ri % 2 === 0 ? '#1E1E1E' : 'transparent' }}>
               {row.map((cell, ci) => (
-                <td key={ci} className="px-3 py-2 text-sm" style={{ color: '#D0D0D0', fontFamily: 'Inter, sans-serif' }}>
+                <td key={ci} className="px-3 py-2 text-sm" style={{ color: '#D0D0D0', fontFamily: 'var(--font-sans)' }}>
                   {renderInline(cell)}
                 </td>
               ))}
@@ -210,11 +210,11 @@ function MarkdownBlock({ text }: { text: string }) {
     elements.push(
       <div key={key} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 20px', marginTop: 8 }}>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#606060', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Analysis</p>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#606060', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Analysis</p>
           {analysisItems}
         </div>
         <div>
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#A78BFA', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Recommendations</p>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#A78BFA', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Recommendations</p>
           {recItems}
         </div>
       </div>
@@ -229,7 +229,7 @@ function MarkdownBlock({ text }: { text: string }) {
     return (
       <div key={key} className="flex gap-2 mb-1.5">
         <span className="flex-shrink-0" style={{ color: dotColor, marginTop: '6px', fontSize: '8px' }}>●</span>
-        <span className="text-sm leading-relaxed" style={{ color: '#D0D0D0', fontFamily: 'Inter, sans-serif' }}>
+        <span className="text-sm leading-relaxed" style={{ color: '#D0D0D0', fontFamily: 'var(--font-sans)' }}>
           {renderInline(content)}
         </span>
       </div>
@@ -255,7 +255,7 @@ function MarkdownBlock({ text }: { text: string }) {
       flushTwoCol(`twocol-h2-${i}`)
       elements.push(
         <h2 key={i} className="text-sm font-black uppercase tracking-widest mt-6 mb-3 px-3 py-1.5 rounded"
-          style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif', background: '#00BFA510', display: 'inline-block' }}>
+          style={{ color: '#00BFA5', fontFamily: 'var(--font-heading)', background: '#00BFA510', display: 'inline-block' }}>
           {line.slice(3)}
         </h2>
       )
@@ -264,7 +264,7 @@ function MarkdownBlock({ text }: { text: string }) {
     } else if (line.startsWith('### ')) {
       pushItem(
         <h3 key={i} className="text-sm font-bold mt-4 mb-2"
-          style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>
+          style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
           {line.slice(4)}
         </h3>
       )
@@ -279,7 +279,7 @@ function MarkdownBlock({ text }: { text: string }) {
       } else {
         pushItem(
           <h3 key={i} className="text-sm font-bold mt-4 mb-2"
-            style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif' }}>
+            style={{ color: '#00BFA5', fontFamily: 'var(--font-heading)' }}>
             {label}
           </h3>
         )
@@ -300,7 +300,7 @@ function MarkdownBlock({ text }: { text: string }) {
     } else if (line.includes('█') || line.includes('░')) {
       pushItem(
         <div key={i} className="px-3 py-1 font-mono text-xs"
-          style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace', lineHeight: '1.8' }}>
+          style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)', lineHeight: '1.8' }}>
           {line}
         </div>
       )
@@ -313,10 +313,10 @@ function MarkdownBlock({ text }: { text: string }) {
         pushItem(
           <div key={i} className="flex gap-2 mb-1 ml-2">
             <span className="text-xs font-bold mt-0.5 flex-shrink-0"
-              style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>
+              style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
               {line.match(/^(\d+)\./)?.[1]}.
             </span>
-            <span className="text-sm leading-relaxed" style={{ color: '#D0D0D0', fontFamily: 'Inter, sans-serif' }}>
+            <span className="text-sm leading-relaxed" style={{ color: '#D0D0D0', fontFamily: 'var(--font-sans)' }}>
               {renderInline(line.replace(/^\d+\.\s/, ''))}
             </span>
           </div>
@@ -335,7 +335,7 @@ function MarkdownBlock({ text }: { text: string }) {
     } else {
       pushItem(
         <p key={i} className="text-sm leading-relaxed mb-1"
-          style={{ color: '#D0D0D0', fontFamily: 'Inter, sans-serif' }}>
+          style={{ color: '#D0D0D0', fontFamily: 'var(--font-sans)' }}>
           {renderInline(line)}
         </p>
       )
@@ -451,10 +451,10 @@ function ChartLegend({ counts, colors }: { counts: Record<string, number>; color
       {entries.map(([label, value]) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: 2, background: colors[label] ?? '#606060', flexShrink: 0 }} />
-          <span style={{ fontSize: 11, color: '#A0A0A0', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 11, color: '#A0A0A0', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>
             {label}
           </span>
-          <span style={{ fontSize: 11, color: '#606060', fontFamily: 'JetBrains Mono, monospace', marginLeft: 'auto', paddingLeft: 8 }}>
+          <span style={{ fontSize: 11, color: '#606060', fontFamily: 'var(--font-mono)', marginLeft: 'auto', paddingLeft: 8 }}>
             {total > 0 ? Math.round((value / total) * 100) : 0}%
           </span>
         </div>
@@ -716,11 +716,11 @@ export default function ProgrammeReviewPage() {
       {/* Header */}
       <div className="pt-16 pb-6" style={{ background: '#0A0A0A', borderBottom: '1px solid #1A1A1A' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8">
-          <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>AI Coach</p>
-          <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>AI Coach</p>
+          <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Programme Review
           </h1>
-          <p className="mt-2 text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <p className="mt-2 text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Expert AI analysis of your training programme — evidence-based recommendations from an NSCA/UKSCA certified coaching perspective.
           </p>
         </div>
@@ -730,11 +730,11 @@ export default function ProgrammeReviewPage() {
 
         {/* Programme selector */}
         <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-          <label className="text-xs uppercase tracking-wider block mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <label className="text-xs uppercase tracking-wider block mb-3" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Select Programme to Review
           </label>
           {programmes.length === 0 ? (
-            <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
               No programmes found. Create one in the Programmes section first.
             </p>
           ) : (
@@ -742,7 +742,7 @@ export default function ProgrammeReviewPage() {
               value={selectedId}
               onChange={e => setSelectedId(e.target.value)}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-              style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}
+              style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
             >
               {programmes.map(p => (
                 <option key={p.id} value={p.id}>{p.name} — {p.weeks} weeks</option>
@@ -759,13 +759,13 @@ export default function ProgrammeReviewPage() {
           if (!hasPPL && !hasBody) return null
           return (
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <p className="text-xs uppercase tracking-wider mb-4" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Programme Breakdown</p>
+              <p className="text-xs uppercase tracking-wider mb-4" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Programme Breakdown</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 {hasPPL && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <DonutChart counts={ppl} colors={PPL_COLORS} size={90} />
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Push / Pull / Legs</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Push / Pull / Legs</p>
                       <ChartLegend counts={ppl} colors={PPL_COLORS} />
                     </div>
                   </div>
@@ -774,7 +774,7 @@ export default function ProgrammeReviewPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <DonutChart counts={body} colors={BODY_COLORS} size={90} />
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Body Part Split</p>
+                      <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Body Part Split</p>
                       <ChartLegend counts={body} colors={BODY_COLORS} />
                     </div>
                   </div>
@@ -787,7 +787,7 @@ export default function ProgrammeReviewPage() {
         {/* Previous reports */}
         {savedReports.length > 0 && (
           <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-            <label className="text-xs uppercase tracking-wider block mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+            <label className="text-xs uppercase tracking-wider block mb-3" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
               <Clock size={11} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} />
               Previous AI Coach Reports
             </label>
@@ -796,7 +796,7 @@ export default function ProgrammeReviewPage() {
                 value={selectedReport}
                 onChange={e => handleSelectReport(e.target.value)}
                 className="flex-1 px-4 py-3 rounded-xl text-sm outline-none"
-                style={{ background: '#242424', border: '1px solid #2E2E2E', color: selectedReport ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif' }}
+                style={{ background: '#242424', border: '1px solid #2E2E2E', color: selectedReport ? '#F5F5F5' : '#606060', fontFamily: 'var(--font-sans)' }}
               >
                 <option value="">— select a saved report —</option>
                 {savedReports.map(r => (
@@ -825,8 +825,8 @@ export default function ProgrammeReviewPage() {
             className="w-full flex items-center justify-between px-5 py-4 text-left"
           >
             <div>
-              <p className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>Additional Context <span style={{ color: '#606060', fontWeight: 400 }}>(optional but recommended)</span></p>
-              <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Goals, age, bodyweight, injuries, 1RMs, race times, sleep, nutrition</p>
+              <p className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>Additional Context <span style={{ color: '#606060', fontWeight: 400 }}>(optional but recommended)</span></p>
+              <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Goals, age, bodyweight, injuries, 1RMs, race times, sleep, nutrition</p>
             </div>
             {showContext ? <ChevronUp size={16} style={{ color: '#606060' }} /> : <ChevronDown size={16} style={{ color: '#606060' }} />}
           </button>
@@ -838,7 +838,7 @@ export default function ProgrammeReviewPage() {
                 placeholder={`e.g. Goal: run a sub-4hr marathon in 16 weeks\nAge: 32, Bodyweight: 82kg, Training age: 3 years\nCurrent 1RMs: Squat 120kg, Bench 90kg, Deadlift 160kg\nRecent 5K: 24:30 | Recent half marathon: 2:05\nSleep: 7hrs avg | No current injuries\nNutrition: ~3000 kcal/day, ~180g protein`}
                 rows={7}
                 className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
-                style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif', lineHeight: '1.6' }}
+                style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'var(--font-sans)', lineHeight: '1.6' }}
               />
             </div>
           )}
@@ -852,7 +852,7 @@ export default function ProgrammeReviewPage() {
           style={{
             background: loading || !selectedProg ? '#1A1A1A' : '#00BFA5',
             color: loading || !selectedProg ? '#3E3E3E' : '#0D0D0D',
-            fontFamily: 'Montserrat, sans-serif',
+            fontFamily: 'var(--font-heading)',
             cursor: loading || !selectedProg ? 'not-allowed' : 'pointer',
           }}
         >
@@ -860,14 +860,14 @@ export default function ProgrammeReviewPage() {
           {loading ? 'Generating Review…' : 'Generate AI Review'}
         </button>
         {aiUsesLabel() && !loading && (
-          <p style={{ textAlign: 'center', fontSize: '11px', color: '#606060', marginTop: '6px', fontFamily: 'Inter, sans-serif' }}>{aiUsesLabel()}</p>
+          <p style={{ textAlign: 'center', fontSize: '11px', color: '#606060', marginTop: '6px', fontFamily: 'var(--font-sans)' }}>{aiUsesLabel()}</p>
         )}
 
         {/* Error */}
         {error && (
           <div className="flex items-start gap-3 px-4 py-3 rounded-xl" style={{ background: '#C8102E18', border: '1px solid #C8102E44' }}>
             <AlertCircle size={16} style={{ color: '#C8102E', flexShrink: 0, marginTop: 2 }} />
-            <p className="text-sm" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>{error}</p>
+            <p className="text-sm" style={{ color: '#C8102E', fontFamily: 'var(--font-sans)' }}>{error}</p>
           </div>
         )}
 
@@ -876,10 +876,10 @@ export default function ProgrammeReviewPage() {
           <div className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
             <div className="flex items-center gap-2 mb-4 pb-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
               <Sparkles size={14} style={{ color: '#00BFA5' }} />
-              <span className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>AI Coach Review</span>
+              <span className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>AI Coach Review</span>
               {loading
-                ? <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Analysing…</span>
-                : selectedReport && (() => { const r = savedReports.find(x => x.id === selectedReport); return r ? <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{r.programmeName} · {new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span> : null })()
+                ? <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Analysing…</span>
+                : selectedReport && (() => { const r = savedReports.find(x => x.id === selectedReport); return r ? <span className="text-xs ml-auto" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{r.programmeName} · {new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span> : null })()
               }
             </div>
             <MarkdownBlock text={review} />
@@ -900,7 +900,7 @@ export default function ProgrammeReviewPage() {
                 width: '100%', padding: '16px', borderRadius: '14px', border: 'none',
                 background: revampDone ? '#14532D' : revampLoading ? '#1A1527' : '#7C3AED',
                 color: revampDone ? '#4ADE80' : revampLoading ? '#6B7280' : '#F5F5F5',
-                fontWeight: 800, fontSize: '15px', fontFamily: 'Montserrat, sans-serif',
+                fontWeight: 800, fontSize: '15px', fontFamily: 'var(--font-heading)',
                 cursor: revampLoading || revampDone ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                 transition: 'all 0.2s',

@@ -85,7 +85,7 @@ export default function BuilderPage() {
       <div className="pt-16 pb-8" style={{ background: '#0A0A0A', borderBottom: '1px solid #1A1A1A' }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8">
           <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5' }}>Programme Builder</p>
-          <h1 className="text-5xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h1 className="text-5xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Build Your Hybrid Plan
           </h1>
 
@@ -100,17 +100,17 @@ export default function BuilderPage() {
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all"
                     style={{
-                      background: step > s ? '#00BFA5' : step === s ? 'rgba(0,229,200,0.15)' : '#1A1A1A',
+                      background: step > s ? '#00BFA5' : step === s ? 'rgba(0,191,165,0.15)' : '#1A1A1A',
                       color: step > s ? '#0D0D0D' : step === s ? '#00BFA5' : '#606060',
                       border: step === s ? '2px solid #00BFA5' : '2px solid #2E2E2E',
-                      fontFamily: 'JetBrains Mono, monospace',
+                      fontFamily: 'var(--font-mono)',
                     }}
                   >
                     {step > s ? <Check size={14} /> : s}
                   </div>
                   <span
                     className="text-xs hidden sm:block"
-                    style={{ color: step === s ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif' }}
+                    style={{ color: step === s ? '#F5F5F5' : '#606060', fontFamily: 'var(--font-sans)' }}
                   >
                     {['Lift Split', 'Run Structure', 'Conflict Check', 'Review & Save'][s - 1]}
                   </span>
@@ -127,7 +127,7 @@ export default function BuilderPage() {
         {/* STEP 1: LIFT SPLIT */}
         {step === 1 && (
           <div>
-            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               Choose Your Lift Split
             </h2>
             <p className="text-sm mb-8" style={{ color: '#A0A0A0' }}>Select a training split that matches your schedule and goals.</p>
@@ -139,16 +139,16 @@ export default function BuilderPage() {
                   onClick={() => setSelectedLift(split.id)}
                   className="text-left rounded-xl p-5 transition-all"
                   style={{
-                    background: selectedLift === split.id ? 'rgba(0,229,200,0.08)' : '#1A1A1A',
+                    background: selectedLift === split.id ? 'rgba(0,191,165,0.08)' : '#1A1A1A',
                     border: selectedLift === split.id ? '2px solid #00BFA5' : '1px solid #2E2E2E',
                   }}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                      <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                         {split.name}
                       </h3>
-                      <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                         {split.days}
                       </span>
                     </div>
@@ -164,10 +164,10 @@ export default function BuilderPage() {
                         key={i}
                         className="flex-1 py-1.5 rounded text-center"
                         style={{
-                          background: day === 'Rest' ? '#242424' : 'rgba(0,229,200,0.12)',
+                          background: day === 'Rest' ? '#242424' : 'rgba(0,191,165,0.12)',
                           fontSize: '8px',
                           color: day === 'Rest' ? '#606060' : '#00BFA5',
-                          fontFamily: 'JetBrains Mono, monospace',
+                          fontFamily: 'var(--font-mono)',
                           fontWeight: 700,
                         }}
                       >
@@ -191,7 +191,7 @@ export default function BuilderPage() {
                 style={{
                   background: selectedLift ? '#00BFA5' : '#2E2E2E',
                   color: selectedLift ? '#0D0D0D' : '#606060',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                   opacity: selectedLift ? 1 : 0.6,
                 }}
               >
@@ -204,7 +204,7 @@ export default function BuilderPage() {
         {/* STEP 2: RUN STRUCTURE */}
         {step === 2 && (
           <div>
-            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               Choose Run Structure
             </h2>
             <p className="text-sm mb-8" style={{ color: '#A0A0A0' }}>How many runs per week and what types?</p>
@@ -216,16 +216,16 @@ export default function BuilderPage() {
                   onClick={() => setSelectedRun(run.id)}
                   className="text-left rounded-xl p-5 transition-all"
                   style={{
-                    background: selectedRun === run.id ? 'rgba(255,107,53,0.08)' : '#1A1A1A',
+                    background: selectedRun === run.id ? 'rgba(200,16,46,0.08)' : '#1A1A1A',
                     border: selectedRun === run.id ? '2px solid #C8102E' : '1px solid #2E2E2E',
                   }}
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                      <h3 className="text-lg font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                         {run.name}
                       </h3>
-                      <span className="text-xs" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <span className="text-xs" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
                         {run.label}
                       </span>
                     </div>
@@ -241,10 +241,10 @@ export default function BuilderPage() {
                         key={i}
                         className="flex-1 py-1.5 rounded text-center"
                         style={{
-                          background: !day ? '#242424' : day === 'Long' ? 'rgba(255,107,53,0.2)' : day === 'Tempo' ? 'rgba(255,107,53,0.15)' : 'rgba(255,107,53,0.1)',
+                          background: !day ? '#242424' : day === 'Long' ? 'rgba(200,16,46,0.2)' : day === 'Tempo' ? 'rgba(200,16,46,0.15)' : 'rgba(200,16,46,0.1)',
                           fontSize: '8px',
                           color: !day ? '#606060' : '#C8102E',
-                          fontFamily: 'JetBrains Mono, monospace',
+                          fontFamily: 'var(--font-mono)',
                           fontWeight: 700,
                         }}
                       >
@@ -271,7 +271,7 @@ export default function BuilderPage() {
                 style={{
                   background: selectedRun ? '#00BFA5' : '#2E2E2E',
                   color: selectedRun ? '#0D0D0D' : '#606060',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                   opacity: selectedRun ? 1 : 0.6,
                 }}
               >
@@ -284,7 +284,7 @@ export default function BuilderPage() {
         {/* STEP 3: CONFLICT CHECK */}
         {step === 3 && (
           <div>
-            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               Conflict Check
             </h2>
             <p className="text-sm mb-8" style={{ color: '#A0A0A0' }}>
@@ -305,14 +305,14 @@ export default function BuilderPage() {
 
                   return (
                     <div key={i} className="flex flex-col gap-1.5">
-                      <div className="text-center text-xs font-bold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                      <div className="text-center text-xs font-bold" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                         {day}
                       </div>
 
                       {hasLift && (
                         <div
                           className="rounded py-2 text-center"
-                          style={{ background: 'rgba(0,229,200,0.12)', fontSize: '9px', color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}
+                          style={{ background: 'rgba(0,191,165,0.12)', fontSize: '9px', color: '#00BFA5', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
                         >
                           {liftDay}
                         </div>
@@ -321,7 +321,7 @@ export default function BuilderPage() {
                       {hasRun && (
                         <div
                           className="rounded py-2 text-center"
-                          style={{ background: 'rgba(255,107,53,0.12)', fontSize: '9px', color: '#C8102E', fontFamily: 'JetBrains Mono, monospace', fontWeight: 700 }}
+                          style={{ background: 'rgba(200,16,46,0.12)', fontSize: '9px', color: '#C8102E', fontFamily: 'var(--font-mono)', fontWeight: 700 }}
                         >
                           {runDay?.slice(0,3).toUpperCase()}
                         </div>
@@ -393,7 +393,7 @@ export default function BuilderPage() {
               <button
                 onClick={() => setStep(4)}
                 className="px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2"
-                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
               >
                 Next: Review <ChevronRight size={16} />
               </button>
@@ -404,7 +404,7 @@ export default function BuilderPage() {
         {/* STEP 4: REVIEW & SAVE */}
         {step === 4 && (
           <div>
-            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-3xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               Review & Save
             </h2>
             <p className="text-sm mb-8" style={{ color: '#A0A0A0' }}>Name your programme and save it to your library.</p>
@@ -420,7 +420,7 @@ export default function BuilderPage() {
                   onChange={e => setProgrammeName(e.target.value)}
                   placeholder="My Hybrid Programme"
                   className="w-full px-4 py-3 rounded-xl text-base outline-none"
-                  style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+                  style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
                 />
               </div>
 
@@ -428,28 +428,28 @@ export default function BuilderPage() {
                 className="rounded-xl p-5 space-y-3"
                 style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}
               >
-                <h4 className="text-sm font-bold uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Summary</h4>
+                <h4 className="text-sm font-bold uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Summary</h4>
                 <div className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid #2E2E2E' }}>
                   <span className="text-sm" style={{ color: '#A0A0A0' }}>Lift Split</span>
-                  <span className="text-sm font-semibold" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <span className="text-sm font-semibold" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                     {liftSplit?.name || '—'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid #2E2E2E' }}>
                   <span className="text-sm" style={{ color: '#A0A0A0' }}>Run Structure</span>
-                  <span className="text-sm font-semibold" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <span className="text-sm font-semibold" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
                     {runStructure?.name || '—'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2" style={{ borderBottom: '1px solid #2E2E2E' }}>
                   <span className="text-sm" style={{ color: '#A0A0A0' }}>Conflicts</span>
-                  <span className="text-sm font-semibold" style={{ color: conflicts.some(c => c === 'conflict') ? '#EF4444' : conflicts.some(c => c === 'risky') ? '#F59E0B' : '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <span className="text-sm font-semibold" style={{ color: conflicts.some(c => c === 'conflict') ? '#EF4444' : conflicts.some(c => c === 'risky') ? '#F59E0B' : '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                     {conflicts.filter(c => c === 'conflict').length} high, {conflicts.filter(c => c === 'risky').length} risky
                   </span>
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-sm" style={{ color: '#A0A0A0' }}>Est. Weekly Time</span>
-                  <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
                     ~{totalHours.toFixed(1)} hrs/week
                   </span>
                 </div>
@@ -463,14 +463,14 @@ export default function BuilderPage() {
                     background: saved ? '#1A1A1A' : '#00BFA5',
                     color: saved ? '#00BFA5' : '#0D0D0D',
                     border: saved ? '1px solid #00BFA5' : 'none',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-sans)',
                   }}
                 >
                   {saved ? '✓ Saved to Library!' : 'Save Programme'}
                 </button>
                 <button
                   className="flex-1 py-3 rounded-xl text-sm font-bold"
-                  style={{ background: '#1A1A1A', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+                  style={{ background: '#1A1A1A', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
                 >
                   Download as PDF (soon)
                 </button>

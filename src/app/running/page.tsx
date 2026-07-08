@@ -204,7 +204,7 @@ export default function RunningPage() {
       <div
         className="pt-16 pb-12"
         style={{
-          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,107,53,0.08) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(200,16,46,0.08) 0%, transparent 70%)',
           borderBottom: '1px solid #1A1A1A',
         }}
       >
@@ -212,7 +212,7 @@ export default function RunningPage() {
           <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#C8102E' }}>Running Hub</p>
           <h1
             className="text-6xl font-black uppercase mb-3"
-            style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
+            style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
           >
             YOUR RUNNING HQ
           </h1>
@@ -241,7 +241,7 @@ export default function RunningPage() {
               onMouseLeave={e => (e.currentTarget.style.borderColor = '#2E2E2E')}
             >
               <div className="w-3 h-3 rounded-full mx-auto mb-2" style={{ background: color }} />
-              <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{label}</span>
+              <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{label}</span>
             </a>
           ))}
         </div>
@@ -249,7 +249,7 @@ export default function RunningPage() {
         {/* PACE CALCULATOR */}
         <div id="pace-calc" className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-3xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-3xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               Pace Calculator
             </h2>
             <div className="flex rounded overflow-hidden" style={{ border: '1px solid #2E2E2E' }}>
@@ -281,7 +281,7 @@ export default function RunningPage() {
                 onChange={e => setPaceDistance(e.target.value)}
                 placeholder={paceUnit === 'km' ? '10' : '6.2'}
                 className="w-full px-3 py-3 rounded outline-none text-center"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
               />
             </div>
             <div>
@@ -294,7 +294,7 @@ export default function RunningPage() {
                 onChange={e => setPaceTime(e.target.value)}
                 placeholder="55:20"
                 className="w-full px-3 py-3 rounded outline-none text-center"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
               />
             </div>
             <div>
@@ -307,7 +307,7 @@ export default function RunningPage() {
                 onChange={e => setPacePace(e.target.value)}
                 placeholder="8:55"
                 className="w-full px-3 py-3 rounded outline-none text-center"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
               />
             </div>
           </div>
@@ -315,7 +315,7 @@ export default function RunningPage() {
           {calcPace && (
             <div className="rounded-lg p-4 mb-4" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
               <p className="text-xs mb-1" style={{ color: '#606060' }}>Calculated Pace</p>
-              <p className="text-3xl font-bold" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>
+              <p className="text-3xl font-bold" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
                 {calcPace} <span className="text-base" style={{ color: '#606060' }}>/{paceUnit}</span>
               </p>
             </div>
@@ -334,9 +334,9 @@ export default function RunningPage() {
                 <tbody>
                   {splits.map(s => (
                     <tr key={s.unit} style={{ borderBottom: '1px solid #1A1A1A' }}>
-                      <td className="py-2 px-3 font-bold" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{s.unit}</td>
-                      <td className="py-2 px-3 text-right" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>{s.split}</td>
-                      <td className="py-2 px-3 text-right" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{s.cumulative}</td>
+                      <td className="py-2 px-3 font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{s.unit}</td>
+                      <td className="py-2 px-3 text-right" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>{s.split}</td>
+                      <td className="py-2 px-3 text-right" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{s.cumulative}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -347,7 +347,7 @@ export default function RunningPage() {
 
         {/* VDOT TOOL */}
         <div id="vdot" className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-          <h2 className="text-3xl font-black uppercase mb-6" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h2 className="text-3xl font-black uppercase mb-6" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             VDOT Estimator & Training Paces
           </h2>
 
@@ -361,9 +361,9 @@ export default function RunningPage() {
                     onClick={() => setVdotDistance(d.label)}
                     className="px-3 py-2 rounded text-sm font-medium"
                     style={{
-                      background: vdotDistance === d.label ? 'rgba(0,229,200,0.12)' : '#242424',
+                      background: vdotDistance === d.label ? 'rgba(0,191,165,0.12)' : '#242424',
                       color: vdotDistance === d.label ? '#00BFA5' : '#A0A0A0',
-                      border: vdotDistance === d.label ? '1px solid rgba(0,229,200,0.3)' : '1px solid #2E2E2E',
+                      border: vdotDistance === d.label ? '1px solid rgba(0,191,165,0.3)' : '1px solid #2E2E2E',
                     }}
                   >
                     {d.label}
@@ -379,7 +379,7 @@ export default function RunningPage() {
                 onChange={e => setVdotTime(e.target.value)}
                 placeholder="45:00 or 1:45:00"
                 className="w-full px-3 py-3 rounded outline-none"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
               />
             </div>
           </div>
@@ -387,7 +387,7 @@ export default function RunningPage() {
           {calcVdot && calcVdot > 20 && trainingPaces && (
             <div>
               <div className="flex items-center gap-4 mb-4">
-                <div className="text-5xl font-black" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                <div className="text-5xl font-black" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                   {calcVdot}
                 </div>
                 <div>
@@ -418,7 +418,7 @@ export default function RunningPage() {
                       <span className="text-sm font-semibold" style={{ color: '#F5F5F5' }}>{name}</span>
                       <span className="text-xs ml-2" style={{ color: '#606060' }}>{desc}</span>
                     </div>
-                    <span className="text-base font-bold" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>
+                    <span className="text-base font-bold" style={{ color, fontFamily: 'var(--font-mono)' }}>
                       {pace}/km
                     </span>
                   </div>
@@ -430,7 +430,7 @@ export default function RunningPage() {
 
         {/* RUN TYPE LIBRARY */}
         <div id="run-types">
-          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Run Type Library
           </h2>
           <div className="space-y-2">
@@ -447,7 +447,7 @@ export default function RunningPage() {
                   <div className="flex items-center gap-4">
                     <div className="w-1 h-8 rounded-full" style={{ background: rt.color }} />
                     <div>
-                      <h3 className="text-base font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '17px' }}>
+                      <h3 className="text-base font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', fontSize: '17px' }}>
                         {rt.name.toUpperCase()}
                       </h3>
                       <div className="flex gap-3 mt-0.5">
@@ -485,7 +485,7 @@ export default function RunningPage() {
 
         {/* STARTER PLANS */}
         <div>
-          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Starter Plans
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -495,10 +495,10 @@ export default function RunningPage() {
                 className="rounded-xl p-5"
                 style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}
               >
-                <h3 className="text-xl font-black uppercase mb-1" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                <h3 className="text-xl font-black uppercase mb-1" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                   {plan.name}
                 </h3>
-                <p className="text-xs mb-3" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>{plan.duration}</p>
+                <p className="text-xs mb-3" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>{plan.duration}</p>
                 <p className="text-sm mb-4 leading-relaxed" style={{ color: '#A0A0A0' }}>{plan.summary}</p>
                 <div className="space-y-1.5 mb-4">
                   {plan.weeks.map((w, i) => (
@@ -510,7 +510,7 @@ export default function RunningPage() {
                 </div>
                 <button
                   className="w-full py-2.5 rounded-lg text-sm font-semibold"
-                  style={{ background: '#C8102E', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+                  style={{ background: '#C8102E', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
                 >
                   View Full Plan
                 </button>
@@ -521,7 +521,7 @@ export default function RunningPage() {
 
         {/* ARTICLES */}
         <div>
-          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             From the Blog
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -559,7 +559,7 @@ export default function RunningPage() {
                 >
                   {article.category}
                 </span>
-                <h3 className="text-lg font-black mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5', lineHeight: 1.2 }}>
+                <h3 className="text-lg font-black mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5', lineHeight: 1.2 }}>
                   {article.title}
                 </h3>
                 <p className="text-sm leading-relaxed flex-1" style={{ color: '#A0A0A0' }}>{article.excerpt}</p>
@@ -574,7 +574,7 @@ export default function RunningPage() {
 
         {/* WEARABLE SYNC */}
         <div>
-          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Connect Your Wearable
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

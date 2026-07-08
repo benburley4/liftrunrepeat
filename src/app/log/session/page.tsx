@@ -203,13 +203,13 @@ function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: 
           value={seg.segmentType}
           onChange={e => onUpdateMeta(entryIdx, 'segmentType', e.target.value, lapIdx)}
           className="text-xs font-semibold rounded px-2 py-0.5 outline-none cursor-pointer flex-shrink-0"
-          style={{ background: `${segColor}20`, color: segColor, border: `1px solid ${segColor}40`, fontFamily: 'Inter, sans-serif' }}
+          style={{ background: `${segColor}20`, color: segColor, border: `1px solid ${segColor}40`, fontFamily: 'var(--font-sans)' }}
         >
           {RUN_SEGMENT_TYPES.map(t => <option key={t} value={t} style={{ background: '#1A1A1A', color: '#F5F5F5' }}>{t}</option>)}
         </select>
       ) : (
         <span className="text-xs font-semibold capitalize px-2 py-0.5 rounded flex-shrink-0"
-          style={{ background: `${segColor}20`, color: segColor, fontFamily: 'Inter, sans-serif' }}>
+          style={{ background: `${segColor}20`, color: segColor, fontFamily: 'var(--font-sans)' }}>
           {seg.segmentType}
         </span>
       )}
@@ -218,13 +218,13 @@ function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: 
           value={seg.metric}
           onChange={e => onUpdateMeta(entryIdx, 'metric', e.target.value, lapIdx)}
           className="text-xs rounded px-2 py-0.5 outline-none cursor-pointer flex-shrink-0"
-          style={{ background: '#242424', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+          style={{ background: '#242424', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
         >
           {RUN_METRICS.map(m => <option key={m} value={m} style={{ background: '#1A1A1A', color: '#F5F5F5' }}>{m}</option>)}
         </select>
       )}
       {plannedLabel && (
-        <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+        <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
           {plannedLabel}
         </span>
       )}
@@ -236,7 +236,7 @@ function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: 
           onChange={e => onUpdate(entryIdx, 'actualValue', seg.metric === 'time' ? formatTimeInput(e.target.value) : e.target.value, lapIdx)}
           placeholder={seg.metric === 'distance' ? '0.0' : '0:00'}
           className="w-16 text-center py-1.5 rounded text-xs outline-none"
-          style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+          style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
         />
         {unit && <span className="text-xs" style={{ color: '#606060' }}>{unit}</span>}
       </div>
@@ -248,7 +248,7 @@ function LoggedRunSegmentRow({ seg, entryIdx, lapIdx, onUpdate, onUpdateMeta }: 
             onChange={e => onUpdate(entryIdx, 'actualPace', formatTimeInput(e.target.value), lapIdx)}
             placeholder="5:30"
             className="w-16 text-center py-1.5 rounded text-xs outline-none"
-            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
           />
           <span className="text-xs" style={{ color: '#606060' }}>/km</span>
         </div>
@@ -543,11 +543,11 @@ export default function LogSessionPage() {
             </button>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-xs uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                 {dateStr}
               </span>
               {isToday && (
-                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#00BFA520', color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
+                <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#00BFA520', color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
                   Today
                 </span>
               )}
@@ -567,14 +567,14 @@ export default function LogSessionPage() {
               value={selectedIso}
               onChange={e => e.target.value && setSelectedIso(e.target.value)}
               className="text-xs px-2 py-1 rounded outline-none"
-              style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', colorScheme: 'dark', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+              style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', colorScheme: 'dark', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
             />
 
             {!isToday && (
               <button
                 onClick={() => setSelectedIso(todayIso())}
                 className="text-xs"
-                style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}
               >
                 Back to today
               </button>
@@ -588,7 +588,7 @@ export default function LogSessionPage() {
             placeholder="Session name..."
             className="w-full bg-transparent outline-none text-3xl font-black uppercase mt-2"
             style={{
-              fontFamily: 'Montserrat, sans-serif',
+              fontFamily: 'var(--font-heading)',
               color: '#F5F5F5',
               borderBottom: '1px solid #2E2E2E',
               paddingBottom: '4px',
@@ -600,7 +600,7 @@ export default function LogSessionPage() {
               <button
                 onClick={loadFirstSession}
                 className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
-                style={{ background: `${typeColor(firstPlan.cell.template.type)}15`, border: `1px solid ${typeColor(firstPlan.cell.template.type)}40`, color: typeColor(firstPlan.cell.template.type), fontFamily: 'Inter, sans-serif', cursor: 'pointer', opacity: 0.7 }}
+                style={{ background: `${typeColor(firstPlan.cell.template.type)}15`, border: `1px solid ${typeColor(firstPlan.cell.template.type)}40`, color: typeColor(firstPlan.cell.template.type), fontFamily: 'var(--font-sans)', cursor: 'pointer', opacity: 0.7 }}
                 title={`Switch back to session 1: ${firstPlan.cell.template.name}`}
               >
                 <Calendar size={12} />
@@ -608,7 +608,7 @@ export default function LogSessionPage() {
               </button>
             ) : todayPlan && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
-                style={{ background: `${typeColor(todayPlan.cell.template.type)}15`, border: `1px solid ${typeColor(todayPlan.cell.template.type)}40`, color: typeColor(todayPlan.cell.template.type), fontFamily: 'Inter, sans-serif' }}>
+                style={{ background: `${typeColor(todayPlan.cell.template.type)}15`, border: `1px solid ${typeColor(todayPlan.cell.template.type)}40`, color: typeColor(todayPlan.cell.template.type), fontFamily: 'var(--font-sans)' }}>
                 <Calendar size={12} />
                 <span>{todayPlan.progName} · Wk {todayPlan.week} · {todayPlan.dayName}{secondPlan ? ' — Session 1' : ''}</span>
               </div>
@@ -617,7 +617,7 @@ export default function LogSessionPage() {
                 non-clickable indicator when we're currently on session 2 (firstPlan is set) */}
             {firstPlan && todayPlan ? (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
-                style={{ background: '#A78BFA20', border: '1px solid #A78BFA60', color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>
+                style={{ background: '#A78BFA20', border: '1px solid #A78BFA60', color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>
                 <Calendar size={12} />
                 <span>{todayPlan.cell.template.name} — Session 2</span>
               </div>
@@ -625,7 +625,7 @@ export default function LogSessionPage() {
               <button
                 onClick={loadSecondSession}
                 className="flex items-center gap-2 px-3 py-1.5 rounded text-xs"
-                style={{ background: '#A78BFA15', border: '1px solid #A78BFA40', color: '#A78BFA', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                style={{ background: '#A78BFA15', border: '1px solid #A78BFA40', color: '#A78BFA', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
                 title={`Load session 2: ${secondPlan.cell.template.name}`}
               >
                 <Calendar size={12} />
@@ -635,7 +635,7 @@ export default function LogSessionPage() {
             <button
               onClick={() => { setShowTemplatePicker(true); setTemplateSearch('') }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold"
-              style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#9CA3AF', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+              style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#9CA3AF', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#00BFA5'; e.currentTarget.style.color = '#00BFA5' }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#9CA3AF' }}
             >
@@ -650,17 +650,17 @@ export default function LogSessionPage() {
         {/* No session planned — manual entry prompt */}
         {!todayPlan && loggedExercises.length === 0 && loggedRun.length === 0 && !loggedHike && (
           <div className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-            <p className="text-sm font-semibold mb-1" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>No session planned</p>
-            <p className="text-xs mb-5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Log a manual session for this day</p>
+            <p className="text-sm font-semibold mb-1" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>No session planned</p>
+            <p className="text-xs mb-5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Log a manual session for this day</p>
             <div className="flex gap-3 flex-wrap">
               <button onClick={() => openPicker('lift')}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
-                style={{ background: 'rgba(0,191,165,0.08)', color: '#00BFA5', border: '1px solid rgba(0,191,165,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                style={{ background: 'rgba(0,191,165,0.08)', color: '#00BFA5', border: '1px solid rgba(0,191,165,0.2)', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                 <Plus size={14} /> Add Lifting
               </button>
               <button onClick={() => openPicker('run')}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
-                style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                 <Plus size={14} /> Add Run
               </button>
             </div>
@@ -673,7 +673,7 @@ export default function LogSessionPage() {
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
               <span className="text-xs uppercase font-bold tracking-widest px-3"
-                style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>Lift Block</span>
+                style={{ color: '#00BFA5', fontFamily: 'var(--font-heading)', fontSize: '14px' }}>Lift Block</span>
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
             </div>
 
@@ -688,17 +688,17 @@ export default function LogSessionPage() {
                   <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid #2E2E2E', background: '#242424' }}>
                     <div className="flex items-center gap-2">
                       <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
-                      <span className="font-bold text-sm uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.05em' }}>{ex.exerciseName}</span>
+                      <span className="font-bold text-sm uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', letterSpacing: '0.05em' }}>{ex.exerciseName}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       {isBodyweightExercise(ex.exerciseName) && (
-                        <span className="text-xs px-2 py-0.5 rounded" style={{ color: '#A78BFA', background: '#A78BFA14', border: '1px solid #A78BFA33', fontFamily: 'JetBrains Mono, monospace' }}
+                        <span className="text-xs px-2 py-0.5 rounded" style={{ color: '#A78BFA', background: '#A78BFA14', border: '1px solid #A78BFA33', fontFamily: 'var(--font-mono)' }}
                           title="Share of bodyweight moved (set in the Library). Enter the weight column as ADDED weight — 0 = bodyweight.">
                           ≈{resolveBodyweightPct(ex.exerciseName, bwOverrides)}% BW
                         </span>
                       )}
                       {maxRM > 0 && (
-                        <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>Est. 1RM: {maxRM} kg</span>
+                        <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>Est. 1RM: {maxRM} kg</span>
                       )}
                       <button onClick={() => removeExercise(ex.id)}
                         style={{ background: 'none', border: 'none', color: '#3E3E3E', cursor: 'pointer', padding: '2px', lineHeight: 1, fontSize: 18 }}
@@ -730,25 +730,25 @@ export default function LogSessionPage() {
                             style={{ background: '#242424', color: '#606060', cursor: 'pointer' }}>
                             {si + 1}
                           </button>
-                          <div className="text-xs text-center set-planned" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                          <div className="text-xs text-center set-planned" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
                             {planned ? `${planned.reps}×${planned.weight}` : '—'}
                           </div>
                           <input type="number" value={set.reps} onChange={e => updateSet(ex.id, si, 'reps', e.target.value)}
                             placeholder="0" className="w-full text-center py-2 rounded text-sm outline-none"
-                            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }} />
+                            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }} />
                           <input type="number" value={set.weight} onChange={e => updateSet(ex.id, si, 'weight', e.target.value)}
                             placeholder="0" className="w-full text-center py-2 rounded text-sm outline-none"
-                            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }} />
+                            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }} />
                           <input type="number" value={set.rpe} onChange={e => updateSet(ex.id, si, 'rpe', e.target.value)}
                             placeholder="—" min="1" max="10" className="w-full text-center py-2 rounded text-sm outline-none"
-                            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }} />
+                            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }} />
                         </div>
                       )
                     })}
 
                     <button onClick={() => addSet(ex.id)}
                       className="flex items-center gap-1.5 text-xs mt-1 px-2 py-1.5 rounded"
-                      style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}
+                      style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,191,165,0.08)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                       <Plus size={12} /> Add Set
@@ -767,7 +767,7 @@ export default function LogSessionPage() {
                   onKeyDown={e => e.key === 'Escape' && (setShowAddEx(false), setAddExSearch(''))}
                   placeholder="Search exercises…"
                   className="w-full px-3 py-2.5 text-sm outline-none"
-                  style={{ background: '#242424', color: '#F5F5F5', border: 'none', borderBottom: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+                  style={{ background: '#242424', color: '#F5F5F5', border: 'none', borderBottom: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
                 />
                 <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
                   {allExercises
@@ -776,26 +776,26 @@ export default function LogSessionPage() {
                     .map(e => (
                       <button key={e.id} onClick={() => addExerciseFromLibrary(e.name)}
                         className="w-full text-left px-3 py-2 text-sm"
-                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #2E2E2E', color: '#D0D0D0', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                        style={{ background: 'transparent', border: 'none', borderBottom: '1px solid #2E2E2E', color: '#D0D0D0', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
                         onMouseEnter={el => (el.currentTarget.style.background = '#00BFA510', el.currentTarget.style.color = '#00BFA5')}
                         onMouseLeave={el => (el.currentTarget.style.background = 'transparent', el.currentTarget.style.color = '#D0D0D0')}>
                         {e.name}
                       </button>
                     ))}
                   {allExercises.filter(e => e.name.toLowerCase().includes(addExSearch.toLowerCase())).length === 0 && (
-                    <p className="px-3 py-3 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No exercises found</p>
+                    <p className="px-3 py-3 text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No exercises found</p>
                   )}
                 </div>
                 <button onClick={() => { setShowAddEx(false); setAddExSearch('') }}
                   className="w-full py-2 text-xs text-center"
-                  style={{ color: '#606060', fontFamily: 'Inter, sans-serif', cursor: 'pointer', background: '#141414', border: 'none', borderTop: '1px solid #2E2E2E' }}>
+                  style={{ color: '#606060', fontFamily: 'var(--font-sans)', cursor: 'pointer', background: '#141414', border: 'none', borderTop: '1px solid #2E2E2E' }}>
                   Cancel
                 </button>
               </div>
             ) : (
               <button onClick={() => setShowAddEx(true)}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
-                style={{ background: 'rgba(0,191,165,0.08)', color: '#00BFA5', border: '1px solid rgba(0,191,165,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                style={{ background: 'rgba(0,191,165,0.08)', color: '#00BFA5', border: '1px solid rgba(0,191,165,0.2)', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                 <Plus size={14} /> Add Exercise
               </button>
             )}
@@ -812,7 +812,7 @@ export default function LogSessionPage() {
             <div className="flex items-center gap-2">
               <input type="number" value={transitionTime} onChange={e => setTransitionTime(e.target.value)}
                 className="w-16 text-center py-2 rounded outline-none text-sm"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }} />
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }} />
               <span className="text-sm" style={{ color: '#606060' }}>min</span>
             </div>
           </div>
@@ -824,16 +824,16 @@ export default function LogSessionPage() {
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
               <span className="text-xs uppercase font-bold tracking-widest px-3"
-                style={{ color: '#84CC16', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>Hike Block</span>
+                style={{ color: '#84CC16', fontFamily: 'var(--font-heading)', fontSize: '14px' }}>Hike Block</span>
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
             </div>
             <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
               <div className="grid grid-cols-2" style={{ borderBottom: '1px solid #2E2E2E' }}>
                 {/* Distance */}
                 <div className="p-4" style={{ borderRight: '1px solid #2E2E2E' }}>
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Distance</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Distance</p>
                   {loggedHike.plannedKm && (
-                    <p className="text-xs mb-2" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <p className="text-xs mb-2" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
                       Planned: {loggedHike.plannedKm} km
                     </p>
                   )}
@@ -843,16 +843,16 @@ export default function LogSessionPage() {
                       value={loggedHike.actualKm}
                       onChange={e => setLoggedHike(h => h ? { ...h, actualKm: e.target.value } : h)}
                       className="w-20 text-center py-2 rounded text-sm outline-none"
-                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #84CC1640', fontFamily: 'JetBrains Mono, monospace' }}
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #84CC1640', fontFamily: 'var(--font-mono)' }}
                     />
                     <span className="text-xs" style={{ color: '#606060' }}>km</span>
                   </div>
                 </div>
                 {/* Elevation Gain */}
                 <div className="p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Elevation Gain</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Elevation Gain</p>
                   {loggedHike.plannedElevM && (
-                    <p className="text-xs mb-2" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <p className="text-xs mb-2" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
                       Planned: {loggedHike.plannedElevM} m
                     </p>
                   )}
@@ -862,7 +862,7 @@ export default function LogSessionPage() {
                       value={loggedHike.actualElevM}
                       onChange={e => setLoggedHike(h => h ? { ...h, actualElevM: e.target.value } : h)}
                       className="w-20 text-center py-2 rounded text-sm outline-none"
-                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #84CC1640', fontFamily: 'JetBrains Mono, monospace' }}
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #84CC1640', fontFamily: 'var(--font-mono)' }}
                     />
                     <span className="text-xs" style={{ color: '#606060' }}>m</span>
                   </div>
@@ -876,8 +876,8 @@ export default function LogSessionPage() {
                 const mins = hikeNaismith(km, elev, loggedHike.settings)
                 return (
                   <div className="px-4 py-3 flex items-center justify-between">
-                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Est. Duration (Naismith)</span>
-                    <span className="text-sm font-bold" style={{ color: '#84CC16', fontFamily: 'JetBrains Mono, monospace' }}>{fmtHikeDuration(mins)}</span>
+                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Est. Duration (Naismith)</span>
+                    <span className="text-sm font-bold" style={{ color: '#84CC16', fontFamily: 'var(--font-mono)' }}>{fmtHikeDuration(mins)}</span>
                   </div>
                 )
               })()}
@@ -891,7 +891,7 @@ export default function LogSessionPage() {
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
               <span className="text-xs uppercase font-bold tracking-widest px-3"
-                style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif', fontSize: '14px' }}>Run Block</span>
+                style={{ color: '#C8102E', fontFamily: 'var(--font-heading)', fontSize: '14px' }}>Run Block</span>
               <div className="flex-1 h-px" style={{ background: '#2E2E2E' }} />
             </div>
 
@@ -900,7 +900,7 @@ export default function LogSessionPage() {
                 return (
                   <div key={entry.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                     <div className="px-4 py-2" style={{ background: '#242424', borderBottom: '1px solid #2E2E2E' }}>
-                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif' }}>
+                      <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#C8102E', fontFamily: 'var(--font-heading)' }}>
                         ×{entry.count} Repeat
                       </span>
                     </div>
@@ -921,7 +921,7 @@ export default function LogSessionPage() {
 
             <button onClick={addManualRunSegment}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
-              style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+              style={{ background: 'rgba(200,16,46,0.08)', color: '#C8102E', border: '1px solid rgba(200,16,46,0.2)', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
               <Plus size={14} /> Add Segment
             </button>
           </div>
@@ -932,7 +932,7 @@ export default function LogSessionPage() {
           className="sticky bottom-0 -mx-4 sm:-mx-6 px-4 sm:px-6 py-4 flex items-center justify-between gap-4"
           style={{ background: 'rgba(13,13,13,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2E2E2E' }}
         >
-          <button className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <button className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Discard
           </button>
           <div className="flex items-center gap-3">
@@ -940,7 +940,7 @@ export default function LogSessionPage() {
               <button
                 onClick={loadFirstSession}
                 className="px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2"
-                style={{ background: `${typeColor(firstPlan.cell.template.type)}20`, color: typeColor(firstPlan.cell.template.type), border: `1px solid ${typeColor(firstPlan.cell.template.type)}40`, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                style={{ background: `${typeColor(firstPlan.cell.template.type)}20`, color: typeColor(firstPlan.cell.template.type), border: `1px solid ${typeColor(firstPlan.cell.template.type)}40`, fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
               >
                 ↩ Back to 1st Session
               </button>
@@ -949,7 +949,7 @@ export default function LogSessionPage() {
               <button
                 onClick={loadSecondSession}
                 className="px-5 py-3 rounded-xl text-sm font-bold flex items-center gap-2"
-                style={{ background: '#A78BFA20', color: '#A78BFA', border: '1px solid #A78BFA40', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
+                style={{ background: '#A78BFA20', color: '#A78BFA', border: '1px solid #A78BFA40', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
               >
                 ↗ Log 2nd Session
               </button>
@@ -961,7 +961,7 @@ export default function LogSessionPage() {
                 background: saved ? '#1A1A1A' : '#00BFA5',
                 color: saved ? '#00BFA5' : '#0D0D0D',
                 border: saved ? '1px solid #00BFA5' : 'none',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-sans)',
               }}
             >
               {saved ? (
@@ -989,7 +989,7 @@ export default function LogSessionPage() {
             {/* Modal header */}
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #2E2E2E' }}>
               <span className="text-sm font-bold uppercase tracking-wider"
-                style={{ color: pickerType === 'lift' ? '#00BFA5' : '#C8102E', fontFamily: 'Montserrat, sans-serif' }}>
+                style={{ color: pickerType === 'lift' ? '#00BFA5' : '#C8102E', fontFamily: 'var(--font-heading)' }}>
                 {pickerType === 'lift' ? 'Choose Lifting Template' : 'Choose Run Template'}
               </span>
               <button onClick={() => setShowPicker(false)} style={{ color: '#606060', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
@@ -1000,7 +1000,7 @@ export default function LogSessionPage() {
               {library
                 .filter(t => pickerType === 'lift' ? (t.type === 'lift' || t.type === 'hybrid') : (t.type === 'run' || t.type === 'hybrid'))
                 .length === 0 && (
-                <p className="text-sm text-center py-6" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm text-center py-6" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   No {pickerType} templates in your library yet.
                 </p>
               )}
@@ -1013,19 +1013,19 @@ export default function LogSessionPage() {
                     onMouseEnter={e => (e.currentTarget.style.borderColor = pickerType === 'lift' ? '#00BFA544' : '#C8102E44')}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = '#2E2E2E')}>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{tpl.name}</span>
+                      <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{tpl.name}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: `${typeColor(tpl.type as TemplateKind)}20`, color: typeColor(tpl.type as TemplateKind), fontFamily: 'Inter, sans-serif' }}>
+                        style={{ background: `${typeColor(tpl.type as TemplateKind)}20`, color: typeColor(tpl.type as TemplateKind), fontFamily: 'var(--font-sans)' }}>
                         {typeLabel(tpl.type as TemplateKind)}
                       </span>
                     </div>
                     {tpl.exerciseRows && tpl.exerciseRows.length > 0 && (
-                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                         {tpl.exerciseRows.slice(0, 4).map(e => e.exerciseName).join(' · ')}{tpl.exerciseRows.length > 4 ? ` +${tpl.exerciseRows.length - 4} more` : ''}
                       </p>
                     )}
                     {tpl.runRows && tpl.runRows.length > 0 && (
-                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                         {tpl.runRows.length} segment{tpl.runRows.length !== 1 ? 's' : ''}
                       </p>
                     )}
@@ -1036,7 +1036,7 @@ export default function LogSessionPage() {
               <button onClick={() => { pickerType === 'lift' ? setShowAddEx(true) : addManualRunSegment(); setShowPicker(false) }}
                 className="w-full text-left px-4 py-3 rounded-xl"
                 style={{ background: 'transparent', border: '1px dashed #2E2E2E', cursor: 'pointer' }}>
-                <span className="text-sm flex items-center gap-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <span className="text-sm flex items-center gap-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   <Plus size={13} /> Start blank
                 </span>
               </button>
@@ -1056,7 +1056,7 @@ export default function LogSessionPage() {
 
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid #2E2E2E' }}>
               <span className="text-sm font-bold uppercase tracking-wider"
-                style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif' }}>Use Template</span>
+                style={{ color: '#00BFA5', fontFamily: 'var(--font-heading)' }}>Use Template</span>
               <button onClick={() => { setShowTemplatePicker(false); setTemplateSearch('') }}
                 style={{ color: '#606060', background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
             </div>
@@ -1067,7 +1067,7 @@ export default function LogSessionPage() {
                 value={templateSearch} onChange={e => setTemplateSearch(e.target.value)}
                 placeholder="Search templates…"
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
               />
             </div>
 
@@ -1075,7 +1075,7 @@ export default function LogSessionPage() {
               {library
                 .filter(t => !templateSearch || t.name.toLowerCase().includes(templateSearch.toLowerCase()))
                 .length === 0 && (
-                <p className="text-sm text-center py-6" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm text-center py-6" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   No templates found.
                 </p>
               )}
@@ -1088,19 +1088,19 @@ export default function LogSessionPage() {
                     onMouseEnter={e => (e.currentTarget.style.borderColor = '#00BFA544')}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = '#2E2E2E')}>
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{tpl.name}</span>
+                      <span className="text-sm font-semibold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{tpl.name}</span>
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                        style={{ background: `${typeColor(tpl.type as TemplateKind)}20`, color: typeColor(tpl.type as TemplateKind), fontFamily: 'Inter, sans-serif' }}>
+                        style={{ background: `${typeColor(tpl.type as TemplateKind)}20`, color: typeColor(tpl.type as TemplateKind), fontFamily: 'var(--font-sans)' }}>
                         {typeLabel(tpl.type as TemplateKind)}
                       </span>
                     </div>
                     {tpl.exerciseRows && tpl.exerciseRows.length > 0 && (
-                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                         {tpl.exerciseRows.slice(0, 4).map(e => e.exerciseName).join(' · ')}{tpl.exerciseRows.length > 4 ? ` +${tpl.exerciseRows.length - 4} more` : ''}
                       </p>
                     )}
                     {tpl.runRows && tpl.runRows.length > 0 && (
-                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                      <p className="text-xs mt-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                         {tpl.runRows.length} segment{tpl.runRows.length !== 1 ? 's' : ''}
                       </p>
                     )}

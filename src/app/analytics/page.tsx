@@ -16,7 +16,7 @@ import QuickLogFAB from '@/components/log/QuickLogFAB'
 type TabId = 'overview' | 'ai-coach' | 'prs' | 'history' | 'strength' | 'running' | 'hybrid'
 
 const chartTooltipStyle = {
-  contentStyle: { background: '#242424', border: '1px solid #2E2E2E', borderRadius: '8px', fontFamily: 'Inter, sans-serif' },
+  contentStyle: { background: '#242424', border: '1px solid #2E2E2E', borderRadius: '8px', fontFamily: 'var(--font-sans)' },
   labelStyle: { color: '#F5F5F5', fontSize: 11 },
   itemStyle: { fontSize: 11 },
 }
@@ -37,9 +37,9 @@ function RunRow({ lap, editing, onUpdate }: {
   return (
     <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
       <span className="text-xs font-semibold capitalize px-2 py-0.5 rounded flex-shrink-0"
-        style={{ background: '#C8102E20', color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>{lap.segmentType}</span>
+        style={{ background: '#C8102E20', color: '#C8102E', fontFamily: 'var(--font-sans)' }}>{lap.segmentType}</span>
       {lap.plannedValue && (
-        <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+        <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
           {lap.plannedValue}{unit ? ' ' + unit : ''}{lap.plannedPace ? ` @ ${lap.plannedPace}/km` : ''} →
         </span>
       )}
@@ -48,9 +48,9 @@ function RunRow({ lap, editing, onUpdate }: {
           <input type={lap.metric === 'time' ? 'text' : 'number'} value={lap.actualValue}
             onChange={e => onUpdate('actualValue', e.target.value)}
             className="w-16 text-center py-1.5 rounded text-xs outline-none"
-            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'JetBrains Mono, monospace' }} />
+            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'var(--font-mono)' }} />
         ) : (
-          <span className="text-sm font-semibold" style={{ color: lap.actualValue ? '#F5F5F5' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="text-sm font-semibold" style={{ color: lap.actualValue ? '#F5F5F5' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
             {lap.actualValue || '—'}
           </span>
         )}
@@ -61,9 +61,9 @@ function RunRow({ lap, editing, onUpdate }: {
           {editing ? (
             <input type="text" value={lap.actualPace} onChange={e => onUpdate('actualPace', e.target.value)}
               placeholder="5:30" className="w-16 text-center py-1.5 rounded text-xs outline-none"
-              style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'JetBrains Mono, monospace' }} />
+              style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'var(--font-mono)' }} />
           ) : (
-            <span className="text-sm font-semibold" style={{ color: lap.actualPace ? '#F5F5F5' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+            <span className="text-sm font-semibold" style={{ color: lap.actualPace ? '#F5F5F5' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
               {lap.actualPace || '—'}
             </span>
           )}
@@ -422,7 +422,7 @@ export default function AnalyticsPage() {
         return (
           <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: '50%', background: bulletColor, flexShrink: 0, marginTop: 6 }} />
-            <p style={{ color: '#A0A0A0', fontSize: 13, lineHeight: 1.6, fontFamily: 'Inter, sans-serif', margin: 0 }}>
+            <p style={{ color: '#A0A0A0', fontSize: 13, lineHeight: 1.6, fontFamily: 'var(--font-sans)', margin: 0 }}>
               {parts.map((p, pi) => pi % 2 === 1
                 ? <strong key={pi} style={{ color: '#F5F5F5', fontWeight: 600 }}>{p}</strong>
                 : p
@@ -433,7 +433,7 @@ export default function AnalyticsPage() {
       })
       return (
         <div key={idx} className="rounded-xl p-5" style={{ background: '#1A1A1A', border: `1px solid ${borderColor}` }}>
-          <p className="text-xs font-black uppercase mb-3" style={{ color: titleColor, fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.08em' }}>{title}</p>
+          <p className="text-xs font-black uppercase mb-3" style={{ color: titleColor, fontFamily: 'var(--font-heading)', letterSpacing: '0.08em' }}>{title}</p>
           <div>{bullets}</div>
         </div>
       )
@@ -832,7 +832,7 @@ export default function AnalyticsPage() {
       <div className="pt-16 pb-6" style={{ background: '#0A0A0A', borderBottom: '1px solid #1A1A1A' }}>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
           <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5' }}>Dashboard</p>
-          <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Analytics
           </h1>
         </div>
@@ -876,7 +876,7 @@ export default function AnalyticsPage() {
                 <span className="text-xs uppercase tracking-wider" style={{ color: '#606060' }}>{label}</span>
                 <Icon size={14} style={{ color: accent }} />
               </div>
-              <div className="text-2xl font-bold" style={{ color: accent, fontFamily: 'JetBrains Mono, monospace' }}>
+              <div className="text-2xl font-bold" style={{ color: accent, fontFamily: 'var(--font-mono)' }}>
                 {value}
               </div>
               <div className="text-xs mt-1" style={{ color: '#606060' }}>{sub}</div>
@@ -890,7 +890,7 @@ export default function AnalyticsPage() {
             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
             <span style={{ fontSize: 18 }}>⚠</span>
             <div>
-              <span className="text-sm font-bold" style={{ color: '#EF4444', fontFamily: 'Montserrat, sans-serif' }}>HIGH LOAD WARNING</span>
+              <span className="text-sm font-bold" style={{ color: '#EF4444', fontFamily: 'var(--font-heading)' }}>HIGH LOAD WARNING</span>
               <span className="text-xs ml-2" style={{ color: '#A0A0A0' }}>This week&apos;s volume is &gt;30% above last week — injury risk is elevated. Consider dropping 1–2 sessions or reducing intensity.</span>
             </div>
           </div>
@@ -906,7 +906,7 @@ export default function AnalyticsPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className="px-4 py-4 text-sm font-medium transition-colors relative"
-                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
+                style={{ color: activeTab === tab.id ? '#F5F5F5' : '#606060', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}
               >
                 {tab.label}
                 {activeTab === tab.id && (
@@ -929,11 +929,11 @@ export default function AnalyticsPage() {
               return (
                 <div
                   className="rounded-xl px-5 py-4 flex items-center gap-3"
-                  style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)' }}
+                  style={{ background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.2)' }}
                 >
                   <Trophy size={20} style={{ color: '#C8102E' }} />
                   <div>
-                    <span className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '16px' }}>
+                    <span className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', fontSize: '16px' }}>
                       BEST LIFT:
                     </span>
                     <span className="text-sm ml-2" style={{ color: '#F5F5F5' }}>{latest.exercise} — {latest.pr}</span>
@@ -952,17 +952,17 @@ export default function AnalyticsPage() {
             {/* Readiness factor breakdown */}
             {overviewStats.tsbFactors.length > 0 && (
               <div className="rounded-xl p-4" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>
+                <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>
                   Readiness Breakdown — {overviewStats.tsb}%
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {overviewStats.tsbFactors.map(f => (
                     <div key={f.name} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
                       style={{ background: f.points > 0 ? 'rgba(0,191,165,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${f.points > 0 ? 'rgba(0,191,165,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-                      <span className="text-xs font-semibold" style={{ color: f.points > 0 ? '#00BFA5' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>
+                      <span className="text-xs font-semibold" style={{ color: f.points > 0 ? '#00BFA5' : '#EF4444', fontFamily: 'var(--font-mono)' }}>
                         {f.points > 0 ? `+${f.points}` : f.points}
                       </span>
-                      <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{f.name}</span>
+                      <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{f.name}</span>
                     </div>
                   ))}
                 </div>
@@ -971,7 +971,7 @@ export default function AnalyticsPage() {
 
             {/* Heatmap + breakdown charts */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Training Consistency — Last 6 Months
               </h3>
               <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1005,8 +1005,8 @@ export default function AnalyticsPage() {
                         {slices.map(d => (
                           <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                            <span style={{ fontSize: 11, color: '#A0A0A0', fontFamily: 'Inter, sans-serif', flex: 1 }}>{d.label}</span>
-                            <span style={{ fontSize: 11, color: '#606060', fontFamily: 'JetBrains Mono, monospace', paddingLeft: 6 }}>
+                            <span style={{ fontSize: 11, color: '#A0A0A0', fontFamily: 'var(--font-sans)', flex: 1 }}>{d.label}</span>
+                            <span style={{ fontSize: 11, color: '#606060', fontFamily: 'var(--font-mono)', paddingLeft: 6 }}>
                               {Math.round((d.value / total) * 100)}%
                             </span>
                           </div>
@@ -1017,14 +1017,14 @@ export default function AnalyticsPage() {
                   return (
                     <div style={{ display: 'flex', flexDirection: 'row', gap: 32, flexShrink: 0, alignItems: 'flex-start' }}>
                       <div>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Push / Pull / Legs</p>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Push / Pull / Legs</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <MiniDonut slices={sessionBreakdown.pplSlices} size={120} />
                           <Legend slices={sessionBreakdown.pplSlices} />
                         </div>
                       </div>
                       <div style={{ borderLeft: '1px solid #2E2E2E', paddingLeft: 32 }}>
-                        <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'Montserrat, sans-serif', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Body Part Split</p>
+                        <p style={{ fontSize: 10, fontWeight: 700, color: '#A0A0A0', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>Body Part Split</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                           <MiniDonut slices={sessionBreakdown.bodySlices} size={120} />
                           <Legend slices={sessionBreakdown.bodySlices} />
@@ -1048,7 +1048,7 @@ export default function AnalyticsPage() {
               return (
                 <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                   <div className="px-5 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
-                    <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                    <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                       Recent Sessions
                     </h3>
                   </div>
@@ -1060,11 +1060,11 @@ export default function AnalyticsPage() {
                         style={{ borderBottom: i < recent.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
                         <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ background: col }} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{s.name}</p>
+                          <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{s.name}</p>
                           <p className="text-xs mt-0.5" style={{ color: '#606060' }}>{dateLabel}</p>
                         </div>
                         <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
-                          style={{ background: `${col}22`, color: col, fontFamily: 'Inter, sans-serif' }}>
+                          style={{ background: `${col}22`, color: col, fontFamily: 'var(--font-sans)' }}>
                           {s.type}
                         </span>
                       </div>
@@ -1084,11 +1084,11 @@ export default function AnalyticsPage() {
             <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
               <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #2E2E2E', background: '#242424' }}>
                 <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
-                <h3 className="text-base font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Lift</h3>
+                <h3 className="text-base font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Lift</h3>
               </div>
               {!strengthData || strengthData.prs.length === 0 ? (
                 <div className="px-5 py-8 text-center">
-                  <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No lift data yet.</p>
+                  <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No lift data yet.</p>
                 </div>
               ) : (
                 <div>
@@ -1096,20 +1096,20 @@ export default function AnalyticsPage() {
                     <div key={row.exercise} className="px-5 py-4"
                       style={{ borderBottom: i < arr.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{row.exercise}</p>
+                        <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{row.exercise}</p>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#242424', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{row.totalSets} sets</span>
-                          <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{row.date}</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#242424', color: '#606060', fontFamily: 'var(--font-mono)' }}>{row.totalSets} sets</span>
+                          <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{row.date}</span>
                         </div>
                       </div>
                       <div className="flex gap-4">
                         <div className="flex-1 rounded-lg px-3 py-2" style={{ background: '#242424' }}>
-                          <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Heaviest Set</p>
-                          <p className="text-sm font-bold" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>{row.pr} × {row.sets}</p>
+                          <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Heaviest Set</p>
+                          <p className="text-sm font-bold" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>{row.pr} × {row.sets}</p>
                         </div>
                         <div className="flex-1 rounded-lg px-3 py-2" style={{ background: '#242424' }}>
-                          <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Est. 1RM</p>
-                          <p className="text-sm font-bold" style={{ color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>{row.rm.replace(' est. 1RM', '')}</p>
+                          <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Est. 1RM</p>
+                          <p className="text-sm font-bold" style={{ color: '#A78BFA', fontFamily: 'var(--font-mono)' }}>{row.rm.replace(' est. 1RM', '')}</p>
                         </div>
                       </div>
                     </div>
@@ -1122,7 +1122,7 @@ export default function AnalyticsPage() {
             <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
               <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #2E2E2E', background: '#242424' }}>
                 <div className="w-2 h-2 rounded-full" style={{ background: '#C8102E' }} />
-                <h3 className="text-base font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Run</h3>
+                <h3 className="text-base font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Run</h3>
               </div>
               {(() => {
                 const KEY_DISTANCES = [
@@ -1169,7 +1169,7 @@ export default function AnalyticsPage() {
 
                 if (allSegs.length === 0) return (
                   <div className="px-5 py-8 text-center">
-                    <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No run data yet.</p>
+                    <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No run data yet.</p>
                   </div>
                 )
 
@@ -1193,17 +1193,17 @@ export default function AnalyticsPage() {
                       <div key={row.label} className="px-5 py-4"
                         style={{ borderBottom: i < arr.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{row.label}</p>
-                          <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{row.date}</p>
+                          <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{row.label}</p>
+                          <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{row.date}</p>
                         </div>
                         <div className="flex gap-3">
                           <div className="flex-1 rounded-lg px-3 py-2" style={{ background: '#242424' }}>
-                            <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Best Pace</p>
-                            <p className="text-sm font-bold" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>{row.pace}</p>
+                            <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Best Pace</p>
+                            <p className="text-sm font-bold" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>{row.pace}</p>
                           </div>
                           <div className="flex-1 rounded-lg px-3 py-2" style={{ background: '#242424' }}>
-                            <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Finish Time</p>
-                            <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{row.time}</p>
+                            <p className="text-xs mb-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Finish Time</p>
+                            <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{row.time}</p>
                           </div>
                         </div>
                       </div>
@@ -1226,7 +1226,7 @@ export default function AnalyticsPage() {
                   background: historySubTab === v ? '#00BFA5' : '#1A1A1A',
                   color: historySubTab === v ? '#0D0D0D' : '#606060',
                   border: `1px solid ${historySubTab === v ? '#00BFA5' : '#2E2E2E'}`,
-                  cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>{v}</button>
             ))}
           </div>
@@ -1236,8 +1236,8 @@ export default function AnalyticsPage() {
           <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
             {history.length === 0 ? (
               <div className="p-8 text-center space-y-3">
-                <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No sessions logged yet.</p>
-                <p className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Sessions saved in Log Session will appear here.</p>
+                <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No sessions logged yet.</p>
+                <p className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Sessions saved in Log Session will appear here.</p>
               </div>
             ) : (() => {
               function segKm(seg: LoggedRunSegment): number {
@@ -1268,16 +1268,16 @@ export default function AnalyticsPage() {
                     <div className="px-5 pt-4 pb-2 flex items-center gap-4">
                       <div className="w-2 h-full rounded-full flex-shrink-0 self-stretch" style={{ background: col, minHeight: '1.25rem' }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{s.name}</p>
-                        <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{dateLabel}</p>
+                        <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{s.name}</p>
+                        <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{dateLabel}</p>
                       </div>
                       {totalKm > 0 && (
-                        <span className="text-sm font-bold flex-shrink-0" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span className="text-sm font-bold flex-shrink-0" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
                           {totalKm % 1 === 0 ? totalKm : totalKm.toFixed(1)} km
                         </span>
                       )}
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
-                        style={{ background: `${col}22`, color: col, fontFamily: 'Inter, sans-serif' }}>{s.type}</span>
+                        style={{ background: `${col}22`, color: col, fontFamily: 'var(--font-sans)' }}>{s.type}</span>
                       {confirmDeleteId === s.savedAt ? (
                         <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                           <button onClick={() => { deleteSession(s.savedAt); setConfirmDeleteId(null) }}
@@ -1299,9 +1299,9 @@ export default function AnalyticsPage() {
                     {exercises.length > 0 && (
                       <div className="px-5 pb-1 pl-11 space-y-0.5">
                         {exercises.map(ex => (
-                          <div key={ex.id} className="flex items-center gap-2 text-xs min-w-0" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          <div key={ex.id} className="flex items-center gap-2 text-xs min-w-0" style={{ fontFamily: 'var(--font-sans)' }}>
                             <span className="font-medium shrink-0" style={{ color: '#A0A0A0' }}>{ex.exerciseName}</span>
-                            <span className="truncate text-right flex-1" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                            <span className="truncate text-right flex-1" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
                               {ex.actualSets.filter(s => s.reps || s.weight).map(s => `${s.reps}×${s.weight}kg`).join(', ') || `${ex.actualSets.length} sets`}
                             </span>
                           </div>
@@ -1312,16 +1312,16 @@ export default function AnalyticsPage() {
                       <div className="px-5 pb-1 pl-11 space-y-0.5">
                         {run.map((entry, ri) => {
                           if ('kind' in entry && entry.kind === 'repeat') return (
-                            <div key={entry.id ?? ri} className="text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <div key={entry.id ?? ri} className="text-xs" style={{ fontFamily: 'var(--font-sans)' }}>
                               <span style={{ color: '#C8102E' }}>×{entry.count} </span>
                               <span style={{ color: '#606060' }}>{entry.laps.map(l => `${l.segmentType} ${l.actualValue}${l.metric === 'distance' ? 'km' : l.metric === 'time' ? 'min' : ''}`).join(' / ')}</span>
                             </div>
                           )
                           const seg = entry as LoggedRunSegment
                           return (
-                            <div key={seg.id ?? ri} className="flex items-center justify-between text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            <div key={seg.id ?? ri} className="flex items-center justify-between text-xs" style={{ fontFamily: 'var(--font-sans)' }}>
                               <span className="capitalize" style={{ color: '#A0A0A0' }}>{seg.segmentType}</span>
-                              <span style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                              <span style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
                                 {seg.actualValue}{seg.metric === 'distance' ? ' km' : seg.metric === 'time' ? ' min' : ''}{seg.actualPace ? ` @ ${seg.actualPace}/km` : ''}
                               </span>
                             </div>
@@ -1376,8 +1376,8 @@ export default function AnalyticsPage() {
                     onMouseEnter={e => (e.currentTarget.style.background = '#222222')}
                     onMouseLeave={e => (e.currentTarget.style.background = '#1A1A1A')}>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{group.label}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#2E2E2E', color: '#606060', fontFamily: 'Inter, sans-serif' }}>{group.sessions.length}</span>
+                      <span className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{group.label}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#2E2E2E', color: '#606060', fontFamily: 'var(--font-sans)' }}>{group.sessions.length}</span>
                     </div>
                     <ChevronDown size={16} style={{ color: '#606060', transform: getExpanded(group.key) ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                   </button>
@@ -1396,8 +1396,8 @@ export default function AnalyticsPage() {
         {activeTab === 'history' && !selected && historySubTab === 'exercises' && !selectedExercise && (
           exerciseAnalysis.length === 0 ? (
             <div className="rounded-xl p-8 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No exercises logged yet.</p>
-              <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Lifts saved in Log Session will appear here.</p>
+              <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No exercises logged yet.</p>
+              <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Lifts saved in Log Session will appear here.</p>
             </div>
           ) : (() => {
             const CAT_COLORS: Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Core: '#FF9500', Cardio: '#3B82F6' }
@@ -1418,18 +1418,18 @@ export default function AnalyticsPage() {
                           background: exerciseFilter === f ? '#00BFA5' : '#1A1A1A',
                           color: exerciseFilter === f ? '#0D0D0D' : '#606060',
                           border: `1px solid ${exerciseFilter === f ? '#00BFA5' : '#2E2E2E'}`,
-                          cursor: 'pointer', fontFamily: 'Inter, sans-serif',
+                          cursor: 'pointer', fontFamily: 'var(--font-sans)',
                         }}>{f}</button>
                     ))}
                   </div>
-                  <label className="flex items-center gap-2 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                  <label className="flex items-center gap-2 text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                     Bodyweight
                     <input type="number" min={30} max={250} defaultValue={bodyweight}
                       key={bodyweight}
                       onBlur={e => commitBodyweight(parseFloat(e.target.value))}
                       onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                       className="w-16 text-center py-1 rounded outline-none"
-                      style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }} />
+                      style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }} />
                     kg
                   </label>
                 </div>
@@ -1444,23 +1444,23 @@ export default function AnalyticsPage() {
                         onMouseEnter={e => (e.currentTarget.style.background = '#1E1E1E')}
                         onMouseLeave={e => (e.currentTarget.style.background = '#1A1A1A')}>
                         <div className="flex items-start justify-between gap-2 mb-2">
-                          <h3 className="text-sm font-black uppercase leading-tight" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{ex.name}</h3>
+                          <h3 className="text-sm font-black uppercase leading-tight" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{ex.name}</h3>
                           <ChevronRight size={16} style={{ color: '#606060', flexShrink: 0, marginTop: 2 }} />
                         </div>
                         <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${catCol}22`, color: catCol, fontFamily: 'Inter, sans-serif' }}>{ex.category}</span>
-                          {ex.bodyweightBased && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#2E2E2E', color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>BW</span>}
-                          {ex.plateau && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontFamily: 'Inter, sans-serif' }}>plateau</span>}
-                          {ex.pctGain !== null && ex.pctGain > 0 && !ex.plateau && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,191,165,0.1)', color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>▲ {ex.pctGain}%</span>}
+                          <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: `${catCol}22`, color: catCol, fontFamily: 'var(--font-sans)' }}>{ex.category}</span>
+                          {ex.bodyweightBased && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: '#2E2E2E', color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>BW</span>}
+                          {ex.plateau && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', fontFamily: 'var(--font-sans)' }}>plateau</span>}
+                          {ex.pctGain !== null && ex.pctGain > 0 && !ex.plateau && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,191,165,0.1)', color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>▲ {ex.pctGain}%</span>}
                         </div>
                         <div className="flex items-end justify-between">
                           <div>
-                            <p className="text-2xl font-bold" style={{ color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>{ex.best1RM}<span className="text-sm" style={{ color: '#606060' }}> kg</span></p>
-                            <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>est. 1RM{ex.bodyweightBased ? ` · incl. ${ex.bwPct}% BW` : ''}</p>
+                            <p className="text-2xl font-bold" style={{ color: '#A78BFA', fontFamily: 'var(--font-mono)' }}>{ex.best1RM}<span className="text-sm" style={{ color: '#606060' }}> kg</span></p>
+                            <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>est. 1RM{ex.bodyweightBased ? ` · incl. ${ex.bwPct}% BW` : ''}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{ex.setsPerWeek}/wk · {ex.totalSets} sets</p>
-                            <p className="text-xs mt-0.5" style={{ color: ex.stale ? '#F59E0B' : '#606060', fontFamily: 'Inter, sans-serif' }}>
+                            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{ex.setsPerWeek}/wk · {ex.totalSets} sets</p>
+                            <p className="text-xs mt-0.5" style={{ color: ex.stale ? '#F59E0B' : '#606060', fontFamily: 'var(--font-sans)' }}>
                               {ex.daysSince === 0 ? 'today' : `${ex.daysSince}d ago`}{ex.stale ? ' · stale' : ''}
                             </p>
                           </div>
@@ -1484,18 +1484,18 @@ export default function AnalyticsPage() {
             <div className="space-y-5">
               {/* Back bar */}
               <button onClick={() => setSelectedExercise(null)} className="flex items-center gap-1 text-sm"
-                style={{ color: '#606060', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                style={{ color: '#606060', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                 <ChevronLeft size={16} /> All exercises
               </button>
 
               {/* Title + meta chips */}
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{ex.name}</h2>
+                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{ex.name}</h2>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', fontFamily: 'Inter, sans-serif' }}>{ex.category}</span>
-                  {ex.bodyweightBased && <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>Bodyweight</span>}
-                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{ex.totalSets} sets · {ex.setsPerWeek}/wk</span>
-                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>{ex.best1RM} kg est. 1RM</span>
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', fontFamily: 'var(--font-sans)' }}>{ex.category}</span>
+                  {ex.bodyweightBased && <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>Bodyweight</span>}
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#606060', fontFamily: 'var(--font-mono)' }}>{ex.totalSets} sets · {ex.setsPerWeek}/wk</span>
+                  <span className="text-xs px-2 py-1 rounded" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', color: '#A78BFA', fontFamily: 'var(--font-mono)' }}>{ex.best1RM} kg est. 1RM</span>
                 </div>
               </div>
 
@@ -1503,33 +1503,33 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 {ex.pctGain !== null && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: ex.pctGain >= 0 ? 'rgba(0,191,165,0.08)' : 'rgba(239,68,68,0.08)', border: `1px solid ${ex.pctGain >= 0 ? 'rgba(0,191,165,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
-                    <span className="text-xs font-bold" style={{ color: ex.pctGain >= 0 ? '#00BFA5' : '#EF4444', fontFamily: 'JetBrains Mono, monospace' }}>{ex.pctGain >= 0 ? '▲' : '▼'} {Math.abs(ex.pctGain)}%</span>
-                    <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>est. 1RM · {ex.gainWeeks}wk</span>
+                    <span className="text-xs font-bold" style={{ color: ex.pctGain >= 0 ? '#00BFA5' : '#EF4444', fontFamily: 'var(--font-mono)' }}>{ex.pctGain >= 0 ? '▲' : '▼'} {Math.abs(ex.pctGain)}%</span>
+                    <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>est. 1RM · {ex.gainWeeks}wk</span>
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,107,53,0.06)', border: '1px solid rgba(255,107,53,0.2)' }}>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(200,16,46,0.06)', border: '1px solid rgba(200,16,46,0.2)' }}>
                   <Trophy size={12} style={{ color: '#C8102E' }} />
-                  <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>PR <span style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{ex.prValue} kg</span> · {fmtShort(ex.prDate)}</span>
+                  <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>PR <span style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{ex.prValue} kg</span> · {fmtShort(ex.prDate)}</span>
                 </div>
                 {ex.plateau && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}>
-                    <span className="text-xs font-bold" style={{ color: '#F59E0B', fontFamily: 'Inter, sans-serif' }}>Plateau — no PR in {Math.round((new Date(ex.lastDate).getTime() - new Date(ex.prDate).getTime()) / 86400000)}d</span>
+                    <span className="text-xs font-bold" style={{ color: '#F59E0B', fontFamily: 'var(--font-sans)' }}>Plateau — no PR in {Math.round((new Date(ex.lastDate).getTime() - new Date(ex.prDate).getTime()) / 86400000)}d</span>
                   </div>
                 )}
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{ex.realReps} real rep{ex.realReps === 1 ? '' : 's'} logged · rest estimated</span>
+                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{ex.realReps} real rep{ex.realReps === 1 ? '' : 's'} logged · rest estimated</span>
                 </div>
               </div>
 
               {ex.bodyweightBased && (
-                <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Log added weight only (0 = bodyweight). Total load = {ex.bwPct}% of your bodyweight ({bodyweight} kg = {Math.round(bodyweight * ex.bwPct) / 100} kg moved) + added — this movement leaves part of your mass unloaded. Set your bodyweight on the exercise grid.</p>
+                <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Log added weight only (0 = bodyweight). Total load = {ex.bwPct}% of your bodyweight ({bodyweight} kg = {Math.round(bodyweight * ex.bwPct) / 100} kg moved) + added — this movement leaves part of your mass unloaded. Set your bodyweight on the exercise grid.</p>
               )}
 
               {/* Chart 1: Est. 1RM progression over time (+ trendline, PR marker) */}
               <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Est. 1RM Over Time</p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>Est. 1RM Over Time</p>
                 {ex.trend.length < 2 ? (
-                  <p className="text-sm py-8 text-center" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Log this exercise across more sessions to see progression.</p>
+                  <p className="text-sm py-8 text-center" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Log this exercise across more sessions to see progression.</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={ex.trend.map(t => ({ ...t, label: fmtShort(t.date) }))} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
@@ -1547,9 +1547,9 @@ export default function AnalyticsPage() {
 
               {/* Chart 3: Volume (tonnage) per session */}
               <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Volume Per Session <span style={{ textTransform: 'none', color: '#3E3E3E' }}>· load × reps</span></p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>Volume Per Session <span style={{ textTransform: 'none', color: '#3E3E3E' }}>· load × reps</span></p>
                 {ex.volumeTrend.length < 1 ? (
-                  <p className="text-sm py-8 text-center" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>No volume data.</p>
+                  <p className="text-sm py-8 text-center" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>No volume data.</p>
                 ) : (
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={ex.volumeTrend.map(t => ({ ...t, label: fmtShort(t.date) }))} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
@@ -1565,7 +1565,7 @@ export default function AnalyticsPage() {
 
               {/* Chart 2: Strength curve — predicted vs best logged across reps */}
               <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Strength Curve — Predicted vs Best Logged</p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>Strength Curve — Predicted vs Best Logged</p>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={ex.curve} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
@@ -1582,19 +1582,19 @@ export default function AnalyticsPage() {
               {/* RM table */}
               <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 1fr' }}>
-                  <div className="px-5 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif', borderBottom: '1px solid #2E2E2E' }}>Reps</div>
-                  <div className="px-3 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif', borderBottom: '1px solid #2E2E2E' }}>
-                    Predicted <span style={{ textTransform: 'none', color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>· from {fmt(ex.sourceDate)}</span>
+                  <div className="px-5 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-heading)', borderBottom: '1px solid #2E2E2E' }}>Reps</div>
+                  <div className="px-3 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-heading)', borderBottom: '1px solid #2E2E2E' }}>
+                    Predicted <span style={{ textTransform: 'none', color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>· from {fmt(ex.sourceDate)}</span>
                   </div>
-                  <div className="px-3 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif', borderBottom: '1px solid #2E2E2E' }}>Best logged{ex.bodyweightBased ? <span style={{ textTransform: 'none', color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}> · total load</span> : null}</div>
+                  <div className="px-3 py-2.5 text-xs uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-heading)', borderBottom: '1px solid #2E2E2E' }}>Best logged{ex.bodyweightBased ? <span style={{ textTransform: 'none', color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}> · total load</span> : null}</div>
                   {ex.rows.map(row => {
                     const isSource = row.rep === ex.sourceReps
                     const italic = row.loggedKind !== 'actual'
                     return (
                       <Fragment key={row.rep}>
-                        <div className="px-5 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', color: isSource ? '#00BFA5' : '#A0A0A0', fontWeight: isSource ? 700 : 400, fontFamily: 'JetBrains Mono, monospace' }}>{row.rep}</div>
-                        <div className="px-3 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', color: '#F5F5F5', fontWeight: isSource ? 700 : 400, fontFamily: 'JetBrains Mono, monospace' }}>{row.predicted} kg</div>
-                        <div className="px-3 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', fontFamily: 'JetBrains Mono, monospace' }}>
+                        <div className="px-5 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', color: isSource ? '#00BFA5' : '#A0A0A0', fontWeight: isSource ? 700 : 400, fontFamily: 'var(--font-mono)' }}>{row.rep}</div>
+                        <div className="px-3 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', color: '#F5F5F5', fontWeight: isSource ? 700 : 400, fontFamily: 'var(--font-mono)' }}>{row.predicted} kg</div>
+                        <div className="px-3 py-2 text-sm" style={{ borderBottom: '1px solid #1F1F1F', fontFamily: 'var(--font-mono)' }}>
                           {row.logged === null ? (
                             <span style={{ color: '#3E3E3E' }}>—</span>
                           ) : (
@@ -1626,17 +1626,17 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between">
                 <button onClick={() => { setSelected(null); setEditing(false); setEditSession(null) }}
                   className="flex items-center gap-1 text-sm"
-                  style={{ color: '#606060', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                  style={{ color: '#606060', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                   <ChevronLeft size={16} /> Back
                 </button>
                 {editing ? (
                   <div className="flex items-center gap-2">
                     <button onClick={cancelEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
-                      style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                      style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                       <X size={14} /> Cancel
                     </button>
                     <button onClick={saveEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
-                      style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                      style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                       <Check size={14} /> Save
                     </button>
                   </div>
@@ -1646,24 +1646,24 @@ export default function AnalyticsPage() {
                       <>
                         <button onClick={() => { deleteSession(selected.savedAt); setConfirmDeleteId(null) }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
-                          style={{ background: '#C8102E', color: '#fff', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                          style={{ background: '#C8102E', color: '#fff', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                           <Trash2 size={13} /> Confirm Delete
                         </button>
                         <button onClick={() => setConfirmDeleteId(null)}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
-                          style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                          style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                           <X size={13} /> Cancel
                         </button>
                       </>
                     ) : (
                       <button onClick={() => setConfirmDeleteId(selected.savedAt)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm"
-                        style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                        style={{ color: '#606060', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                         <Trash2 size={13} /> Delete
                       </button>
                     )}
                     <button onClick={startEdit} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
-                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                       <Pencil size={13} /> Edit
                     </button>
                   </div>
@@ -1672,10 +1672,10 @@ export default function AnalyticsPage() {
 
               {/* Session header */}
               <div className="rounded-xl px-5 py-4" style={{ background: '#1A1A1A', border: `1px solid ${col}30` }}>
-                <p className="text-xs uppercase tracking-widest mb-1" style={{ color: col, fontFamily: 'Inter, sans-serif' }}>{dateLabel}</p>
-                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{sess.name}</h2>
+                <p className="text-xs uppercase tracking-widest mb-1" style={{ color: col, fontFamily: 'var(--font-sans)' }}>{dateLabel}</p>
+                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>{sess.name}</h2>
                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold mt-2 inline-block"
-                  style={{ background: `${col}22`, color: col, fontFamily: 'Inter, sans-serif' }}>{sess.type}</span>
+                  style={{ background: `${col}22`, color: col, fontFamily: 'var(--font-sans)' }}>{sess.type}</span>
               </div>
 
               {/* Exercises */}
@@ -1683,7 +1683,7 @@ export default function AnalyticsPage() {
                 <div key={ex.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                   <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid #2E2E2E', background: '#242424' }}>
                     <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
-                    <span className="font-bold text-sm uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.05em' }}>{ex.exerciseName}</span>
+                    <span className="font-bold text-sm uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', letterSpacing: '0.05em' }}>{ex.exerciseName}</span>
                   </div>
                   <div className="p-4">
                     <div className="grid gap-2 mb-2" style={{ gridTemplateColumns: '28px 76px 1fr 1fr 52px' }}>
@@ -1696,8 +1696,8 @@ export default function AnalyticsPage() {
                       return (
                         <div key={si} className="grid gap-2 mb-2 items-center" style={{ gridTemplateColumns: '28px 76px 1fr 1fr 52px' }}>
                           <span className="w-6 h-6 rounded text-xs flex items-center justify-center mx-auto"
-                            style={{ background: '#242424', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{si + 1}</span>
-                          <span className="text-xs text-center" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+                            style={{ background: '#242424', color: '#606060', fontFamily: 'var(--font-mono)' }}>{si + 1}</span>
+                          <span className="text-xs text-center" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
                             {planned ? `${planned.reps}×${planned.weight}` : '—'}
                           </span>
                           {(['reps','weight','rpe'] as const).map(field => (
@@ -1706,10 +1706,10 @@ export default function AnalyticsPage() {
                                 onChange={e => updateEditSet(ex.id, si, field, e.target.value)}
                                 placeholder={field === 'rpe' ? '—' : '0'}
                                 className="w-full text-center py-2 rounded text-sm outline-none"
-                                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'JetBrains Mono, monospace' }} />
+                                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #00BFA544', fontFamily: 'var(--font-mono)' }} />
                             ) : (
                               <span key={field} className="text-sm text-center py-2 rounded"
-                                style={{ background: '#242424', color: set[field] ? '#F5F5F5' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace', display: 'block' }}>
+                                style={{ background: '#242424', color: set[field] ? '#F5F5F5' : '#3E3E3E', fontFamily: 'var(--font-mono)', display: 'block' }}>
                                 {set[field] || '—'}
                               </span>
                             )
@@ -1727,7 +1727,7 @@ export default function AnalyticsPage() {
                   return (
                     <div key={entry.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                       <div className="px-4 py-2" style={{ background: '#242424', borderBottom: '1px solid #2E2E2E' }}>
-                        <span className="text-xs font-bold uppercase" style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif' }}>×{entry.count} Repeat</span>
+                        <span className="text-xs font-bold uppercase" style={{ color: '#C8102E', fontFamily: 'var(--font-heading)' }}>×{entry.count} Repeat</span>
                       </div>
                       {entry.laps.map((lap, lapIdx) => (
                         <RunRow key={lap.id} lap={lap} editing={editing}
@@ -1746,24 +1746,24 @@ export default function AnalyticsPage() {
               })}
 
               {(sess.exercises ?? []).length === 0 && (sess.run ?? []).length === 0 && !sess.hikeKm && (
-                <p className="text-sm text-center py-8" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm text-center py-8" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   No exercise or run data recorded for this session.
                 </p>
               )}
               {sess.hikeKm != null && (
                 <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #84CC1640' }}>
                   <div className="px-4 py-2" style={{ background: '#84CC1610', borderBottom: '1px solid #84CC1630' }}>
-                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#84CC16', fontFamily: 'Montserrat, sans-serif' }}>Hike</span>
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#84CC16', fontFamily: 'var(--font-heading)' }}>Hike</span>
                   </div>
                   <div className="grid grid-cols-2 divide-x" style={{ borderColor: '#2E2E2E' }}>
                     <div className="px-4 py-4">
-                      <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Distance</p>
-                      <p className="text-xl font-bold" style={{ color: '#84CC16', fontFamily: 'JetBrains Mono, monospace' }}>{sess.hikeKm} <span className="text-sm font-normal" style={{ color: '#606060' }}>km</span></p>
+                      <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Distance</p>
+                      <p className="text-xl font-bold" style={{ color: '#84CC16', fontFamily: 'var(--font-mono)' }}>{sess.hikeKm} <span className="text-sm font-normal" style={{ color: '#606060' }}>km</span></p>
                     </div>
                     {sess.hikeElevationM != null && (
                       <div className="px-4 py-4">
-                        <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Elevation Gain</p>
-                        <p className="text-xl font-bold" style={{ color: '#84CC16', fontFamily: 'JetBrains Mono, monospace' }}>{sess.hikeElevationM} <span className="text-sm font-normal" style={{ color: '#606060' }}>m</span></p>
+                        <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Elevation Gain</p>
+                        <p className="text-xl font-bold" style={{ color: '#84CC16', fontFamily: 'var(--font-mono)' }}>{sess.hikeElevationM} <span className="text-sm font-normal" style={{ color: '#606060' }}>m</span></p>
                       </div>
                     )}
                   </div>
@@ -1780,16 +1780,16 @@ export default function AnalyticsPage() {
             <div className="rounded-xl p-6" style={{ background: '#1A1A1A', border: '1px solid rgba(167,139,250,0.2)' }}>
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles size={15} style={{ color: '#A78BFA' }} />
-                <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>AI Coach</span>
+                <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>AI Coach</span>
               </div>
-              <h3 className="text-2xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h3 className="text-2xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Training Analysis
               </h3>
-              <p className="text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', maxWidth: 560 }}>
+              <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)', maxWidth: 560 }}>
                 Your AI coach analyses your session history — load, strength trends, running volume, training balance, and recovery — and gives you personalised recommendations. Reports auto-generate every Sunday night and are saved for the last 12 weeks.
               </p>
               {history.length === 0 && (
-                <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'var(--font-sans)' }}>
                   Log some sessions first to enable AI analysis.
                 </p>
               )}
@@ -1806,10 +1806,10 @@ export default function AnalyticsPage() {
             {!aiCoachText && history.length > 0 && (
               <div className="rounded-xl p-10 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                 <Sparkles size={32} style={{ color: '#2E2E2E', margin: '0 auto 12px' }} />
-                <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   No report for this week yet.
                 </p>
-                <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-xs mt-1" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>
                   Your next report will auto-generate this Sunday at 23:50.
                 </p>
               </div>
@@ -1818,7 +1818,7 @@ export default function AnalyticsPage() {
             {/* Past reports */}
             {pastReports.filter(r => r.weekEnding !== currentWeekEnding()).length > 0 && (
               <div>
-                <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                   Past Reports
                 </p>
                 <div className="space-y-2">
@@ -1837,10 +1837,10 @@ export default function AnalyticsPage() {
                             <div className="flex items-center gap-3">
                               <Sparkles size={13} style={{ color: '#A78BFA', flexShrink: 0 }} />
                               <div>
-                                <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>
+                                <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
                                   Week ending {weekLabel}
                                 </p>
-                                <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+                                <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
                                   {report.reportText.split('\n').find(l => l.startsWith('- '))?.replace('- ', '').slice(0, 80) ?? 'AI Coach report'}...
                                 </p>
                               </div>
@@ -1875,7 +1875,7 @@ export default function AnalyticsPage() {
           <>
             {!strengthData ? (
               <div className="rounded-xl p-12 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No strength sessions logged yet.</p>
+                <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No strength sessions logged yet.</p>
                 <p className="text-xs mt-1" style={{ color: '#3E3E3E' }}>Log a lifting session to see your trends here.</p>
               </div>
             ) : (
@@ -1883,17 +1883,17 @@ export default function AnalyticsPage() {
                 {/* 1RM Trend */}
                 {strengthData.topExercises.length > 0 && (
                   <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                    <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                    <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                       Est. 1RM Trend — 12 Weeks
                     </h3>
                     <ResponsiveContainer width="100%" height={280}>
                       <LineChart data={strengthData.weeklyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
-                        <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
-                        <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
+                        <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
+                        <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
                         <Tooltip {...chartTooltipStyle} />
                         <Legend
-                          wrapperStyle={{ fontFamily: 'Inter, sans-serif', fontSize: 12, cursor: 'pointer' }}
+                          wrapperStyle={{ fontFamily: 'var(--font-sans)', fontSize: 12, cursor: 'pointer' }}
                           onMouseEnter={(e: { dataKey?: string | number | ((obj: unknown) => unknown) }) => setHoveredLine(typeof e.dataKey === 'string' ? e.dataKey : null)}
                           onMouseLeave={() => setHoveredLine(null)}
                         />
@@ -1912,14 +1912,14 @@ export default function AnalyticsPage() {
 
                 {/* Weekly Volume */}
                 <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                  <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                  <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                     Weekly Volume
                   </h3>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={strengthData.weeklyData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
-                      <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
-                      <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
+                      <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
+                      <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
                       <Tooltip {...chartTooltipStyle} />
                       <Bar dataKey="volume" name="Volume (kg)" fill="#00BFA5" opacity={0.7} radius={[3, 3, 0, 0]} />
                     </BarChart>
@@ -1930,7 +1930,7 @@ export default function AnalyticsPage() {
                 {strengthData.prs.length > 0 && (
                   <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                     <div className="px-5 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
-                      <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                      <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                         Personal Records
                       </h3>
                     </div>
@@ -1947,8 +1947,8 @@ export default function AnalyticsPage() {
                           {strengthData.prs.map((row, i, arr) => (
                             <tr key={row.exercise} style={{ borderBottom: i < arr.length - 1 ? '1px solid #1A1A1A' : 'none' }}>
                               <td className="px-5 py-3 text-sm font-semibold" style={{ color: '#F5F5F5' }}>{row.exercise}</td>
-                              <td className="px-5 py-3 text-sm font-bold" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>{row.pr} × {row.sets}</td>
-                              <td className="px-5 py-3 text-sm" style={{ color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>{row.rm}</td>
+                              <td className="px-5 py-3 text-sm font-bold" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>{row.pr} × {row.sets}</td>
+                              <td className="px-5 py-3 text-sm" style={{ color: '#A78BFA', fontFamily: 'var(--font-mono)' }}>{row.rm}</td>
                               <td className="px-5 py-3 text-sm" style={{ color: '#606060' }}>{row.date}</td>
                             </tr>
                           ))}
@@ -1966,20 +1966,20 @@ export default function AnalyticsPage() {
         {activeTab === 'running' && (
           !runningData ? (
             <div className="rounded-xl p-12 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No run sessions logged yet.</p>
+              <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No run sessions logged yet.</p>
               <p className="text-xs mt-1" style={{ color: '#3E3E3E' }}>Log a running session to see your trends here.</p>
             </div>
           ) : (
             <>
               <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                   Weekly Mileage — 12 Weeks
                 </h3>
                 <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={runningData.weeklyKm}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
-                    <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
-                    <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
+                    <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
+                    <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
                     <Tooltip {...chartTooltipStyle} formatter={(v: unknown) => [`${v} km`, 'Distance']} />
                     <Bar dataKey="km" name="Km" fill="#C8102E" opacity={0.75} radius={[3, 3, 0, 0]} />
                   </BarChart>
@@ -1988,7 +1988,7 @@ export default function AnalyticsPage() {
 
               {runningData.runTypeMix.length > 0 && (
                 <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                  <h3 className="text-xl font-black uppercase mb-6" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+                  <h3 className="text-xl font-black uppercase mb-6" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                     Run Type Mix
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -1998,9 +1998,9 @@ export default function AnalyticsPage() {
                       { label: 'All Time',   data: runningData.runTypeMix      },
                     ] as const).map(({ label, data }) => (
                       <div key={label}>
-                        <p className="text-xs uppercase tracking-wider text-center mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{label}</p>
+                        <p className="text-xs uppercase tracking-wider text-center mb-3" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{label}</p>
                         {data.length === 0 ? (
-                          <p className="text-xs text-center py-8" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>No data</p>
+                          <p className="text-xs text-center py-8" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>No data</p>
                         ) : (
                           <>
                             <ResponsiveContainer width="100%" height={180}>
@@ -2012,7 +2012,7 @@ export default function AnalyticsPage() {
                                     const r = innerRadius + (outerRadius - innerRadius) * 1.45
                                     const x = cx + r * Math.cos(-angle * RADIAN)
                                     const y = cy + r * Math.sin(-angle * RADIAN)
-                                    return value >= 10 ? <text x={x} y={y} fill="#606060" textAnchor={x > cx ? 'start' : 'end'} fontSize={10} fontFamily="Inter, sans-serif">{value}%</text> : null
+                                    return value >= 10 ? <text x={x} y={y} fill="#606060" textAnchor={x > cx ? 'start' : 'end'} fontSize={10} style={{ fontFamily: 'var(--font-sans)' }}>{value}%</text> : null
                                   }}>
                                   {data.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                                 </Pie>
@@ -2023,7 +2023,7 @@ export default function AnalyticsPage() {
                               {data.map(d => (
                                 <div key={d.name} className="flex items-center gap-1">
                                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: d.color }} />
-                                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{d.name}</span>
+                                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{d.name}</span>
                                 </div>
                               ))}
                             </div>
@@ -2042,24 +2042,24 @@ export default function AnalyticsPage() {
         {activeTab === 'hybrid' && (
           !hybridData ? (
             <div className="rounded-xl p-12 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No sessions logged yet.</p>
+              <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No sessions logged yet.</p>
               <p className="text-xs mt-1" style={{ color: '#3E3E3E' }}>Log both lifting and running sessions to see interference analysis.</p>
             </div>
           ) : (
           <>
             {/* Dual-axis chart */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Strength vs Mileage — 12 Weeks
               </h3>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={hybridData.weeklyChart} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
-                  <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'JetBrains Mono, monospace' }} />
+                  <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
                   <YAxis yAxisId="km" orientation="left" stroke="#C8102E" tick={{ fill: '#C8102E', fontSize: 10 }} label={{ value: 'km', fill: '#C8102E', fontSize: 10, position: 'insideTopLeft' }} />
                   <YAxis yAxisId="ton" orientation="right" stroke="#00BFA5" tick={{ fill: '#00BFA5', fontSize: 10 }} label={{ value: '×100kg', fill: '#00BFA5', fontSize: 10, position: 'insideTopRight' }} />
                   <Tooltip {...chartTooltipStyle} formatter={(v: unknown, name: unknown) => name === 'km' ? [`${v} km`, 'Mileage'] : [`${Number(v) * 100} kg`, 'Volume']} />
-                  <Legend wrapperStyle={{ fontFamily: 'Inter, sans-serif', fontSize: 12 }} />
+                  <Legend wrapperStyle={{ fontFamily: 'var(--font-sans)', fontSize: 12 }} />
                   <Bar yAxisId="km" dataKey="km" name="Mileage (km)" fill="#C8102E" opacity={0.7} radius={[3, 3, 0, 0]} />
                   <Bar yAxisId="ton" dataKey="volume" name="Volume (×100kg)" fill="#00BFA5" opacity={0.7} radius={[3, 3, 0, 0]} />
                 </BarChart>
@@ -2068,13 +2068,13 @@ export default function AnalyticsPage() {
 
             {/* Balance */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+              <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Strength-Endurance Balance
               </h3>
               <div className="flex flex-col items-center">
                 {/* Bar gauge */}
                 <div className="w-full max-w-sm">
-                  <div className="flex justify-between text-xs mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  <div className="flex justify-between text-xs mb-1" style={{ fontFamily: 'var(--font-sans)' }}>
                     <span style={{ color: '#00BFA5' }}>Strength {hybridData.liftPct}%</span>
                     <span style={{ color: '#C8102E' }}>Endurance {hybridData.runPct}%</span>
                   </div>
@@ -2082,7 +2082,7 @@ export default function AnalyticsPage() {
                     <div style={{ width: `${hybridData.liftPct}%`, background: '#00BFA5', transition: 'width 0.5s' }} />
                     <div style={{ width: `${hybridData.runPct}%`, background: '#C8102E', transition: 'width 0.5s' }} />
                   </div>
-                  <p className="text-xs text-center mt-3" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+                  <p className="text-xs text-center mt-3" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                     {hybridData.liftPct > hybridData.runPct
                       ? 'Strength bias — consider adding more run volume'
                       : hybridData.runPct > hybridData.liftPct

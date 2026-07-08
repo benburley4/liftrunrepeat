@@ -84,7 +84,7 @@ function makeExRow(): ExRow {
 
 const inputStyle: React.CSSProperties = {
   background: '#0D0D0D', border: '1px solid #2E2E2E',
-  color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace', outline: 'none',
+  color: '#F5F5F5', fontFamily: 'var(--font-mono)', outline: 'none',
 }
 
 // ─── Exercise autocomplete search ─────────────────────────────────────────────
@@ -134,7 +134,7 @@ function ExerciseSearch({ value, onSelect }: { value: string; onSelect: (ex: Exe
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ background: '#0D0D0D', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}
+        style={{ background: '#0D0D0D', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
       />
       {open && filtered.length > 0 && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl overflow-auto"
@@ -148,11 +148,11 @@ function ExerciseSearch({ value, onSelect }: { value: string; onSelect: (ex: Exe
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <div>
-                <p className="text-sm" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{ex.name}</p>
-                <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{ex.primaryMuscles.slice(0, 2).join(', ')}</p>
+                <p className="text-sm" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{ex.name}</p>
+                <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{ex.primaryMuscles.slice(0, 2).join(', ')}</p>
               </div>
               <span className="ml-2 px-1.5 py-0.5 rounded text-xs capitalize whitespace-nowrap"
-                style={{ background: `${catColor[ex.category] ?? '#606060'}18`, color: catColor[ex.category] ?? '#606060', border: `1px solid ${catColor[ex.category] ?? '#606060'}33`, fontFamily: 'Inter, sans-serif' }}>
+                style={{ background: `${catColor[ex.category] ?? '#606060'}18`, color: catColor[ex.category] ?? '#606060', border: `1px solid ${catColor[ex.category] ?? '#606060'}33`, fontFamily: 'var(--font-sans)' }}>
                 {ex.category}
               </span>
             </button>
@@ -170,7 +170,7 @@ function PlateCalc({ totalKg }: { totalKg: number }) {
   const plates = calcPlates(totalKg)
   return (
     <div>
-      <p className="text-xs mb-1.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+      <p className="text-xs mb-1.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
         20 kg bar + {(totalKg - BAR_WEIGHT) / 2} kg per side
       </p>
       <div className="flex flex-wrap gap-1">
@@ -180,7 +180,7 @@ function PlateCalc({ totalKg }: { totalKg: number }) {
             return (
               <span key={`${plate}-${i}`}
                 className="inline-flex items-center justify-center rounded font-bold"
-                style={{ background: cfg.bg, color: cfg.text, fontSize: '10px', fontFamily: 'JetBrains Mono, monospace',
+                style={{ background: cfg.bg, color: cfg.text, fontSize: '10px', fontFamily: 'var(--font-mono)',
                   minWidth: plate >= 10 ? '34px' : '28px', height: plate >= 20 ? '26px' : plate >= 5 ? '22px' : '18px', padding: '0 5px' }}>
                 {plate}
               </span>
@@ -217,13 +217,13 @@ function SetRowItem({
     <div className="flex items-center gap-2 flex-wrap">
       {/* Set label */}
       <span className="text-xs w-12 flex-shrink-0 text-center font-bold px-1.5 py-1.5 rounded"
-        style={{ color: '#A0A0A0', background: '#1A1A1A', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}>
+        style={{ color: '#A0A0A0', background: '#1A1A1A', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}>
         Set {index + 1}
       </span>
 
       {/* Reps */}
       <div className="flex items-center gap-1">
-        <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Reps</label>
+        <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Reps</label>
         <input type="text" inputMode="numeric" placeholder="—"
           value={set.reps} onChange={e => onUpdate({ reps: e.target.value })}
           size={Math.max(2, (set.reps || '—').length)}
@@ -233,7 +233,7 @@ function SetRowItem({
       {/* kg — hidden for bodyweight exercises */}
       {!isBodyweight && (
         <div className="flex items-center gap-1">
-          <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>kg</label>
+          <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>kg</label>
           <input type="text" inputMode="decimal" placeholder="—"
             value={set.weight} onChange={e => onUpdate({ weight: e.target.value })}
             size={Math.max(2, (set.weight || '—').length)}
@@ -244,9 +244,9 @@ function SetRowItem({
       {/* 1RM */}
       {isBarbell && (
         <div className="flex items-center gap-2 flex-shrink-0">
-          <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}>
+          <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>
             1RM:{' '}
-            <span style={{ color: est1RM ? '#00BFA5' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+            <span style={{ color: est1RM ? '#00BFA5' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
               {est1RM ? `${est1RM} kg` : '—'}
             </span>
           </span>
@@ -254,7 +254,7 @@ function SetRowItem({
             <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{
               background: pct >= 90 ? '#EF444420' : pct >= 75 ? '#F59E0B20' : '#00BFA520',
               color: pct >= 90 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#00BFA5',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: 'var(--font-mono)',
             }}>{pct}%</span>
           )}
         </div>
@@ -267,7 +267,7 @@ function SetRowItem({
         </div>
       )}
       {isBarbell && (isNaN(w) || w <= 0) && (
-        <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Enter weight for plates</span>
+        <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Enter weight for plates</span>
       )}
 
       {/* Delete */}
@@ -322,7 +322,7 @@ function ExerciseBlock({
       {/* Exercise header */}
       <div className="flex items-center gap-2 px-3 py-3" style={{ borderBottom: '1px solid #1A1A1A' }}>
         <span className="w-5 h-5 rounded flex items-center justify-center text-xs font-bold flex-shrink-0"
-          style={{ background: '#1A1A1A', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+          style={{ background: '#1A1A1A', color: '#606060', fontFamily: 'var(--font-mono)' }}>
           {index + 1}
         </span>
         <ExerciseSearch
@@ -335,13 +335,13 @@ function ExerciseBlock({
               background: row.category === 'barbell' ? '#00BFA518' : '#A0A0A018',
               color:      row.category === 'barbell' ? '#00BFA5'   : '#606060',
               border:     `1px solid ${row.category === 'barbell' ? '#00BFA530' : '#2E2E2E'}`,
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
             }}>
             {row.category}
           </span>
         )}
         {stored1RM !== null && (
-          <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
             Best: {stored1RM} kg
           </span>
         )}
@@ -375,13 +375,13 @@ function ExerciseBlock({
         <div className="flex items-center justify-between pt-1">
           <button onClick={addSet}
             className="flex items-center gap-1.5 text-xs transition-all"
-            style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}
+            style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}
             onMouseEnter={e => (e.currentTarget.style.color = '#00BFA5')}
             onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}>
             <Plus size={11} /> Add Set
           </button>
           {totalVol > 0 && (
-            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+            <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
               {row.sets.length} sets · {totalVol} kg total
             </span>
           )}
@@ -403,8 +403,8 @@ export default function ExerciseBuilder({ rows, onChange }: ExerciseBuilderProps
       {rows.length === 0 && (
         <div className="rounded-xl flex flex-col items-center justify-center py-8 text-center"
           style={{ border: '2px dashed #2E2E2E' }}>
-          <p className="text-sm mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No exercises yet</p>
-          <p className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Add exercises to build your template</p>
+          <p className="text-sm mb-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No exercises yet</p>
+          <p className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Add exercises to build your template</p>
         </div>
       )}
 
@@ -421,7 +421,7 @@ export default function ExerciseBuilder({ rows, onChange }: ExerciseBuilderProps
       <button
         onClick={() => onChange([...rows, makeExRow()])}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all"
-        style={{ background: 'transparent', border: '1px dashed #2E2E2E', color: '#606060', fontFamily: 'Inter, sans-serif' }}
+        style={{ background: 'transparent', border: '1px dashed #2E2E2E', color: '#606060', fontFamily: 'var(--font-sans)' }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = '#00BFA544'; e.currentTarget.style.color = '#00BFA5' }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#606060' }}>
         <Plus size={14} /> Add Exercise
@@ -540,7 +540,7 @@ function SegmentRow({ seg, onUpdate, onDelete, canDelete, indent }: {
         value={seg.segmentType}
         onChange={e => onUpdate({ segmentType: e.target.value })}
         className="text-xs font-semibold rounded px-2 py-1 outline-none cursor-pointer flex-shrink-0"
-        style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'Inter, sans-serif', minWidth: '88px' }}
+        style={{ background: `${typeInfo.color}18`, color: typeInfo.color, border: `1px solid ${typeInfo.color}44`, fontFamily: 'var(--font-sans)', minWidth: '88px' }}
       >
         {SEGMENT_TYPES.map(t => (
           <option key={t.value} value={t.value} style={{ background: '#1A1A1A', color: '#F5F5F5' }}>{t.label}</option>
@@ -552,7 +552,7 @@ function SegmentRow({ seg, onUpdate, onDelete, canDelete, indent }: {
         value={seg.metric}
         onChange={e => onUpdate({ metric: e.target.value as RunMetric, value: '', pace: '' })}
         className="text-xs rounded px-2 py-1 outline-none cursor-pointer flex-shrink-0"
-        style={{ background: '#242424', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', minWidth: '76px' }}
+        style={{ background: '#242424', color: '#A0A0A0', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)', minWidth: '76px' }}
       >
         {(Object.keys(METRIC_CONFIG) as RunMetric[]).map(m => (
           <option key={m} value={m} style={{ background: '#1A1A1A', color: '#F5F5F5' }}>{METRIC_CONFIG[m].label}</option>
@@ -567,16 +567,16 @@ function SegmentRow({ seg, onUpdate, onDelete, canDelete, indent }: {
           onChange={e => onUpdate({ value: metricConf.inputType === 'text' ? formatTimeInput(e.target.value) : e.target.value })}
           placeholder={metricConf.placeholder}
           className="w-16 px-2 py-1 rounded text-xs text-center outline-none"
-          style={{ ...inputStyle, fontFamily: 'JetBrains Mono, monospace' }}
+          style={{ ...inputStyle, fontFamily: 'var(--font-mono)' }}
           {...(metricConf.inputType === 'number' ? { min: '0', step: seg.metric === 'distance' ? '0.1' : '1' } : {})}
         />
-        <span className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{metricConf.unit}</span>
+        <span className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>{metricConf.unit}</span>
       </div>
 
       {/* Pace input + unit — inline when applicable */}
       {showPace && (
         <>
-          <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>pace</span>
+          <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>pace</span>
           <div className="flex items-center gap-1 flex-shrink-0">
             <input
               type="text"
@@ -584,12 +584,12 @@ function SegmentRow({ seg, onUpdate, onDelete, canDelete, indent }: {
               onChange={e => onUpdate({ pace: formatTimeInput(e.target.value) })}
               placeholder="5:30"
               className="w-16 px-2 py-1 rounded text-xs text-center outline-none"
-              style={{ ...inputStyle, fontFamily: 'JetBrains Mono, monospace', borderColor: '#2E2E2E' }}
+              style={{ ...inputStyle, fontFamily: 'var(--font-mono)', borderColor: '#2E2E2E' }}
             />
-            <span className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>/km</span>
+            <span className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>/km</span>
           </div>
           {derivedLabel && (
-            <span className="text-xs px-2 py-0.5 rounded flex-shrink-0" style={{ background: '#C8102E15', color: '#C8102E', fontFamily: 'JetBrains Mono, monospace', border: '1px solid #C8102E30' }}>
+            <span className="text-xs px-2 py-0.5 rounded flex-shrink-0" style={{ background: '#C8102E15', color: '#C8102E', fontFamily: 'var(--font-mono)', border: '1px solid #C8102E30' }}>
               {derivedLabel}
             </span>
           )}
@@ -635,7 +635,7 @@ function RepeatBlockRow({ block, onUpdate, onDelete }: {
     <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #EF444433', background: '#EF44440A' }}>
       {/* Block header */}
       <div className="flex items-center gap-3 px-3 py-2.5" style={{ borderBottom: '1px solid #EF444433' }}>
-        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#EF4444', fontFamily: 'Montserrat, sans-serif' }}>
+        <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#EF4444', fontFamily: 'var(--font-heading)' }}>
           Repeat ×
         </span>
         <input
@@ -645,11 +645,11 @@ function RepeatBlockRow({ block, onUpdate, onDelete }: {
           onChange={e => onUpdate({ ...block, count: e.target.value })}
           size={Math.max(2, (block.count || '4').length)}
           className="px-2 py-1 rounded text-xs text-center outline-none font-bold"
-          style={{ background: '#EF444422', border: '1px solid #EF444444', color: '#EF4444', fontFamily: 'JetBrains Mono, monospace', width: 'auto' }}
+          style={{ background: '#EF444422', border: '1px solid #EF444444', color: '#EF4444', fontFamily: 'var(--font-mono)', width: 'auto' }}
           placeholder="4"
         />
         {totalKm > 0 && (
-          <span className="text-xs" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
             {totalKm % 1 === 0 ? totalKm : totalKm.toFixed(1)} km total
           </span>
         )}
@@ -679,7 +679,7 @@ function RepeatBlockRow({ block, onUpdate, onDelete }: {
         <button
           onClick={addLap}
           className="flex items-center gap-1.5 text-xs mt-1 transition-all"
-          style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}
+          style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}
           onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
           onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}
         >
@@ -731,8 +731,8 @@ export function RunBuilder({ entries, onChange }: RunBuilderProps) {
       {entries.length === 0 && (
         <div className="rounded-xl flex flex-col items-center justify-center py-8 text-center"
           style={{ border: '2px dashed #2E2E2E' }}>
-          <p className="text-sm mb-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>No segments yet</p>
-          <p className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Add warm-ups, intervals, repeats and more</p>
+          <p className="text-sm mb-1" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No segments yet</p>
+          <p className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Add warm-ups, intervals, repeats and more</p>
         </div>
       )}
 
@@ -757,7 +757,7 @@ export function RunBuilder({ entries, onChange }: RunBuilderProps) {
         <button
           onClick={() => onChange([...entries, makeSegment()])}
           className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium transition-all flex-1"
-          style={{ background: 'transparent', border: '1px dashed #2E2E2E', color: '#606060', fontFamily: 'Inter, sans-serif' }}
+          style={{ background: 'transparent', border: '1px dashed #2E2E2E', color: '#606060', fontFamily: 'var(--font-sans)' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#C8102E44'; e.currentTarget.style.color = '#C8102E' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#2E2E2E'; e.currentTarget.style.color = '#606060' }}>
           <Plus size={13} /> Add Segment
@@ -765,7 +765,7 @@ export function RunBuilder({ entries, onChange }: RunBuilderProps) {
         <button
           onClick={() => onChange([...entries, makeRepeat()])}
           className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-xs font-medium transition-all flex-1"
-          style={{ background: 'transparent', border: '1px dashed #EF444433', color: '#606060', fontFamily: 'Inter, sans-serif' }}
+          style={{ background: 'transparent', border: '1px dashed #EF444433', color: '#606060', fontFamily: 'var(--font-sans)' }}
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#EF444466'; e.currentTarget.style.color = '#EF4444' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#EF444433'; e.currentTarget.style.color = '#606060' }}>
           <Plus size={13} /> Add Repeat
@@ -773,15 +773,15 @@ export function RunBuilder({ entries, onChange }: RunBuilderProps) {
       </div>
       <div className="flex items-center gap-4 px-1 pt-1" style={{ borderTop: '1px solid #2E2E2E' }}>
         <div className="flex items-center gap-2 flex-1">
-          <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Distance</span>
-          <span className="text-xs font-bold ml-auto" style={{ color: totalKm > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Distance</span>
+          <span className="text-xs font-bold ml-auto" style={{ color: totalKm > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
             {totalKm > 0 ? `${totalKm % 1 === 0 ? totalKm : totalKm.toFixed(1)} km` : '—'}
           </span>
         </div>
         <div className="w-px self-stretch" style={{ background: '#2E2E2E' }} />
         <div className="flex items-center gap-2 flex-1">
-          <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'Inter, sans-serif' }}>Time</span>
-          <span className="text-xs font-bold ml-auto" style={{ color: totalSecs > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>
+          <span className="text-xs" style={{ color: '#3E3E3E', fontFamily: 'var(--font-sans)' }}>Time</span>
+          <span className="text-xs font-bold ml-auto" style={{ color: totalSecs > 0 ? '#C8102E' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
             {formatSecs(totalSecs)}
           </span>
         </div>

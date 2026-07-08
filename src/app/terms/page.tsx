@@ -5,20 +5,20 @@ export default function TermsPage() {
     <div style={{ background: '#0D0D0D', minHeight: '100vh' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
 
-        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Legal</p>
-        <h1 className="text-5xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Legal</p>
+        <h1 className="text-5xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
           Terms &amp; Conditions
         </h1>
-        <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'Inter, sans-serif', marginBottom: '48px' }}>
+        <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'var(--font-sans)', marginBottom: '48px' }}>
           Last updated: 22 March 2026
         </p>
 
         {/* Health Warning Banner */}
         <div style={{ background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.3)', borderRadius: '12px', padding: '20px 24px', marginBottom: '48px' }}>
-          <p style={{ fontSize: '13px', fontWeight: 700, color: '#C8102E', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+          <p style={{ fontSize: '13px', fontWeight: 700, color: '#C8102E', fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
             Important Health Disclaimer
           </p>
-          <p style={{ color: '#A0A0A0', fontSize: '13px', fontFamily: 'Inter, sans-serif', lineHeight: '1.7', margin: 0 }}>
+          <p style={{ color: '#A0A0A0', fontSize: '13px', fontFamily: 'var(--font-sans)', lineHeight: '1.7', margin: 0 }}>
             LiftRunRepeat provides general fitness information and tracking tools only. Nothing on this platform constitutes medical advice, diagnosis, or treatment. Always consult a qualified medical professional before beginning any exercise programme, particularly if you have any pre-existing health conditions, injuries, or concerns. Exercise carries inherent risk of injury. You participate entirely at your own risk.
           </p>
         </div>
@@ -38,7 +38,7 @@ export default function TermsPage() {
           <Section title="3. Health, Fitness and Medical Disclaimer">
             <P><strong style={{ color: '#F5F5F5' }}>LiftRunRepeat is not a medical service.</strong> The content, tools, calculators, workout plans, and all other information provided through the Service are for general informational and educational purposes only. Nothing on the Service should be construed as medical advice, a diagnosis, or a recommendation for any specific treatment or course of action.</P>
             <P>You acknowledge and agree that:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>Exercise and physical training carry an inherent and unavoidable risk of physical injury, including serious injury or death</li>
               <li>You should consult a qualified medical professional before beginning any exercise programme</li>
               <li>You are solely responsible for assessing your own fitness level and the suitability of any programme or exercise for your individual circumstances</li>
@@ -64,7 +64,7 @@ export default function TermsPage() {
 
           <Section title="7. Acceptable Use">
             <P>You agree not to:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>Use the Service for any unlawful purpose or in violation of any applicable laws or regulations</li>
               <li>Attempt to gain unauthorised access to any part of the Service or its infrastructure</li>
               <li>Introduce viruses, malware, or any other malicious code</li>
@@ -81,7 +81,7 @@ export default function TermsPage() {
 
           <Section title="9. Limitation of Liability">
             <P>To the fullest extent permitted by applicable law:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>The Service is provided on an "as is" and "as available" basis without warranties of any kind, either express or implied</li>
               <li>We do not warrant that the Service will be uninterrupted, error-free, or free of viruses or other harmful components</li>
               <li>We do not warrant the accuracy, completeness, or suitability of any information on the Service</li>
@@ -101,7 +101,7 @@ export default function TermsPage() {
 
           <Section title="11a. AI Coach — Third-Party AI Processing">
             <P>The AI Coach feature uses DeepSeek, a third-party artificial intelligence provider, to generate programme reviews. By using the AI Coach feature you acknowledge and agree that:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>Your programme data and any additional context you provide will be transmitted to DeepSeek&apos;s API for processing</li>
               <li>This transmission is necessary to provide the AI Coach functionality and cannot be avoided if you choose to use the feature</li>
               <li>DeepSeek processes this data in accordance with its own terms of service and privacy policy, over which we have no control</li>
@@ -131,7 +131,7 @@ export default function TermsPage() {
 
           <Section title="16. Contact">
             <P>If you have any questions about these Terms, please contact us at:</P>
-            <p style={{ color: '#00BFA5', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>legal@liftrunrepeat.com</p>
+            <p style={{ color: '#00BFA5', fontSize: '14px', fontFamily: 'var(--font-sans)' }}>legal@liftrunrepeat.com</p>
           </Section>
 
         </div>
@@ -143,7 +143,7 @@ export default function TermsPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #1E1E1E' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'var(--font-heading)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #1E1E1E' }}>
         {title}
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -155,7 +155,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '1.8', margin: 0 }}>
+    <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '1.8', margin: 0 }}>
       {children}
     </p>
   )

@@ -5,11 +5,11 @@ export default function PrivacyPage() {
     <div style={{ background: '#0D0D0D', minHeight: '100vh' }}>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-28 pb-24">
 
-        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Legal</p>
-        <h1 className="text-5xl font-black uppercase mb-2" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+        <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Legal</p>
+        <h1 className="text-5xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
           Privacy Policy
         </h1>
-        <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'Inter, sans-serif', marginBottom: '48px' }}>
+        <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'var(--font-sans)', marginBottom: '48px' }}>
           Last updated: 22 March 2026
         </p>
 
@@ -36,7 +36,7 @@ export default function PrivacyPage() {
 
           <Section title="3. How We Use Your Information">
             <P>We use the information we collect to:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>Provide, maintain, and improve the Service</li>
               <li>Authenticate your account and protect against unauthorised access</li>
               <li>Sync your training data across devices</li>
@@ -54,7 +54,7 @@ export default function PrivacyPage() {
 
           <Section title="5. Third-Party Services">
             <P>The Service uses the following third-party providers who may process your data:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li><strong style={{ color: '#F5F5F5' }}>Supabase</strong> — database, authentication, and row-level security</li>
               <li><strong style={{ color: '#F5F5F5' }}>Vercel</strong> — application hosting and edge delivery</li>
               <li><strong style={{ color: '#F5F5F5' }}>DeepSeek</strong> — AI language model provider used to generate programme reviews</li>
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
 
           <Section title="5a. AI Coach Feature — Data Sharing with DeepSeek">
             <P>The AI Coach feature ("Programme Review") uses the DeepSeek large language model to analyse your training programme and generate personalised coaching feedback. When you use this feature, the following data is transmitted to DeepSeek&apos;s API:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>Your programme structure — training split, session names, exercises, sets, reps, run segments, and RPE values</li>
               <li>Any additional context you voluntarily provide — such as goals, age, bodyweight, injuries, 1RMs, race times, sleep, and nutrition details</li>
             </ul>
@@ -81,7 +81,7 @@ export default function PrivacyPage() {
 
           <Section title="7. Your Rights">
             <P>Depending on your jurisdiction you may have the following rights regarding your personal data:</P>
-            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '2', listStyleType: 'disc' }}>
+            <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li><strong style={{ color: '#F5F5F5' }}>Access</strong> — request a copy of the data we hold about you</li>
               <li><strong style={{ color: '#F5F5F5' }}>Correction</strong> — request correction of inaccurate data</li>
               <li><strong style={{ color: '#F5F5F5' }}>Deletion</strong> — request deletion of your account and associated data</li>
@@ -105,7 +105,7 @@ export default function PrivacyPage() {
 
           <Section title="11. Contact">
             <P>If you have any questions about this Privacy Policy or how we handle your data, please contact us at:</P>
-            <p style={{ color: '#00BFA5', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>privacy@liftrunrepeat.com</p>
+            <p style={{ color: '#00BFA5', fontSize: '14px', fontFamily: 'var(--font-sans)' }}>privacy@liftrunrepeat.com</p>
           </Section>
 
         </div>
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section>
-      <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #1E1E1E' }}>
+      <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'var(--font-heading)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '1px solid #1E1E1E' }}>
         {title}
       </h2>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -129,7 +129,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function SubHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ fontSize: '13px', fontWeight: 700, color: '#C0C0C0', fontFamily: 'Inter, sans-serif', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+    <p style={{ fontSize: '13px', fontWeight: 700, color: '#C0C0C0', fontFamily: 'var(--font-sans)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
       {children}
     </p>
   )
@@ -137,7 +137,7 @@ function SubHeading({ children }: { children: React.ReactNode }) {
 
 function P({ children }: { children: React.ReactNode }) {
   return (
-    <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'Inter, sans-serif', lineHeight: '1.8', margin: 0 }}>
+    <p style={{ color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '1.8', margin: 0 }}>
       {children}
     </p>
   )

@@ -108,7 +108,7 @@ export default function LibraryPage() {
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 14px', borderRadius: '10px',
     background: '#1E1E1E', border: '1px solid #2E2E2E',
-    color: '#F5F5F5', fontSize: '13px', fontFamily: 'Inter, sans-serif',
+    color: '#F5F5F5', fontSize: '13px', fontFamily: 'var(--font-sans)',
     outline: 'none', boxSizing: 'border-box',
   }
 
@@ -130,13 +130,13 @@ export default function LibraryPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
           <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5' }}>Reference</p>
           <div className="flex items-end justify-between gap-4 mb-4">
-            <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               Exercise Library
             </h1>
             <button
               onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0"
-              style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
+              style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)', border: 'none', cursor: 'pointer' }}
             >
               <Plus size={15} />
               Add Exercise
@@ -150,7 +150,7 @@ export default function LibraryPage() {
               type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search exercises or muscles..."
               className="w-full pl-10 pr-4 py-3 rounded-xl outline-none text-sm"
-              style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+              style={{ background: '#1A1A1A', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
             />
           </div>
         </div>
@@ -164,7 +164,7 @@ export default function LibraryPage() {
             {categories.map(cat => (
               <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
                 className="px-4 py-4 text-sm font-medium whitespace-nowrap transition-colors relative"
-                style={{ color: activeCategory === cat.id ? (cat.id === 'all' ? '#00BFA5' : (categoryColors[cat.id] || '#00BFA5')) : '#606060', fontFamily: 'Inter, sans-serif' }}>
+                style={{ color: activeCategory === cat.id ? (cat.id === 'all' ? '#00BFA5' : (categoryColors[cat.id] || '#00BFA5')) : '#606060', fontFamily: 'var(--font-sans)' }}>
                 {cat.label}
                 {activeCategory === cat.id && (
                   <div className="absolute bottom-0 left-0 right-0 h-0.5"
@@ -204,11 +204,11 @@ export default function LibraryPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-base font-black uppercase"
-                              style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5', fontSize: '16px' }}>
+                              style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5', fontSize: '16px' }}>
                               {ex.name}
                             </h3>
                             {custom && (
-                              <span style={{ fontSize: '9px', fontWeight: 700, color: '#00BFA5', background: '#00BFA515', border: '1px solid #00BFA530', borderRadius: '100px', padding: '1px 6px', whiteSpace: 'nowrap', fontFamily: 'Inter, sans-serif' }}>
+                              <span style={{ fontSize: '9px', fontWeight: 700, color: '#00BFA5', background: '#00BFA515', border: '1px solid #00BFA530', borderRadius: '100px', padding: '1px 6px', whiteSpace: 'nowrap', fontFamily: 'var(--font-sans)' }}>
                                 CUSTOM
                               </span>
                             )}
@@ -228,7 +228,7 @@ export default function LibraryPage() {
                                     onBlur={() => commitBwEdit(ex.name)}
                                     onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); if (e.key === 'Escape') setEditingBwId(null) }}
                                     className="w-8 text-center outline-none"
-                                    style={{ background: 'transparent', color: '#A78BFA', border: 'none', fontSize: '10px', fontFamily: 'JetBrains Mono, monospace' }} />
+                                    style={{ background: 'transparent', color: '#A78BFA', border: 'none', fontSize: '10px', fontFamily: 'var(--font-mono)' }} />
                                   <span style={{ color: '#A78BFA' }}>% BW</span>
                                 </span>
                               )
@@ -263,7 +263,7 @@ export default function LibraryPage() {
                           )}
                           <button onClick={() => handleLog(ex.name)}
                             className="w-8 h-8 rounded flex items-center justify-center"
-                            style={{ background: 'rgba(0,229,200,0.08)', color: '#00BFA5', border: '1px solid rgba(0,229,200,0.2)', cursor: 'pointer' }}
+                            style={{ background: 'rgba(0,191,165,0.08)', color: '#00BFA5', border: '1px solid rgba(0,191,165,0.2)', cursor: 'pointer' }}
                             title="Log this exercise">
                             <Plus size={14} />
                           </button>
@@ -273,7 +273,7 @@ export default function LibraryPage() {
                       {ex.cues.length > 0 && (
                         <button onClick={toggleCollapsed}
                           className="flex items-center gap-1.5 text-xs mt-2"
-                          style={{ color: '#606060', fontFamily: 'Inter, sans-serif', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                          style={{ color: '#606060', fontFamily: 'var(--font-sans)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                           {isCollapsed ? <ChevronDown size={12} /> : <ChevronUp size={12} />}
                           {isCollapsed ? 'Coaching cues' : 'Hide cues'}
                         </button>
@@ -289,7 +289,7 @@ export default function LibraryPage() {
                           ))}
                           {(ex.mistakes?.length ?? 0) > 0 && (
                             <div className="pt-2">
-                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>Common mistakes</p>
+                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#C8102E', fontFamily: 'var(--font-sans)' }}>Common mistakes</p>
                               {ex.mistakes!.map((m, i) => (
                                 <div key={i} className="flex items-start gap-2">
                                   <span className="mt-0.5 text-xs" style={{ color: '#C8102E' }}>✕</span>
@@ -300,7 +300,7 @@ export default function LibraryPage() {
                           )}
                           {(ex.substitutions?.length ?? 0) > 0 && (
                             <div className="pt-2">
-                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Substitutions</p>
+                              <p className="text-xs font-bold uppercase tracking-wider mb-1" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Substitutions</p>
                               <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0' }}>{ex.substitutions!.join(' · ')}</p>
                             </div>
                           )}
@@ -323,7 +323,7 @@ export default function LibraryPage() {
 
         {filtered.length === 0 && (
           <div className="text-center py-20">
-            <p className="text-5xl font-black uppercase mb-3" style={{ fontFamily: 'Montserrat, sans-serif', color: '#2E2E2E' }}>
+            <p className="text-5xl font-black uppercase mb-3" style={{ fontFamily: 'var(--font-heading)', color: '#2E2E2E' }}>
               NO RESULTS
             </p>
             <p className="text-sm" style={{ color: '#606060' }}>Try a different search term or category</p>
@@ -342,8 +342,8 @@ export default function LibraryPage() {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
               <div>
-                <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Library</p>
-                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Add Exercise</h2>
+                <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Library</p>
+                <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Add Exercise</h2>
               </div>
               <button onClick={() => setShowAddModal(false)}
                 style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer' }}>
@@ -354,7 +354,7 @@ export default function LibraryPage() {
             {/* Body */}
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Exercise Name *</label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Exercise Name *</label>
                 <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
                   placeholder="e.g. Landmine Press" style={inputStyle}
                   onFocus={e => (e.target.style.borderColor = '#00BFA544')}
@@ -362,13 +362,13 @@ export default function LibraryPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Category</label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Category</label>
                 <div className="grid grid-cols-3 gap-2">
                   {categories.filter(c => c.id !== 'all').map(cat => (
                     <button key={cat.id} onClick={() => setNewCategory(cat.id as Exercise['category'])}
                       style={{
                         padding: '8px', borderRadius: '8px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
-                        fontFamily: 'Inter, sans-serif', border: `1px solid ${newCategory === cat.id ? (categoryColors[cat.id] + '44') : '#2E2E2E'}`,
+                        fontFamily: 'var(--font-sans)', border: `1px solid ${newCategory === cat.id ? (categoryColors[cat.id] + '44') : '#2E2E2E'}`,
                         background: newCategory === cat.id ? (categoryColors[cat.id] + '20') : '#242424',
                         color: newCategory === cat.id ? categoryColors[cat.id] : '#606060',
                       }}>
@@ -379,7 +379,7 @@ export default function LibraryPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Primary Muscles <span style={{ color: '#3E3E3E' }}>(comma separated)</span></label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Primary Muscles <span style={{ color: '#3E3E3E' }}>(comma separated)</span></label>
                 <input type="text" value={newMuscles} onChange={e => setNewMuscles(e.target.value)}
                   placeholder="e.g. Shoulders, Triceps, Core" style={inputStyle}
                   onFocus={e => (e.target.style.borderColor = '#00BFA544')}
@@ -387,7 +387,7 @@ export default function LibraryPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Coaching Cues <span style={{ color: '#3E3E3E' }}>(one per line, optional)</span></label>
+                <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Coaching Cues <span style={{ color: '#3E3E3E' }}>(one per line, optional)</span></label>
                 <textarea value={newCues} onChange={e => setNewCues(e.target.value)}
                   placeholder={'Drive elbow to ceiling\nKeep torso upright\nFull range of motion'}
                   rows={4}
@@ -400,7 +400,7 @@ export default function LibraryPage() {
             {/* Footer */}
             <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid #2E2E2E' }}>
               <button onClick={() => setShowAddModal(false)}
-                style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', fontSize: '14px', fontFamily: 'Inter, sans-serif' }}>
+                style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', fontSize: '14px', fontFamily: 'var(--font-sans)' }}>
                 Cancel
               </button>
               <button onClick={handleAddExercise} disabled={!newName.trim()}
@@ -409,7 +409,7 @@ export default function LibraryPage() {
                   background: newName.trim() ? '#00BFA5' : '#1A1A1A',
                   color: newName.trim() ? '#0D0D0D' : '#606060',
                   border: 'none', cursor: newName.trim() ? 'pointer' : 'not-allowed',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                 }}>
                 <Check size={14} />
                 Add to Library

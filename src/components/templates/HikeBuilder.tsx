@@ -65,7 +65,7 @@ function ToggleGroup<T extends string>({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+      <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
         {label}
       </label>
       <div className="flex gap-1.5 flex-wrap">
@@ -78,7 +78,7 @@ function ToggleGroup<T extends string>({
               background: value === opt.value ? '#84CC1625' : '#242424',
               color:      value === opt.value ? '#84CC16'   : '#606060',
               border:     value === opt.value ? '1px solid #84CC1655' : '1px solid #2E2E2E',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
             }}
           >
             {opt.label}
@@ -115,7 +115,7 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
   const inputCls = "w-full px-3 py-2.5 rounded-xl text-sm outline-none"
   const inputSty: React.CSSProperties = {
     background: '#242424', border: '1px solid #2E2E2E',
-    color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace',
+    color: '#F5F5F5', fontFamily: 'var(--font-mono)',
   }
 
   return (
@@ -124,7 +124,7 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
       {/* ── Distance & Elevation inputs ── */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Distance
           </label>
           <div className="relative">
@@ -135,11 +135,11 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
               className={inputCls}
               style={{ ...inputSty, paddingRight: '40px' }}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>km</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>km</span>
           </div>
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <label className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Elevation Gain
           </label>
           <div className="relative">
@@ -150,14 +150,14 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
               className={inputCls}
               style={{ ...inputSty, paddingRight: '36px' }}
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>m</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>m</span>
           </div>
         </div>
       </div>
 
       {/* ── TrailsNH-style settings ── */}
       <div className="space-y-3 p-4 rounded-xl" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#84CC16', fontFamily: 'Inter, sans-serif' }}>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#84CC16', fontFamily: 'var(--font-sans)' }}>
           TrailsNH Correction
         </p>
         <ToggleGroup
@@ -193,7 +193,7 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
             { value: 'very-heavy', label: 'Very Heavy' },
           ]}
         />
-        <p className="text-xs" style={{ color: '#84CC16', fontFamily: 'Inter, sans-serif' }}>
+        <p className="text-xs" style={{ color: '#84CC16', fontFamily: 'var(--font-sans)' }}>
           Correction Factor: <strong>{correctionLabel}</strong>
         </p>
       </div>
@@ -201,10 +201,10 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
       {/* ── Estimates ── */}
       {hasData && (
         <div className="space-y-3">
-          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>
+          <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
             Estimates
           </p>
-          <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
             Hike: <strong style={{ color: '#A0A0A0' }}>{data.distanceKm || '0'} km</strong>,{' '}
             <strong style={{ color: '#A0A0A0' }}>{data.elevationGainM || '0'} m</strong> vertical gain
           </p>
@@ -213,11 +213,11 @@ export default function HikeBuilder({ data, onChange }: HikeBuilderProps) {
           <div className="p-4 rounded-xl space-y-1" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
             <div className="flex items-center gap-2 mb-2">
               <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>Naismith&apos;s Rule</span>
-              <span className="text-lg font-black ml-auto" style={{ color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{fmtMins(correctedMins)}</span>
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Naismith&apos;s Rule</span>
+              <span className="text-lg font-black ml-auto" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{fmtMins(correctedMins)}</span>
             </div>
-            <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Pace: <span style={{ color: '#A0A0A0' }}>{fmtPace(km, correctedMins)}</span></p>
-            <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Speed: <span style={{ color: '#A0A0A0' }}>{fmtSpeed(km, correctedMins)}</span></p>
+            <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Pace: <span style={{ color: '#A0A0A0' }}>{fmtPace(km, correctedMins)}</span></p>
+            <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Speed: <span style={{ color: '#A0A0A0' }}>{fmtSpeed(km, correctedMins)}</span></p>
           </div>
         </div>
       )}

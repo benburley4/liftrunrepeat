@@ -62,7 +62,7 @@ export default function QuickLogFAB() {
             <div className="flex items-center justify-between mb-5">
               <h2
                 className="text-xl font-black uppercase"
-                style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
+                style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
               >
                 Quick Log
               </h2>
@@ -82,7 +82,7 @@ export default function QuickLogFAB() {
                 style={{
                   background: mode === 'run' ? '#C8102E' : 'transparent',
                   color: mode === 'run' ? '#0D0D0D' : '#A0A0A0',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                 }}
               >
                 Run
@@ -93,7 +93,7 @@ export default function QuickLogFAB() {
                 style={{
                   background: mode === 'lift' ? '#00BFA5' : 'transparent',
                   color: mode === 'lift' ? '#0D0D0D' : '#A0A0A0',
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                 }}
               >
                 Lift
@@ -109,9 +109,9 @@ export default function QuickLogFAB() {
                       onClick={() => setRunType(rt)}
                       className="px-3 py-1.5 rounded text-xs font-medium"
                       style={{
-                        background: runType === rt ? 'rgba(255,107,53,0.15)' : '#242424',
+                        background: runType === rt ? 'rgba(200,16,46,0.15)' : '#242424',
                         color: runType === rt ? '#C8102E' : '#A0A0A0',
-                        border: runType === rt ? '1px solid rgba(255,107,53,0.3)' : '1px solid #2E2E2E',
+                        border: runType === rt ? '1px solid rgba(200,16,46,0.3)' : '1px solid #2E2E2E',
                       }}
                     >
                       {rt}
@@ -127,7 +127,7 @@ export default function QuickLogFAB() {
                       onChange={e => setDistance(e.target.value)}
                       placeholder="10"
                       className="w-full px-3 py-2 rounded text-sm outline-none text-center"
-                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
                     />
                   </div>
                   <div>
@@ -138,7 +138,7 @@ export default function QuickLogFAB() {
                       onChange={e => setTime(e.target.value)}
                       placeholder="55:20"
                       className="w-full px-3 py-2 rounded text-sm outline-none text-center"
-                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                      style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
                     />
                   </div>
                 </div>
@@ -153,7 +153,7 @@ export default function QuickLogFAB() {
                     onChange={e => setExercise(e.target.value)}
                     placeholder="Back Squat"
                     className="w-full px-3 py-2 rounded text-sm outline-none"
-                    style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+                    style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -170,7 +170,7 @@ export default function QuickLogFAB() {
                         onChange={e => setter(e.target.value)}
                         placeholder={placeholder}
                         className="w-full px-2 py-2 rounded text-sm outline-none text-center"
-                        style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'JetBrains Mono, monospace' }}
+                        style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-mono)' }}
                       />
                     </div>
                   ))}
@@ -185,7 +185,7 @@ export default function QuickLogFAB() {
                 background: saved ? '#1A1A1A' : (mode === 'run' ? '#C8102E' : '#00BFA5'),
                 color: saved ? '#00BFA5' : '#0D0D0D',
                 border: saved ? '1px solid #00BFA5' : 'none',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-sans)',
               }}
             >
               {saved ? '✓ Saved!' : 'Save Quick Log'}

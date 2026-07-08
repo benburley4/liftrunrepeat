@@ -41,14 +41,14 @@ export default function WeekPreview({ days, size = 'sm' }: WeekPreviewProps) {
                 background: isGradient ? 'linear-gradient(135deg, #00BFA5, #C8102E)' : dayColors[day.type],
                 color: day.type === 'rest' ? '#606060' : day.type === 'physio' ? '#0D0D0D' : '#0D0D0D',
                 fontSize: size === 'sm' ? '9px' : '10px',
-                fontFamily: 'JetBrains Mono, monospace',
+                fontFamily: 'var(--font-mono)',
               }}
             >
               {dayLabels[day.type]}
             </div>
             <span
               className="text-center"
-              style={{ color: '#606060', fontSize: '9px', fontFamily: 'Inter, sans-serif' }}
+              style={{ color: '#606060', fontSize: '9px', fontFamily: 'var(--font-sans)' }}
             >
               {dayNames[i]}
             </span>

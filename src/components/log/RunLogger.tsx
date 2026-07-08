@@ -75,10 +75,10 @@ export default function RunLogger() {
               onClick={() => setRunType(rt)}
               className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
               style={{
-                background: runType === rt ? 'rgba(255,107,53,0.15)' : '#242424',
+                background: runType === rt ? 'rgba(200,16,46,0.15)' : '#242424',
                 color: runType === rt ? '#C8102E' : '#A0A0A0',
-                border: runType === rt ? '1px solid rgba(255,107,53,0.4)' : '1px solid #2E2E2E',
-                fontFamily: 'Inter, sans-serif',
+                border: runType === rt ? '1px solid rgba(200,16,46,0.4)' : '1px solid #2E2E2E',
+                fontFamily: 'var(--font-sans)',
               }}
             >
               {rt}
@@ -99,7 +99,7 @@ export default function RunLogger() {
               style={{
                 background: unit === u ? '#C8102E' : '#1A1A1A',
                 color: unit === u ? '#0D0D0D' : '#A0A0A0',
-                fontFamily: 'Inter, sans-serif',
+                fontFamily: 'var(--font-sans)',
               }}
             >
               {u}
@@ -125,7 +125,7 @@ export default function RunLogger() {
               background: '#242424',
               color: '#F5F5F5',
               border: '1px solid #2E2E2E',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: 'var(--font-mono)',
             }}
           />
         </div>
@@ -143,7 +143,7 @@ export default function RunLogger() {
               background: '#242424',
               color: '#F5F5F5',
               border: '1px solid #2E2E2E',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: 'var(--font-mono)',
             }}
           />
         </div>
@@ -157,7 +157,7 @@ export default function RunLogger() {
               background: '#1A1A1A',
               color: pace ? '#C8102E' : '#606060',
               border: '1px solid #2E2E2E',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: 'var(--font-mono)',
             }}
           >
             {pace || '—'}<span className="text-xs ml-1" style={{ color: '#606060' }}>/{ unit}</span>
@@ -181,7 +181,7 @@ export default function RunLogger() {
               background: '#242424',
               color: '#F5F5F5',
               border: '1px solid #2E2E2E',
-              fontFamily: 'JetBrains Mono, monospace',
+              fontFamily: 'var(--font-mono)',
             }}
           />
         </div>
@@ -196,10 +196,10 @@ export default function RunLogger() {
                 onClick={() => setTerrain(t)}
                 className="px-2.5 py-2 rounded text-xs font-medium flex-1"
                 style={{
-                  background: terrain === t ? 'rgba(255,107,53,0.15)' : '#242424',
+                  background: terrain === t ? 'rgba(200,16,46,0.15)' : '#242424',
                   color: terrain === t ? '#C8102E' : '#A0A0A0',
-                  border: terrain === t ? '1px solid rgba(255,107,53,0.3)' : '1px solid #2E2E2E',
-                  fontFamily: 'Inter, sans-serif',
+                  border: terrain === t ? '1px solid rgba(200,16,46,0.3)' : '1px solid #2E2E2E',
+                  fontFamily: 'var(--font-sans)',
                   minWidth: '50px',
                 }}
               >
@@ -213,7 +213,7 @@ export default function RunLogger() {
       {/* Perceived effort */}
       <div>
         <label className="text-xs uppercase tracking-wider mb-2 block" style={{ color: '#606060' }}>
-          Perceived Effort — <span style={{ color: effortColors[effort], fontFamily: 'JetBrains Mono, monospace' }}>{effort}/10</span>
+          Perceived Effort — <span style={{ color: effortColors[effort], fontFamily: 'var(--font-mono)' }}>{effort}/10</span>
         </label>
         <input
           type="range"
@@ -235,12 +235,12 @@ export default function RunLogger() {
       {vdot && (
         <div
           className="rounded-xl p-4"
-          style={{ background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.2)' }}
+          style={{ background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.2)' }}
         >
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider" style={{ color: '#606060' }}>VDOT Estimate</p>
-              <p className="text-3xl font-bold" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>
+              <p className="text-3xl font-bold" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
                 {vdot}
               </p>
             </div>

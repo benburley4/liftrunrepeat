@@ -6,11 +6,11 @@ interface SessionTypeChipProps {
 }
 
 const chipConfig = {
-  strength: { label: 'Strength', bg: 'rgba(0,229,200,0.12)', color: '#00BFA5', border: 'rgba(0,229,200,0.3)' },
+  strength: { label: 'Strength', bg: 'rgba(0,191,165,0.12)', color: '#00BFA5', border: 'rgba(0,191,165,0.3)' },
   balanced: { label: 'Balanced', bg: 'rgba(139,92,246,0.12)', color: '#A78BFA', border: 'rgba(139,92,246,0.3)' },
-  endurance: { label: 'Endurance', bg: 'rgba(255,107,53,0.12)', color: '#C8102E', border: 'rgba(255,107,53,0.3)' },
-  lift: { label: 'Lift', bg: 'rgba(0,229,200,0.12)', color: '#00BFA5', border: 'rgba(0,229,200,0.3)' },
-  run: { label: 'Run', bg: 'rgba(255,107,53,0.12)', color: '#C8102E', border: 'rgba(255,107,53,0.3)' },
+  endurance: { label: 'Endurance', bg: 'rgba(200,16,46,0.12)', color: '#C8102E', border: 'rgba(200,16,46,0.3)' },
+  lift: { label: 'Lift', bg: 'rgba(0,191,165,0.12)', color: '#00BFA5', border: 'rgba(0,191,165,0.3)' },
+  run: { label: 'Run', bg: 'rgba(200,16,46,0.12)', color: '#C8102E', border: 'rgba(200,16,46,0.3)' },
   hybrid: { label: 'Hybrid', bg: 'rgba(139,92,246,0.12)', color: '#A78BFA', border: 'rgba(139,92,246,0.3)' },
 }
 
@@ -27,7 +27,7 @@ export default function SessionTypeChip({ type, size = 'sm' }: SessionTypeChipPr
         color: config.color,
         border: `1px solid ${config.border}`,
         fontSize: size === 'xs' ? '10px' : '11px',
-        fontFamily: 'Inter, sans-serif',
+        fontFamily: 'var(--font-sans)',
         letterSpacing: '0.06em',
       }}
     >

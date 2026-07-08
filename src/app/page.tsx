@@ -3,26 +3,29 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Dumbbell, Heart, Footprints, ArrowRight, TrendingUp, BarChart2, Zap, X, Plus, Sparkles, Brain } from 'lucide-react'
+import { Dumbbell, Heart, Footprints, ArrowRight, TrendingUp, BarChart2, Zap, Plus, Sparkles, Brain } from 'lucide-react'
 import { programmes, Programme } from '@/lib/exerciseLibrary'
 import ProgrammeCard from '@/components/ui/ProgrammeCard'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import WeekPreview from '@/components/ui/WeekPreview'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
+import Card from '@/components/ui/Card'
+import StatTile from '@/components/ui/StatTile'
+import SectionHeading from '@/components/ui/SectionHeading'
 import { useAuth } from '@/context/AuthContext'
 import { BUILTIN_PLANS, expandPlanToProgramme } from '@/lib/builtinProgrammes'
 import { upsertProgramme, upsertSetting } from '@/lib/db'
 
 type ModalType = 'logger' | 'analytics' | 'programme' | 'builder' | null
 
-// ── Modal wrapper ──────────────────────────────────────────────────────────────
-function ModalOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+const SUBTLE = 'var(--color-text-subtle)'
+
+// ── Shared sign-up note ────────────────────────────────────────────────────────
+function SignupNote({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)' }}
-      onClick={e => e.target === e.currentTarget && onClose()}
-    >
-      {children}
+    <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,191,165,0.06)', border: '1px solid rgba(0,191,165,0.2)' }}>
+      <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{children}</p>
     </div>
   )
 }
@@ -39,105 +42,88 @@ function LoggerModal({ onClose }: { onClose: () => void }) {
   const color = typeColors[sessionType]
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div className="w-full flex flex-col rounded-2xl overflow-hidden" style={{ maxWidth: '520px', maxHeight: '90vh', background: '#141414', border: '1px solid #2E2E2E' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
-          <div>
-            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Session Logger</p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Today&apos;s Session</h2>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer' }}><X size={18} /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* Session type */}
-          <div className="flex gap-2">
-            {(['lift', 'run', 'hybrid'] as const).map(t => (
-              <button key={t} onClick={() => setSessionType(t)}
-                className="flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all"
-                style={{
-                  background: sessionType === t ? `${typeColors[t]}20` : '#1E1E1E',
-                  color: sessionType === t ? typeColors[t] : '#606060',
-                  border: `1px solid ${sessionType === t ? typeColors[t] + '44' : '#2E2E2E'}`,
-                  fontFamily: 'Inter, sans-serif',
-                }}>
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Lift block */}
-          {(sessionType === 'lift' || sessionType === 'hybrid') && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Dumbbell size={13} style={{ color: '#00BFA5' }} />
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif' }}>Lift Block</span>
-              </div>
-              <div className="rounded-xl overflow-hidden" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-                <div className="px-4 py-3" style={{ borderBottom: '1px solid #2E2E2E' }}>
-                  <p className="text-sm font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Back Squat</p>
-                </div>
-                <div className="p-3 space-y-1.5">
-                  <div className="grid grid-cols-4 gap-2 mb-1">
-                    {['Set', 'kg', 'Reps', 'RPE'].map(h => (
-                      <div key={h} className="text-center text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{h}</div>
-                    ))}
-                  </div>
-                  {sets.map(s => (
-                    <div key={s.set} className="grid grid-cols-4 gap-2">
-                      <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{s.set}</div>
-                      <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{s.weight}</div>
-                      <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{s.reps}</div>
-                      <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>{s.rpe}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button className="flex items-center gap-1.5 mt-2 text-xs" style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-                <Plus size={12} /> Add Exercise
-              </button>
-            </div>
-          )}
-
-          {/* Run block */}
-          {(sessionType === 'run' || sessionType === 'hybrid') && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Footprints size={13} style={{ color: '#C8102E' }} />
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif' }}>Run Block</span>
-              </div>
-              <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-                <div>
-                  <p className="text-sm font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Easy Run</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#606060' }}>Zone 2 · 5:30/km</p>
-                </div>
-                <p className="text-lg font-bold" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>8 km</p>
-              </div>
-            </div>
-          )}
-
-          {/* Sign up note */}
-          <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,191,165,0.06)', border: '1px solid rgba(0,191,165,0.2)' }}>
-            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to save your sessions and track progress over time
-            </p>
-          </div>
-        </div>
-
-        <div className="px-6 py-4 flex gap-3" style={{ borderTop: '1px solid #2E2E2E' }}>
-          <button onClick={onClose}
-            style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'none', border: '1px solid #2E2E2E', color: '#606060', fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            Close
+    <Modal
+      onClose={onClose}
+      eyebrow="Session Logger"
+      title="Today's Session"
+      footer={
+        <>
+          <Button onClick={onClose} variant="subtle" className="flex-1">Close</Button>
+          <Button href="/login" accent={color} className="flex-1">Sign Up to Save</Button>
+        </>
+      }
+    >
+      {/* Session type */}
+      <div className="flex gap-2">
+        {(['lift', 'run', 'hybrid'] as const).map(t => (
+          <button key={t} onClick={() => setSessionType(t)}
+            className="flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all"
+            style={{
+              background: sessionType === t ? `${typeColors[t]}20` : '#1E1E1E',
+              color: sessionType === t ? typeColors[t] : SUBTLE,
+              border: `1px solid ${sessionType === t ? typeColors[t] + '44' : '#2E2E2E'}`,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-sans)',
+            }}>
+            {t}
           </button>
-          <Link href="/login"
-            className="flex-1 text-center py-3 rounded-xl text-sm font-bold"
-            style={{ background: color, color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}>
-            Sign Up to Save
-          </Link>
-        </div>
+        ))}
       </div>
-    </ModalOverlay>
+
+      {/* Lift block */}
+      {(sessionType === 'lift' || sessionType === 'hybrid') && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Dumbbell size={13} style={{ color: '#00BFA5' }} />
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#00BFA5', fontFamily: 'var(--font-heading)' }}>Lift Block</span>
+          </div>
+          <div className="rounded-xl overflow-hidden" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
+            <div className="px-4 py-3" style={{ borderBottom: '1px solid #2E2E2E' }}>
+              <p className="text-sm font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Back Squat</p>
+            </div>
+            <div className="p-3 space-y-1.5">
+              <div className="grid grid-cols-4 gap-2 mb-1">
+                {['Set', 'kg', 'Reps', 'RPE'].map(h => (
+                  <div key={h} className="text-center text-xs" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>{h}</div>
+                ))}
+              </div>
+              {sets.map(s => (
+                <div key={s.set} className="grid grid-cols-4 gap-2">
+                  <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: SUBTLE, fontFamily: 'var(--font-mono)' }}>{s.set}</div>
+                  <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{s.weight}</div>
+                  <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{s.reps}</div>
+                  <div className="py-1.5 rounded text-xs text-center" style={{ background: '#2A2A2A', color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{s.rpe}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <button className="flex items-center gap-1.5 mt-2 text-xs transition-colors hover:text-white" style={{ background: 'none', border: 'none', color: SUBTLE, cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+            <Plus size={12} /> Add Exercise
+          </button>
+        </div>
+      )}
+
+      {/* Run block */}
+      {(sessionType === 'run' || sessionType === 'hybrid') && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Footprints size={13} style={{ color: '#C8102E' }} />
+            <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#C8102E', fontFamily: 'var(--font-heading)' }}>Run Block</span>
+          </div>
+          <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
+            <div>
+              <p className="text-sm font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Easy Run</p>
+              <p className="text-xs mt-0.5" style={{ color: SUBTLE }}>Zone 2 · 5:30/km</p>
+            </div>
+            <p className="text-lg font-bold" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>8 km</p>
+          </div>
+        </div>
+      )}
+
+      <SignupNote>
+        <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to save your sessions and track progress over time
+      </SignupNote>
+    </Modal>
   )
 }
 
@@ -151,90 +137,72 @@ function AnalyticsModal({ onClose }: { onClose: () => void }) {
   ]
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div className="w-full flex flex-col rounded-2xl overflow-hidden" style={{ maxWidth: '620px', maxHeight: '90vh', background: '#141414', border: '1px solid #2E2E2E' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
+    <Modal
+      onClose={onClose}
+      eyebrow="Analytics Preview"
+      title="Hybrid Dashboard"
+      maxWidth={620}
+      footer={
+        <Button href="/login" fullWidth><BarChart2 size={15} /> Sign Up to Track Your Data</Button>
+      }
+    >
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {stats.map(s => (
+          <StatTile key={s.label} value={s.value} label={s.label} accent={s.accent} size="lg" />
+        ))}
+      </div>
+
+      {/* Interference chart */}
+      <div className="rounded-xl p-5" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Analytics Preview</p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Hybrid Dashboard</h2>
+            <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: SUBTLE }}>12-Week Trend</p>
+            <p className="text-base font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Interference Analysis</p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer' }}><X size={18} /></button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-0.5 rounded" style={{ background: '#00BFA5' }} />
+              <span className="text-xs" style={{ color: SUBTLE }}>Squat 1RM</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-2 rounded-sm" style={{ background: '#C8102E', opacity: 0.5 }} />
+              <span className="text-xs" style={{ color: SUBTLE }}>Weekly Km</span>
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* Stat cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {stats.map(s => (
-              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-                <p className="text-2xl font-black" style={{ color: s.accent, fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{s.label}</p>
-              </div>
+        <div className="relative h-44">
+          <div className="flex items-end gap-1 h-full">
+            {[30, 35, 40, 50, 60, 65, 85, 95, 90, 65, 50, 38].map((h, i) => (
+              <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: '#C8102E', opacity: 0.4, minHeight: '4px', marginTop: 'auto' }} />
             ))}
           </div>
-
-          {/* Interference chart */}
-          <div className="rounded-xl p-5" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-xs uppercase tracking-wider mb-0.5" style={{ color: '#606060' }}>12-Week Trend</p>
-                <p className="text-base font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Interference Analysis</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-0.5 rounded" style={{ background: '#00BFA5' }} />
-                  <span className="text-xs" style={{ color: '#606060' }}>Squat 1RM</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-2 rounded-sm" style={{ background: '#C8102E', opacity: 0.5 }} />
-                  <span className="text-xs" style={{ color: '#606060' }}>Weekly Km</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative h-44">
-              <div className="flex items-end gap-1 h-full">
-                {[30, 35, 40, 50, 60, 65, 85, 95, 90, 65, 50, 38].map((h, i) => (
-                  <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: '#C8102E', opacity: 0.4, minHeight: '4px', marginTop: 'auto' }} />
-                ))}
-              </div>
-              <div className="absolute inset-0 pointer-events-none">
-                <svg className="w-full h-full" viewBox="0 0 120 48" preserveAspectRatio="none">
-                  <polyline points="5,40 15,36 25,32 35,28 45,23 55,19 65,19 75,21 85,19 95,14 105,9 115,5"
-                    fill="none" stroke="#00BFA5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  {[5,15,25,35,45,55,65,75,85,95,105,115].map((x, i) => {
-                    const ys = [40,36,32,28,23,19,19,21,19,14,9,5]
-                    return <circle key={i} cx={x} cy={ys[i]} r="2" fill="#00BFA5" />
-                  })}
-                </svg>
-              </div>
-            </div>
-
-            <div className="rounded-lg px-4 py-3 flex items-start gap-3 mt-4"
-              style={{ background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.25)' }}>
-              <TrendingUp size={15} style={{ color: '#C8102E', flexShrink: 0, marginTop: 2 }} />
-              <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-                <span style={{ color: '#C8102E', fontWeight: 600 }}>Interference Detected (W7–9):</span> Squat stalled while weekly km peaked at 61 km. Sign up to unlock your personal analysis.
-              </p>
-            </div>
-          </div>
-
-          {/* Sign up note */}
-          <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,191,165,0.06)', border: '1px solid rgba(0,191,165,0.2)' }}>
-            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to track your own data and see your interference patterns
-            </p>
+          <div className="absolute inset-0 pointer-events-none">
+            <svg className="w-full h-full" viewBox="0 0 120 48" preserveAspectRatio="none">
+              <polyline points="5,40 15,36 25,32 35,28 45,23 55,19 65,19 75,21 85,19 95,14 105,9 115,5"
+                fill="none" stroke="#00BFA5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              {[5,15,25,35,45,55,65,75,85,95,105,115].map((x, i) => {
+                const ys = [40,36,32,28,23,19,19,21,19,14,9,5]
+                return <circle key={i} cx={x} cy={ys[i]} r="2" fill="#00BFA5" />
+              })}
+            </svg>
           </div>
         </div>
 
-        <div className="px-6 py-4" style={{ borderTop: '1px solid #2E2E2E' }}>
-          <Link href="/login" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold"
-            style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}>
-            <BarChart2 size={15} /> Sign Up to Track Your Data
-          </Link>
+        <div className="rounded-lg px-4 py-3 flex items-start gap-3 mt-4"
+          style={{ background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.25)' }}>
+          <TrendingUp size={15} style={{ color: '#C8102E', flexShrink: 0, marginTop: 2 }} />
+          <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
+            <span style={{ color: '#C8102E', fontWeight: 600 }}>Interference Detected (W7–9):</span> Squat stalled while weekly km peaked at 61 km. Sign up to unlock your personal analysis.
+          </p>
         </div>
       </div>
-    </ModalOverlay>
+
+      <SignupNote>
+        <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to track your own data and see your interference patterns
+      </SignupNote>
+    </Modal>
   )
 }
 
@@ -264,79 +232,58 @@ function ProgrammeModal({ programme, onClose }: { programme: Programme; onClose:
   }
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div className="w-full flex flex-col rounded-2xl overflow-hidden" style={{ maxWidth: '540px', maxHeight: '90vh', background: '#141414', border: '1px solid #2E2E2E' }}>
-        {/* Header */}
-        <div className="flex items-start justify-between px-6 py-5" style={{ borderBottom: '1px solid #2E2E2E' }}>
-          <div>
-            <p className="text-xs uppercase tracking-widest mb-1" style={{ color, fontFamily: 'Inter, sans-serif' }}>{programme.goalBias.replace('-', ' ')}</p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>{programme.name}</h2>
-            <p className="text-sm mt-1" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{programme.description}</p>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', flexShrink: 0, marginLeft: '16px' }}><X size={18} /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: 'Duration', value: `${programme.durationWeeks}wk` },
-              { label: 'Lift Days', value: `${programme.liftDays}/wk` },
-              { label: 'Level', value: programme.level },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-                <p className="text-xl font-black capitalize" style={{ color, fontFamily: 'JetBrains Mono, monospace' }}>{s.value}</p>
-                <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{s.label}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Week preview */}
-          <div>
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Sample Week</p>
-            <WeekPreview days={programme.weekPreview} />
-          </div>
-
-          {/* Tags */}
-          <div className="flex flex-wrap gap-1.5">
-            {programme.tags.map(tag => (
-              <span key={tag} className="px-2.5 py-1 rounded text-xs" style={{ background: '#1E1E1E', color: '#606060', border: '1px solid #2E2E2E' }}>
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          {/* Start note */}
-          <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,191,165,0.06)', border: '1px solid rgba(0,191,165,0.2)' }}>
-            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              {user
-                ? 'Starting adds the full week-by-week plan to your programmes, with progression and deloads built in. You can edit every session afterwards.'
-                : <><Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to start this programme and track your progress week by week</>}
-            </p>
-            {startError && <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>{startError}</p>}
-          </div>
-        </div>
-
-        <div className="px-6 py-4 flex gap-3" style={{ borderTop: '1px solid #2E2E2E' }}>
-          <button onClick={onClose}
-            style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'none', border: '1px solid #2E2E2E', color: '#606060', fontSize: '14px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
-            Back
-          </button>
+    <Modal
+      onClose={onClose}
+      eyebrow={programme.goalBias.replace('-', ' ')}
+      eyebrowColor={color}
+      title={programme.name}
+      maxWidth={540}
+      headerExtra={
+        <p className="text-sm mt-1" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{programme.description}</p>
+      }
+      footer={
+        <>
+          <Button onClick={onClose} variant="subtle" className="flex-1">Back</Button>
           {user && plan ? (
-            <button onClick={handleStart} disabled={starting}
-              className="flex-1 text-center py-3 rounded-xl text-sm font-bold"
-              style={{ background: starting ? '#1A1A1A' : color, color: starting ? '#606060' : '#0D0D0D', border: 'none', cursor: starting ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+            <Button onClick={handleStart} disabled={starting} accent={color} className="flex-1">
               {starting ? 'Starting…' : 'Start This Programme'}
-            </button>
+            </Button>
           ) : (
-            <Link href="/login" className="flex-1 text-center py-3 rounded-xl text-sm font-bold"
-              style={{ background: color, color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}>
-              Sign Up to Start
-            </Link>
+            <Button href="/login" accent={color} className="flex-1">Sign Up to Start</Button>
           )}
-        </div>
+        </>
+      }
+    >
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatTile value={`${programme.durationWeeks}wk`} label="Duration" accent={color} />
+        <StatTile value={`${programme.liftDays}/wk`} label="Lift Days" accent={color} />
+        <StatTile value={programme.level} label="Level" accent={color} />
       </div>
-    </ModalOverlay>
+
+      {/* Week preview */}
+      <div>
+        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>Sample Week</p>
+        <WeekPreview days={programme.weekPreview} />
+      </div>
+
+      {/* Tags */}
+      <div className="flex flex-wrap gap-1.5">
+        {programme.tags.map(tag => (
+          <span key={tag} className="px-2.5 py-1 rounded text-xs" style={{ background: '#1E1E1E', color: SUBTLE, border: '1px solid #2E2E2E' }}>
+            {tag}
+          </span>
+        ))}
+      </div>
+
+      {/* Start note */}
+      <SignupNote>
+        {user
+          ? 'Starting adds the full week-by-week plan to your programmes, with progression and deloads built in. You can edit every session afterwards.'
+          : <><Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to start this programme and track your progress week by week</>}
+        {startError && <span className="block text-xs mt-2" style={{ color: '#C8102E' }}>{startError}</span>}
+      </SignupNote>
+    </Modal>
   )
 }
 
@@ -360,73 +307,49 @@ function BuilderModal({ onClose }: { onClose: () => void }) {
   const runCount = schedule.filter(s => s === 'Run' || s === 'Hybrid').length
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <div className="w-full flex flex-col rounded-2xl overflow-hidden" style={{ maxWidth: '520px', maxHeight: '90vh', background: '#141414', border: '1px solid #2E2E2E' }}>
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
-          <div>
-            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Programme Builder</p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Weekly Schedule</h2>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer' }}><X size={18} /></button>
-        </div>
+    <Modal
+      onClose={onClose}
+      eyebrow="Programme Builder"
+      title="Weekly Schedule"
+      footer={
+        <Button href="/login" fullWidth><Zap size={15} /> Sign Up to Save Your Schedule</Button>
+      }
+    >
+      <p className="text-xs" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>Tap a day to cycle through session types</p>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          <p className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Tap a day to cycle through session types</p>
-
-          {/* Day grid */}
-          <div className="grid grid-cols-7 gap-2">
-            {days.map((day, i) => {
-              const type = schedule[i]
-              const color = sessionColors[type]
-              return (
-                <button key={day} onClick={() => cycle(i)}
-                  className="flex flex-col items-center gap-2 py-3 rounded-xl transition-all"
-                  style={{
-                    background: `${color}18`,
-                    border: `1px solid ${color}44`,
-                    cursor: 'pointer',
-                  }}>
-                  <span className="text-xs font-bold" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{day}</span>
-                  <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                  <span className="text-xs font-bold" style={{ color, fontFamily: 'Inter, sans-serif', fontSize: '9px' }}>{type.toUpperCase()}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Summary */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl p-3 text-center" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-              <p className="text-2xl font-black" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>{liftCount}</p>
-              <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Lift days</p>
-            </div>
-            <div className="rounded-xl p-3 text-center" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-              <p className="text-2xl font-black" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>{runCount}</p>
-              <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Run days</p>
-            </div>
-            <div className="rounded-xl p-3 text-center" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
-              <p className="text-2xl font-black" style={{ color: '#3E3E3E', fontFamily: 'JetBrains Mono, monospace' }}>{schedule.filter(s => s === 'Rest').length}</p>
-              <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Rest days</p>
-            </div>
-          </div>
-
-          {/* Sign up note */}
-          <div className="rounded-xl px-4 py-3 text-center" style={{ background: 'rgba(0,191,165,0.06)', border: '1px solid rgba(0,191,165,0.2)' }}>
-            <p className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to save your schedule and build a full programme with exercises and targets
-            </p>
-          </div>
-        </div>
-
-        <div className="px-6 py-4" style={{ borderTop: '1px solid #2E2E2E' }}>
-          <Link href="/login" className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-bold"
-            style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}>
-            <Zap size={15} /> Sign Up to Save Your Schedule
-          </Link>
-        </div>
+      {/* Day grid */}
+      <div className="grid grid-cols-7 gap-2">
+        {days.map((day, i) => {
+          const type = schedule[i]
+          const color = sessionColors[type]
+          return (
+            <button key={day} onClick={() => cycle(i)}
+              aria-label={`${day}: ${type}. Activate to change`}
+              className="flex flex-col items-center gap-2 py-3 rounded-xl transition-all hover:opacity-85 active:opacity-70"
+              style={{
+                background: `${color}18`,
+                border: `1px solid ${color}44`,
+                cursor: 'pointer',
+              }}>
+              <span className="text-xs font-bold" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>{day}</span>
+              <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+              <span className="text-xs font-bold" style={{ color, fontFamily: 'var(--font-sans)', fontSize: '9px' }}>{type.toUpperCase()}</span>
+            </button>
+          )
+        })}
       </div>
-    </ModalOverlay>
+
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatTile value={liftCount} label="Lift days" accent="#00BFA5" size="lg" />
+        <StatTile value={runCount} label="Run days" accent="#C8102E" size="lg" />
+        <StatTile value={schedule.filter(s => s === 'Rest').length} label="Rest days" accent="#3E3E3E" size="lg" />
+      </div>
+
+      <SignupNote>
+        <Link href="/login" style={{ color: '#00BFA5', fontWeight: 700 }}>Sign up</Link> to save your schedule and build a full programme with exercises and targets
+      </SignupNote>
+    </Modal>
   )
 }
 
@@ -457,17 +380,17 @@ export default function HomePage() {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,229,200,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 50%, rgba(255,107,53,0.06) 0%, transparent 60%)',
+            background: 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,191,165,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 50%, rgba(200,16,46,0.06) 0%, transparent 60%)',
           }}
         />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
           <div className="max-w-4xl">
             <div
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
-              style={{ background: 'rgba(0,229,200,0.08)', border: '1px solid rgba(0,229,200,0.2)' }}
+              style={{ background: 'rgba(0,191,165,0.08)', border: '1px solid rgba(0,191,165,0.2)' }}
             >
               <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00BFA5' }} />
-              <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
+              <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
                 Built for Hybrid Athletes
               </span>
             </div>
@@ -475,7 +398,7 @@ export default function HomePage() {
             <h1
               className="leading-none font-black uppercase mb-6"
               style={{
-                fontFamily: 'Montserrat, sans-serif',
+                fontFamily: 'var(--font-heading)',
                 fontSize: 'clamp(52px, 10vw, 112px)',
                 letterSpacing: '-0.02em',
                 color: '#F5F5F5',
@@ -490,32 +413,19 @@ export default function HomePage() {
 
             <p
               className="text-xl mb-10 max-w-2xl leading-relaxed"
-              style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}
+              style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
             >
               The platform built for hybrid athletes. Log both. Track both. Peak at both.
             </p>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                href="/login"
-                className="flex items-center gap-2 px-7 py-4 rounded-xl text-base font-bold transition-opacity hover:opacity-90"
-                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
-              >
+              <Button href="/login" size="lg">
                 Get Started Free
                 <ArrowRight size={18} />
-              </Link>
-              <Link
-                href="/programmes"
-                className="flex items-center gap-2 px-7 py-4 rounded-xl text-base font-bold"
-                style={{
-                  background: 'transparent',
-                  color: '#C8102E',
-                  border: '2px solid #C8102E',
-                  fontFamily: 'Inter, sans-serif',
-                }}
-              >
+              </Button>
+              <Button href="/programmes" variant="ghost" accent="#C8102E" size="lg">
                 Browse Programmes
-              </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -524,17 +434,12 @@ export default function HomePage() {
       {/* PHILOSOPHY STRIP */}
       <section className="py-24" style={{ borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <h2
-              className="text-5xl font-black uppercase mb-4"
-              style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
-            >
-              Train Both. Peak Together.
-            </h2>
-            <p className="text-lg max-w-2xl mx-auto" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              Concurrent training interference is real — but manageable. Smart programming means you never have to choose.
-            </p>
-          </div>
+          <SectionHeading
+            align="center"
+            title="Train Both. Peak Together."
+            sub="Concurrent training interference is real — but manageable. Smart programming means you never have to choose."
+            className="mb-14"
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
@@ -543,39 +448,27 @@ export default function HomePage() {
                 title: 'Strength',
                 desc: 'Build a solid barbell foundation. Track 1RMs, volume, and progressive overload with tools built for strength athletes.',
                 accent: '#00BFA5',
-                bg: 'rgba(0,229,200,0.06)',
-                border: 'rgba(0,229,200,0.15)',
               },
               {
                 icon: Footprints,
                 title: 'Endurance',
                 desc: 'From 5K to ultra. Track paces, mileage, and run segments alongside your lifting — all in one dashboard.',
                 accent: '#C8102E',
-                bg: 'rgba(255,107,53,0.06)',
-                border: 'rgba(255,107,53,0.15)',
               },
               {
                 icon: Heart,
                 title: 'Recovery',
                 desc: 'Interference happens when programming ignores recovery. Our analytics flag the exact weeks where running volume hurt your strength gains.',
                 accent: '#A78BFA',
-                bg: 'rgba(167,139,250,0.06)',
-                border: 'rgba(167,139,250,0.15)',
               },
               {
                 icon: Sparkles,
                 title: 'AI Coach',
                 desc: 'Generate expert hybrid programmes in seconds. Get personalised coaching reviews with Analysis and Recommendations — then let AI revamp your plan.',
                 accent: '#F59E0B',
-                bg: 'rgba(245,158,11,0.06)',
-                border: 'rgba(245,158,11,0.15)',
               },
-            ].map(({ icon: Icon, title, desc, accent, bg, border }) => (
-              <div
-                key={title}
-                className="rounded-2xl p-8 flex flex-col gap-4"
-                style={{ background: bg, border: `1px solid ${border}` }}
-              >
+            ].map(({ icon: Icon, title, desc, accent }) => (
+              <Card key={title} tint={accent} padding="lg" className="flex flex-col gap-4">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{ background: `${accent}18` }}
@@ -584,14 +477,14 @@ export default function HomePage() {
                 </div>
                 <h3
                   className="text-2xl font-black uppercase"
-                  style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
+                  style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
                 >
                   {title}
                 </h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                   {desc}
                 </p>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -601,21 +494,11 @@ export default function HomePage() {
       <section className="py-24" style={{ background: '#0A0A0A', borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-            <div>
-              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
-                Programming
-              </p>
-              <h2
-                className="text-5xl font-black uppercase"
-                style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
-              >
-                Featured Programmes
-              </h2>
-            </div>
+            <SectionHeading eyebrow="Programming" title="Featured Programmes" className="[&>h2]:mb-0" />
             <Link
               href="/programmes"
-              className="flex items-center gap-1.5 text-sm font-semibold"
-              style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}
+              className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:text-white"
+              style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
             >
               View all <ArrowRight size={14} />
             </Link>
@@ -632,17 +515,14 @@ export default function HomePage() {
       {/* AI FEATURES */}
       <section className="py-24" style={{ borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
-            <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>
-              AI Coaching
-            </p>
-            <h2 className="text-5xl font-black uppercase mb-4" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
-              Your AI Coach.<br />Always On.
-            </h2>
-            <p className="text-lg max-w-2xl mx-auto" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
-              Generate expert hybrid programmes in seconds. Get personalised coaching reviews. Let AI rebuild your programme based on its own recommendations.
-            </p>
-          </div>
+          <SectionHeading
+            align="center"
+            eyebrow="AI Coaching"
+            eyebrowColor="#A78BFA"
+            title={<>Your AI Coach.<br />Always On.</>}
+            sub="Generate expert hybrid programmes in seconds. Get personalised coaching reviews. Let AI rebuild your programme based on its own recommendations."
+            className="mb-14"
+          />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* AI Programme Generator card */}
@@ -650,16 +530,16 @@ export default function HomePage() {
               <div className="px-6 py-5" style={{ borderBottom: '1px solid #1E1E2E' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles size={14} style={{ color: '#A78BFA' }} />
-                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>AI Programme Generator</span>
+                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>AI Programme Generator</span>
                 </div>
-                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Full Programme in Seconds</h3>
-                <p className="text-sm mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Tell the AI your goals, schedule, and current lifts. It builds a complete multi-week hybrid programme with progressive overload built in.</p>
+                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Full Programme in Seconds</h3>
+                <p className="text-sm mt-1" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>Tell the AI your goals, schedule, and current lifts. It builds a complete multi-week hybrid programme with progressive overload built in.</p>
               </div>
               <div className="px-6 py-5 space-y-3 flex-1">
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Building your programme...</span>
-                    <span className="text-xs font-bold" style={{ color: '#A78BFA', fontFamily: 'JetBrains Mono, monospace' }}>78%</span>
+                    <span className="text-xs" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>Building your programme...</span>
+                    <span className="text-xs font-bold" style={{ color: '#A78BFA', fontFamily: 'var(--font-mono)' }}>78%</span>
                   </div>
                   <div style={{ width: '100%', height: '4px', background: '#1A1527', borderRadius: '2px' }}>
                     <div style={{ height: '100%', width: '78%', background: 'linear-gradient(90deg, #A78BFA, #C4B5FD)', borderRadius: '2px' }} />
@@ -672,10 +552,10 @@ export default function HomePage() {
                   { day: 'SAT', label: 'Long Run', items: '18 km · Progressive · Tempo finish', color: '#C8102E' },
                 ].map(({ day, label, items, color }) => (
                   <div key={day} className="rounded-xl px-4 py-3 flex items-start gap-3" style={{ background: '#1A1527', border: '1px solid #2A2040' }}>
-                    <span className="text-xs font-black w-8 shrink-0 mt-0.5" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{day}</span>
+                    <span className="text-xs font-black w-8 shrink-0 mt-0.5" style={{ color: SUBTLE, fontFamily: 'var(--font-mono)' }}>{day}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black uppercase" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif' }}>{label}</p>
-                      <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>{items}</p>
+                      <p className="text-sm font-black uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{label}</p>
+                      <p className="text-xs mt-0.5" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>{items}</p>
                     </div>
                     <div className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: color }} />
                   </div>
@@ -688,28 +568,28 @@ export default function HomePage() {
               <div className="px-6 py-5" style={{ borderBottom: '1px solid #1E1E2E' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Brain size={14} style={{ color: '#A78BFA' }} />
-                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>AI Coach Review</span>
+                  <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>AI Coach Review</span>
                 </div>
-                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Expert Analysis on Demand</h3>
-                <p className="text-sm mt-1" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Submit any programme for a full AI coaching review covering strength, running, concurrent training, periodisation, and recovery.</p>
+                <h3 className="text-xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Expert Analysis on Demand</h3>
+                <p className="text-sm mt-1" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>Submit any programme for a full AI coaching review covering strength, running, concurrent training, periodisation, and recovery.</p>
               </div>
               <div className="px-6 py-5 flex-1 flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4 flex-1">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#606060', fontFamily: 'Montserrat, sans-serif' }}>Analysis</p>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: SUBTLE, fontFamily: 'var(--font-heading)' }}>Analysis</p>
                     {[
                       'Squat 3×/wk may limit run adaptation on high mileage weeks',
                       'No deload scheduled across 8 weeks',
                       'Saturday long run follows heavy Friday lower session',
                     ].map((t, i) => (
                       <div key={i} className="flex items-start gap-2 mb-2.5">
-                        <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: '#606060' }} />
-                        <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{t}</p>
+                        <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: SUBTLE }} />
+                        <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{t}</p>
                       </div>
                     ))}
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#C084FC', fontFamily: 'Montserrat, sans-serif' }}>Recommendations</p>
+                    <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: '#C084FC', fontFamily: 'var(--font-heading)' }}>Recommendations</p>
                     {[
                       'Reduce to 2 squat sessions/wk — swap one for RDL-focused lower',
                       'Insert deload at week 4 and week 8',
@@ -717,7 +597,7 @@ export default function HomePage() {
                     ].map((t, i) => (
                       <div key={i} className="flex items-start gap-2 mb-2.5">
                         <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: '#C084FC' }} />
-                        <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>{t}</p>
+                        <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{t}</p>
                       </div>
                     ))}
                   </div>
@@ -725,9 +605,9 @@ export default function HomePage() {
                 <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.2)' }}>
                   <div className="flex items-center gap-2">
                     <Zap size={13} style={{ color: '#A78BFA' }} />
-                    <span className="text-sm font-bold" style={{ color: '#A78BFA', fontFamily: 'Inter, sans-serif' }}>Revamp Programme</span>
+                    <span className="text-sm font-bold" style={{ color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>Revamp Programme</span>
                   </div>
-                  <span className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>AI applies all recommendations →</span>
+                  <span className="text-xs" style={{ color: SUBTLE, fontFamily: 'var(--font-sans)' }}>AI applies all recommendations →</span>
                 </div>
               </div>
             </div>
@@ -740,25 +620,17 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#C8102E', fontFamily: 'Inter, sans-serif' }}>
-                Session Logging
-              </p>
-              <h2
-                className="text-5xl font-black uppercase mb-4"
-                style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
-              >
-                Log Both.<br />In One Place.
-              </h2>
-              <p className="text-base leading-relaxed mb-6" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+              <SectionHeading
+                eyebrow="Session Logging"
+                eyebrowColor="#C8102E"
+                title={<>Log Both.<br />In One Place.</>}
+              />
+              <p className="text-base leading-relaxed mb-6" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                 The only logger that understands hybrid sessions. Log your squat PR and your easy run in the same session. Track interference. See patterns.
               </p>
-              <button
-                onClick={() => setModal('logger')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
-                style={{ background: '#C8102E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
-              >
-                Open Logger <ArrowRight size={16} />
-              </button>
+              <Button onClick={() => setModal('logger')} accent="#C8102E">
+                <span className="inline-flex items-center gap-2" style={{ color: '#F5F5F5' }}>Open Logger <ArrowRight size={16} /></span>
+              </Button>
             </div>
 
             {/* Mock log card */}
@@ -774,7 +646,7 @@ export default function HomePage() {
                   <p className="text-xs uppercase tracking-wider" style={{ color: '#A0A0A0' }}>March 19, 2026</p>
                   <h3
                     className="text-lg font-black uppercase"
-                    style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
+                    style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
                   >
                     Today&apos;s Session: Hybrid
                   </h3>
@@ -790,7 +662,7 @@ export default function HomePage() {
               <div className="p-5" style={{ borderBottom: '1px solid #2E2E2E' }}>
                 <div className="flex items-center gap-2 mb-3">
                   <Dumbbell size={14} style={{ color: '#00BFA5' }} />
-                  <span className="text-xs uppercase font-bold tracking-wider" style={{ color: '#00BFA5', fontFamily: 'Montserrat, sans-serif' }}>
+                  <span className="text-xs uppercase font-bold tracking-wider" style={{ color: '#00BFA5', fontFamily: 'var(--font-heading)' }}>
                     Lift Block
                   </span>
                 </div>
@@ -799,10 +671,10 @@ export default function HomePage() {
                   style={{ background: '#242424', border: '1px solid #2E2E2E' }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '16px' }}>
+                    <span className="font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', fontSize: '16px' }}>
                       BACK SQUAT
                     </span>
-                    <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                    <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                       Est. 1RM: 161 kg
                     </span>
                   </div>
@@ -813,10 +685,10 @@ export default function HomePage() {
                       { set: 3, weight: 143, reps: 5, rpe: 9 },
                     ].map(s => (
                       <div key={s.set} className="grid grid-cols-4 gap-2">
-                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>{s.set}</div>
-                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{s.weight}kg</div>
-                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#F5F5F5', fontFamily: 'JetBrains Mono, monospace' }}>{s.reps}</div>
-                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#A0A0A0', fontFamily: 'JetBrains Mono, monospace' }}>RPE {s.rpe}</div>
+                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: SUBTLE, fontFamily: 'var(--font-mono)' }}>{s.set}</div>
+                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{s.weight}kg</div>
+                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{s.reps}</div>
+                        <div className="py-1 rounded text-xs text-center" style={{ background: '#1A1A1A', color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>RPE {s.rpe}</div>
                       </div>
                     ))}
                   </div>
@@ -826,7 +698,7 @@ export default function HomePage() {
               <div className="p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <Footprints size={14} style={{ color: '#C8102E' }} />
-                  <span className="text-xs uppercase font-bold tracking-wider" style={{ color: '#C8102E', fontFamily: 'Montserrat, sans-serif' }}>
+                  <span className="text-xs uppercase font-bold tracking-wider" style={{ color: '#C8102E', fontFamily: 'var(--font-heading)' }}>
                     Run Block
                   </span>
                 </div>
@@ -835,14 +707,14 @@ export default function HomePage() {
                   style={{ background: '#242424', border: '1px solid #2E2E2E' }}
                 >
                   <div>
-                    <p className="font-bold" style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '16px' }}>
+                    <p className="font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', fontSize: '16px' }}>
                       EASY RUN
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: '#A0A0A0' }}>Zone 2 aerobic</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold" style={{ color: '#C8102E', fontFamily: 'JetBrains Mono, monospace' }}>10 km</p>
-                    <p className="text-xs" style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>@ 5:33/km</p>
+                    <p className="text-lg font-bold" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>10 km</p>
+                    <p className="text-xs" style={{ color: SUBTLE, fontFamily: 'var(--font-mono)' }}>@ 5:33/km</p>
                   </div>
                 </div>
               </div>
@@ -858,16 +730,16 @@ export default function HomePage() {
             <div
               className="rounded-2xl p-6"
               style={{
-                background: 'linear-gradient(135deg, rgba(0,229,200,0.04) 0%, rgba(255,107,53,0.04) 100%)',
+                background: 'linear-gradient(135deg, rgba(0,191,165,0.04) 0%, rgba(200,16,46,0.04) 100%)',
                 border: '1px solid #2E2E2E',
               }}
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wider" style={{ color: '#606060' }}>Hybrid Analytics</p>
+                  <p className="text-xs uppercase tracking-wider" style={{ color: SUBTLE }}>Hybrid Analytics</p>
                   <h3
                     className="text-xl font-black uppercase"
-                    style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
+                    style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
                   >
                     Interference Trend
                   </h3>
@@ -875,11 +747,11 @@ export default function HomePage() {
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-0.5 rounded" style={{ background: '#00BFA5' }} />
-                    <span className="text-xs" style={{ color: '#606060' }}>Squat 1RM</span>
+                    <span className="text-xs" style={{ color: SUBTLE }}>Squat 1RM</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-2 rounded-sm" style={{ background: '#C8102E', opacity: 0.5 }} />
-                    <span className="text-xs" style={{ color: '#606060' }}>Weekly Km</span>
+                    <span className="text-xs" style={{ color: SUBTLE }}>Weekly Km</span>
                   </div>
                 </div>
               </div>
@@ -914,36 +786,24 @@ export default function HomePage() {
 
               <div
                 className="rounded-lg px-4 py-3 flex items-start gap-3"
-                style={{ background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.3)' }}
+                style={{ background: 'rgba(200,16,46,0.1)', border: '1px solid rgba(200,16,46,0.3)' }}
               >
                 <TrendingUp size={16} style={{ color: '#C8102E', flexShrink: 0, marginTop: 2 }} />
-                <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+                <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                   <span style={{ color: '#C8102E', fontWeight: 600 }}>Interference Detected (W7-9):</span> Squat stalled while km peaked at 61 km/wk.
                 </p>
               </div>
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
-                Analytics
-              </p>
-              <h2
-                className="text-5xl font-black uppercase mb-4"
-                style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
-              >
-                Know Your<br />Training.
-              </h2>
-              <p className="text-base leading-relaxed mb-6" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+              <SectionHeading eyebrow="Analytics" title={<>Know Your<br />Training.</>} />
+              <p className="text-base leading-relaxed mb-6" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                 Track every session on a visual calendar heatmap. See Push/Pull/Legs and body part breakdowns from your actual training history. Overlay strength trends with running volume to reveal the exact weeks where interference hit your gains.
               </p>
-              <button
-                onClick={() => setModal('analytics')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-opacity hover:opacity-90"
-                style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}
-              >
+              <Button onClick={() => setModal('analytics')} variant="subtle">
                 <BarChart2 size={16} />
                 View Analytics
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -953,28 +813,21 @@ export default function HomePage() {
       <section
         className="py-20"
         style={{
-          background: 'linear-gradient(135deg, rgba(0,229,200,0.08) 0%, rgba(255,107,53,0.08) 100%)',
-          borderTop: '1px solid rgba(0,229,200,0.15)',
+          background: 'linear-gradient(135deg, rgba(0,191,165,0.08) 0%, rgba(200,16,46,0.08) 100%)',
+          borderTop: '1px solid rgba(0,191,165,0.15)',
         }}
       >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <h2
-            className="text-6xl font-black uppercase mb-4"
-            style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
-          >
+          <h2 className="section-title section-title-lg mb-4">
             Ready to Train Like<br />a <span style={{ color: '#00BFA5' }}>Hybrid Athlete?</span>
           </h2>
-          <p className="text-lg mb-8" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+          <p className="text-lg mb-8" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
             Log sessions. Track both disciplines. Generate AI programmes. Get coached. Peak at both.
           </p>
-          <button
-            onClick={() => setModal('builder')}
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl text-base font-bold transition-opacity hover:opacity-90"
-            style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif', border: 'none', cursor: 'pointer' }}
-          >
+          <Button onClick={() => setModal('builder')} size="lg">
             <Zap size={18} />
             Start Building Your Schedule
-          </button>
+          </Button>
         </div>
       </section>
     </div>

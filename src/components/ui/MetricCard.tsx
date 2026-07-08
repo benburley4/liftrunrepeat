@@ -26,19 +26,19 @@ export default function MetricCard({ label, value, subtext, accent = 'teal', ico
       style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}
     >
       <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+        <span className="text-xs uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
           {label}
         </span>
         {Icon && <Icon size={16} style={{ color }} />}
       </div>
       <div
         className="text-3xl font-bold"
-        style={{ color, fontFamily: 'JetBrains Mono, monospace' }}
+        style={{ color, fontFamily: 'var(--font-mono)' }}
       >
         {value}
       </div>
       {subtext && (
-        <div className="text-xs" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+        <div className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
           {subtext}
         </div>
       )}

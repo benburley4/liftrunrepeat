@@ -31,7 +31,7 @@ export default function ProgrammeCard({ programme, onEdit, onDelete, onStart }: 
         <div>
           <h3
             className="text-xl font-bold uppercase leading-tight"
-            style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}
+            style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
           >
             {programme.name}
           </h3>
@@ -89,7 +89,7 @@ export default function ProgrammeCard({ programme, onEdit, onDelete, onStart }: 
             <button
               onClick={onEdit}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
-              style={{ background: '#00BFA518', color: '#00BFA5', border: '1px solid #00BFA544', fontFamily: 'Inter, sans-serif' }}
+              style={{ background: '#00BFA518', color: '#00BFA5', border: '1px solid #00BFA544', fontFamily: 'var(--font-sans)' }}
             >
               <Pencil size={11} /> Edit
             </button>
@@ -98,7 +98,7 @@ export default function ProgrammeCard({ programme, onEdit, onDelete, onStart }: 
             <button
               onClick={onDelete}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
-              style={{ background: '#C8102E18', color: '#C8102E', border: '1px solid #C8102E44', fontFamily: 'Inter, sans-serif' }}
+              style={{ background: '#C8102E18', color: '#C8102E', border: '1px solid #C8102E44', fontFamily: 'var(--font-sans)' }}
             >
               <Trash2 size={11} /> Delete
             </button>
@@ -111,14 +111,14 @@ export default function ProgrammeCard({ programme, onEdit, onDelete, onStart }: 
         <Link
           href={`/programmes/${programme.id}`}
           className="flex-1 text-center py-2 rounded text-sm font-semibold transition-colors"
-          style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+          style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
         >
           View Details
         </Link>
         <button
           onClick={onStart}
           className="flex-1 py-2 rounded text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+          style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
         >
           Start Programme
         </button>

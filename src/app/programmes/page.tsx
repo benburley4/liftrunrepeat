@@ -294,10 +294,10 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
           <div>
-            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>
+            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
               {initial ? 'Edit Template' : 'New Template'}
             </p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
               {initial ? 'Edit Template' : 'Create Template'}
             </h2>
           </div>
@@ -310,12 +310,12 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
           {/* Name */}
           <div>
-            <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Template Name *</label>
+            <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Template Name *</label>
             <input
               type="text" placeholder="e.g. Push Day A"
               value={name} onChange={e => setName(e.target.value)}
               className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-              style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+              style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'var(--font-sans)', boxSizing: 'border-box' }}
               onFocus={e => (e.target.style.borderColor = '#00BFA544')}
               onBlur={e  => (e.target.style.borderColor = '#2E2E2E')}
             />
@@ -323,7 +323,7 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
 
           {/* Type */}
           <div>
-            <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Type</label>
+            <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Type</label>
             <div className="grid grid-cols-4 gap-2">
               {TYPE_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setType(opt.value)}
@@ -332,7 +332,7 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
                     background: type === opt.value ? opt.bg : '#242424',
                     color: type === opt.value ? opt.color : '#606060',
                     border: type === opt.value ? `1px solid ${opt.color}44` : '1px solid #2E2E2E',
-                    fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)', cursor: 'pointer',
                   }}>
                   {opt.label}
                 </button>
@@ -343,7 +343,7 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
           {/* Exercise builder */}
           {(type === 'lift' || type === 'hybrid') && (
             <div>
-              <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Exercises</label>
+              <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Exercises</label>
               <ExerciseBuilder rows={exerciseRows} onChange={setExRows} />
             </div>
           )}
@@ -351,7 +351,7 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
           {/* Run builder */}
           {(type === 'run' || type === 'hybrid') && (
             <div>
-              <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>Run Structure</label>
+              <label className="block text-xs uppercase tracking-widest mb-2" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>Run Structure</label>
               <RunBuilder entries={runRows} onChange={setRunRows} />
             </div>
           )}
@@ -359,7 +359,7 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
 
         {/* Footer */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderTop: '1px solid #2E2E2E' }}>
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ color: '#606060', fontFamily: 'Inter, sans-serif', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)', background: 'none', border: 'none', cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleSave} disabled={!name.trim()}
@@ -367,7 +367,7 @@ function CreateTemplateModal({ initial, onSave, onClose }: CreateTemplateModalPr
             style={{
               background: name.trim() ? '#00BFA5' : '#1A1A1A',
               color: name.trim() ? '#0D0D0D' : '#606060',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'var(--font-sans)',
               cursor: name.trim() ? 'pointer' : 'not-allowed',
               border: 'none',
             }}>
@@ -414,8 +414,8 @@ function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #2E2E2E' }}>
           <div>
-            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}>My Templates</p>
-            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>Select Template</h2>
+            <p className="text-xs uppercase tracking-widest mb-0.5" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>My Templates</p>
+            <h2 className="text-2xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Select Template</h2>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg" style={{ color: '#606060', background: 'none', border: 'none', cursor: 'pointer' }}>
             <X size={18} />
@@ -427,14 +427,14 @@ function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
           <input
             value={search} onChange={e => setSearch(e.target.value)} placeholder="Search templates…" autoFocus
             className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
-            style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif', boxSizing: 'border-box' }}
+            style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5', fontFamily: 'var(--font-sans)', boxSizing: 'border-box' }}
           />
         </div>
 
         {/* Template list */}
         <div className="flex-1 overflow-y-auto px-6 pb-6 flex flex-col gap-3">
           {filtered.length === 0 && (
-            <div className="text-center py-12" style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}>
+            <div className="text-center py-12" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
               <p className="text-sm">No templates found.</p>
               <p className="text-xs mt-1">Create templates in the Templates tab first.</p>
             </div>
@@ -451,7 +451,7 @@ function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
               >
                 {/* Template header */}
                 <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #2E2E2E' }}>
-                  <span className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{t.name}</span>
+                  <span className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{t.name}</span>
                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: `${col}22`, color: col }}>{typeLabel(t.type)}</span>
                 </div>
 
@@ -459,9 +459,9 @@ function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
                 {(t.exerciseRows ?? []).length > 0 && (
                   <div className="px-4 py-2 space-y-1">
                     {(t.exerciseRows ?? []).map(row => (
-                      <div key={row.id} className="flex items-center justify-between text-xs" style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}>
+                      <div key={row.id} className="flex items-center justify-between text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                         <span className="font-medium" style={{ color: '#F5F5F5' }}>{row.exerciseName || '—'}</span>
-                        <span style={{ color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                        <span style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>
                           {row.sets.length} sets · {row.sets.map(s => `${s.reps}×${s.weight}kg`).join(', ')}
                         </span>
                       </div>
@@ -471,14 +471,14 @@ function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
 
                 {/* Run rows */}
                 {(t.runRows ?? []).length > 0 && (
-                  <div className="px-4 py-2" style={{ color: '#A0A0A0', fontSize: '12px', fontFamily: 'Inter, sans-serif' }}>
+                  <div className="px-4 py-2" style={{ color: '#A0A0A0', fontSize: '12px', fontFamily: 'var(--font-sans)' }}>
                     Run: {(t.runRows ?? []).length} segments
                   </div>
                 )}
 
                 {/* Volume footer */}
                 {vol.weight > 0 && (
-                  <div className="px-4 py-2 text-xs" style={{ borderTop: '1px solid #2E2E2E', color: '#606060', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <div className="px-4 py-2 text-xs" style={{ borderTop: '1px solid #2E2E2E', color: '#606060', fontFamily: 'var(--font-mono)' }}>
                     🏋 {vol.weight.toLocaleString()} kg volume
                   </div>
                 )}
@@ -680,7 +680,7 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
                 onChange={e => setNameValue(e.target.value)}
                 onBlur={() => { const t = nameValue.trim(); if (t) onRename(t); setEditingName(false) }}
                 onKeyDown={e => { if (e.key === 'Escape') { setNameValue(programme.name); setEditingName(false) } }}
-                style={{ fontSize: '22px', fontWeight: 800, color: '#fff', fontFamily: 'Inter, sans-serif', background: '#242424', border: '1px solid #00BFA544', borderRadius: '8px', padding: '2px 10px', outline: 'none', width: `${Math.max(nameValue.length, 12)}ch` }}
+                style={{ fontSize: '22px', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-sans)', background: '#242424', border: '1px solid #00BFA544', borderRadius: '8px', padding: '2px 10px', outline: 'none', width: `${Math.max(nameValue.length, 12)}ch` }}
               />
               <button type="submit" style={{ background: 'none', border: 'none', color: '#00BFA5', cursor: 'pointer', padding: 0 }}><Check size={18} /></button>
               <button type="button" onClick={() => { setNameValue(programme.name); setEditingName(false) }} style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', padding: 0 }}><X size={18} /></button>
@@ -1183,7 +1183,7 @@ export default function ProgrammesPage() {
             {/* Saved programmes */}
             {savedList.length > 0 && (
               <div style={{ marginBottom: '40px' }}>
-                <p style={{ fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', fontFamily: 'Inter, sans-serif' }}>Saved Programmes</p>
+                <p style={{ fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', fontFamily: 'var(--font-sans)' }}>Saved Programmes</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {savedList.map(p => {
                     const monday = getMonday(p.startDate)
@@ -1207,14 +1207,14 @@ export default function ProgrammesPage() {
                                     onChange={e => setRenameValue(e.target.value)}
                                     onBlur={() => handleRenameProg(p.id, renameValue || p.name)}
                                     onKeyDown={e => e.key === 'Escape' && setRenamingId(null)}
-                                    style={{ fontSize: '14px', fontWeight: 700, color: '#F5F5F5', fontFamily: 'Inter, sans-serif', background: '#242424', border: '1px solid #00BFA544', borderRadius: '6px', padding: '2px 8px', outline: 'none', width: `${Math.max(renameValue.length, 10)}ch` }}
+                                    style={{ fontSize: '14px', fontWeight: 700, color: '#F5F5F5', fontFamily: 'var(--font-sans)', background: '#242424', border: '1px solid #00BFA544', borderRadius: '6px', padding: '2px 8px', outline: 'none', width: `${Math.max(renameValue.length, 10)}ch` }}
                                   />
                                   <button type="submit" style={{ background: 'none', border: 'none', color: '#00BFA5', cursor: 'pointer', padding: 0 }}><Check size={14} /></button>
                                   <button type="button" onClick={e => { e.stopPropagation(); setRenamingId(null) }} style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', padding: 0 }}><X size={14} /></button>
                                 </form>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}>{p.name}</span>
+                                  <span style={{ fontSize: '14px', fontWeight: 700, color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{p.name}</span>
                                   <button onClick={e => { e.stopPropagation(); setRenamingId(p.id); setRenameValue(p.name) }}
                                     style={{ background: 'none', border: 'none', color: '#3E3E3E', cursor: 'pointer', padding: '2px', lineHeight: 1 }}
                                     onMouseEnter={e => (e.currentTarget.style.color = '#00BFA5')}
@@ -1224,16 +1224,16 @@ export default function ProgrammesPage() {
                                   </button>
                                 </div>
                               )}
-                              {isCurrent && <span style={{ fontSize: '10px', fontWeight: 700, color: '#00BFA5', background: '#00BFA515', border: '1px solid #00BFA530', borderRadius: '100px', padding: '1px 8px', fontFamily: 'Inter, sans-serif' }}>CURRENT</span>}
+                              {isCurrent && <span style={{ fontSize: '10px', fontWeight: 700, color: '#00BFA5', background: '#00BFA515', border: '1px solid #00BFA530', borderRadius: '100px', padding: '1px 8px', fontFamily: 'var(--font-sans)' }}>CURRENT</span>}
                             </div>
-                            <div style={{ fontSize: '12px', color: '#606060', marginTop: '2px', fontFamily: 'Inter, sans-serif' }}>
+                            <div style={{ fontSize: '12px', color: '#606060', marginTop: '2px', fontFamily: 'var(--font-sans)' }}>
                               {p.weeks} weeks · from {fmtDate(monday)}
                             </div>
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <button onClick={e => { e.stopPropagation(); handleSetCurrent(p.id) }}
-                            style={{ padding: '5px 10px', borderRadius: '8px', background: isCurrent ? '#00BFA520' : '#1A1A1A', border: `1px solid ${isCurrent ? '#00BFA540' : '#2E2E2E'}`, color: isCurrent ? '#00BFA5' : '#606060', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: 'Inter, sans-serif', whiteSpace: 'nowrap' }}
+                            style={{ padding: '5px 10px', borderRadius: '8px', background: isCurrent ? '#00BFA520' : '#1A1A1A', border: `1px solid ${isCurrent ? '#00BFA540' : '#2E2E2E'}`, color: isCurrent ? '#00BFA5' : '#606060', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}
                             title={isCurrent ? 'Unset as current' : 'Set as current programme'}
                           >{isCurrent ? '✓ Current' : 'Set as Current'}</button>
                           <button onClick={e => { e.stopPropagation(); if (confirm('Delete this programme?')) handleDeleteProg(p.id) }}
@@ -1398,7 +1398,7 @@ export default function ProgrammesPage() {
                   </div>
                 )}
                 {aiUsesLabel() && !genLoading && (
-                  <p style={{ textAlign: 'center', fontSize: '11px', color: '#606060', marginTop: '8px', fontFamily: 'Inter, sans-serif' }}>{aiUsesLabel()}</p>
+                  <p style={{ textAlign: 'center', fontSize: '11px', color: '#606060', marginTop: '8px', fontFamily: 'var(--font-sans)' }}>{aiUsesLabel()}</p>
                 )}
               </div>
             </div>

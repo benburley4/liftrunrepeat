@@ -44,7 +44,7 @@ export default function Navbar() {
           <Link href="/" className="flex items-center gap-3 shrink-0">
             <span
               className="text-lg font-black tracking-wider uppercase"
-              style={{ fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.06em' }}
+              style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.06em' }}
             >
               <span style={{ color: '#C8102E' }}>LIFT</span>
               <span style={{ color: '#00BFA5' }}>RUN</span>
@@ -63,7 +63,7 @@ export default function Navbar() {
                   className="px-3 py-2 rounded text-sm font-medium transition-colors"
                   style={{
                     color: isActive ? '#00BFA5' : '#A0A0A0',
-                    fontFamily: 'Inter, sans-serif',
+                    fontFamily: 'var(--font-sans)',
                     background: isActive ? 'rgba(0,191,165,0.1)' : 'transparent',
                   }}
                 >
@@ -80,7 +80,7 @@ export default function Navbar() {
                 <Link
                   href="/log/session"
                   className="px-4 py-2 rounded text-sm font-semibold transition-opacity hover:opacity-90"
-                  style={{ background: '#C8102E', color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}
+                  style={{ background: '#C8102E', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
                 >
                   + Today
                 </Link>
@@ -92,7 +92,7 @@ export default function Navbar() {
                     style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     <div
-                      style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: '#00BFA520', color: '#00BFA5', border: '1px solid #00BFA540', fontFamily: 'Inter, sans-serif' }}
+                      style={{ width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, background: '#00BFA520', color: '#00BFA5', border: '1px solid #00BFA540', fontFamily: 'var(--font-sans)' }}
                     >
                       {initials}
                     </div>
@@ -103,13 +103,13 @@ export default function Navbar() {
                       <div style={{ position: 'fixed', inset: 0, zIndex: 40 }} onClick={() => setUserMenuOpen(false)} />
                       <div style={{ position: 'absolute', right: 0, top: '44px', zIndex: 50, minWidth: '180px', borderRadius: '12px', background: '#1A1A1A', border: '1px solid #2E2E2E', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
                         <div style={{ padding: '12px 14px', borderBottom: '1px solid #2E2E2E' }}>
-                          <p style={{ fontSize: '13px', fontWeight: 700, color: '#F5F5F5', margin: 0, fontFamily: 'Inter, sans-serif' }}>{username}</p>
-                          <p style={{ fontSize: '11px', color: '#606060', margin: '2px 0 0', fontFamily: 'Inter, sans-serif' }}>{user?.email}</p>
+                          <p style={{ fontSize: '13px', fontWeight: 700, color: '#F5F5F5', margin: 0, fontFamily: 'var(--font-sans)' }}>{username}</p>
+                          <p style={{ fontSize: '11px', color: '#606060', margin: '2px 0 0', fontFamily: 'var(--font-sans)' }}>{user?.email}</p>
                         </div>
                         <Link
                           href="/profile"
                           onClick={() => setUserMenuOpen(false)}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 14px', color: '#A0A0A0', fontSize: '13px', fontFamily: 'Inter, sans-serif', textDecoration: 'none', borderBottom: '1px solid #2E2E2E' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 14px', color: '#A0A0A0', fontSize: '13px', fontFamily: 'var(--font-sans)', textDecoration: 'none', borderBottom: '1px solid #2E2E2E' }}
                           onMouseEnter={e => { e.currentTarget.style.background = '#2E2E2E'; e.currentTarget.style.color = '#F5F5F5' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#A0A0A0' }}
                         >
@@ -118,7 +118,7 @@ export default function Navbar() {
                         </Link>
                         <button
                           onClick={handleSignOut}
-                          style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 14px', background: 'none', border: 'none', color: '#A0A0A0', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '10px 14px', background: 'none', border: 'none', color: '#A0A0A0', fontSize: '13px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
                           onMouseEnter={e => { e.currentTarget.style.background = '#2E2E2E'; e.currentTarget.style.color = '#F5F5F5' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#A0A0A0' }}
                         >
@@ -134,7 +134,7 @@ export default function Navbar() {
               <Link
                 href="/login"
                 className="px-4 py-2 rounded text-sm font-semibold transition-opacity hover:opacity-90"
-                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'Inter, sans-serif' }}
+                style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
               >
                 Sign In
               </Link>
@@ -191,7 +191,7 @@ export default function Navbar() {
                     href="/profile"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-2 w-full px-4 py-3 rounded text-sm mt-2"
-                    style={{ color: '#A0A0A0', fontFamily: 'Inter, sans-serif' }}
+                    style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
                   >
                     <UserIcon size={14} />
                     Athlete Profile
@@ -199,7 +199,7 @@ export default function Navbar() {
                   <button
                     onClick={handleSignOut}
                     className="flex items-center gap-2 w-full px-4 py-3 rounded text-sm mt-2"
-                    style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                    style={{ background: 'none', border: 'none', color: '#606060', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
                   >
                     <LogOut size={14} />
                     Sign Out ({username})

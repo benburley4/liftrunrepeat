@@ -56,7 +56,7 @@ function PlateModal({ weight, onClose }: PlateModalProps) {
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold" style={{ fontFamily: 'Montserrat, sans-serif', color: '#F5F5F5' }}>
+          <h3 className="text-lg font-bold" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Plate Calculator — {weight} kg
           </h3>
           <button onClick={onClose}><X size={18} style={{ color: '#606060' }} /></button>
@@ -71,10 +71,10 @@ function PlateModal({ weight, onClose }: PlateModalProps) {
                 key={i}
                 className="px-3 py-1.5 rounded font-mono text-sm font-bold"
                 style={{
-                  background: p >= 20 ? 'rgba(0,229,200,0.15)' : p >= 10 ? 'rgba(255,107,53,0.15)' : '#242424',
+                  background: p >= 20 ? 'rgba(0,191,165,0.15)' : p >= 10 ? 'rgba(200,16,46,0.15)' : '#242424',
                   color: p >= 20 ? '#00BFA5' : p >= 10 ? '#C8102E' : '#A0A0A0',
                   border: '1px solid #2E2E2E',
-                  fontFamily: 'JetBrains Mono, monospace',
+                  fontFamily: 'var(--font-mono)',
                 }}
               >
                 {p} kg
@@ -178,7 +178,7 @@ export default function LiftLogger() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full px-3 py-2 rounded text-sm outline-none"
-            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'Inter, sans-serif' }}
+            style={{ background: '#242424', color: '#F5F5F5', border: '1px solid #2E2E2E', fontFamily: 'var(--font-sans)' }}
             autoFocus
           />
           <div className="mt-2 max-h-48 overflow-y-auto space-y-1">
@@ -187,7 +187,7 @@ export default function LiftLogger() {
                 key={ex.id}
                 onClick={() => addExercise(ex)}
                 className="w-full text-left px-3 py-2 rounded text-sm hover:bg-base-elevated flex items-center justify-between"
-                style={{ color: '#F5F5F5', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}
                 onMouseEnter={e => (e.currentTarget.style.background = '#242424')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
@@ -225,14 +225,14 @@ export default function LiftLogger() {
                 <div className="w-2 h-2 rounded-full" style={{ background: '#00BFA5' }} />
                 <span
                   className="font-bold text-sm"
-                  style={{ color: '#F5F5F5', fontFamily: 'Montserrat, sans-serif', fontSize: '16px' }}
+                  style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)', fontSize: '16px' }}
                 >
                   {block.exerciseName.toUpperCase()}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 {maxRM > 0 && (
-                  <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'JetBrains Mono, monospace' }}>
+                  <span className="text-xs" style={{ color: '#00BFA5', fontFamily: 'var(--font-mono)' }}>
                     Est. 1RM: {maxRM} kg
                   </span>
                 )}
@@ -273,7 +273,7 @@ export default function LiftLogger() {
                       background: '#242424',
                       color: '#F5F5F5',
                       border: '1px solid #2E2E2E',
-                      fontFamily: 'JetBrains Mono, monospace',
+                      fontFamily: 'var(--font-mono)',
                     }}
                   />
                   <input
@@ -286,7 +286,7 @@ export default function LiftLogger() {
                       background: '#242424',
                       color: '#F5F5F5',
                       border: '1px solid #2E2E2E',
-                      fontFamily: 'JetBrains Mono, monospace',
+                      fontFamily: 'var(--font-mono)',
                     }}
                   />
                   <input
@@ -301,7 +301,7 @@ export default function LiftLogger() {
                       background: '#242424',
                       color: '#F5F5F5',
                       border: '1px solid #2E2E2E',
-                      fontFamily: 'JetBrains Mono, monospace',
+                      fontFamily: 'var(--font-mono)',
                     }}
                   />
                 </div>
@@ -310,8 +310,8 @@ export default function LiftLogger() {
               <button
                 onClick={() => addSet(block.id)}
                 className="flex items-center gap-1.5 text-xs mt-1 px-2 py-1.5 rounded"
-                style={{ color: '#00BFA5', fontFamily: 'Inter, sans-serif' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,229,200,0.08)')}
+                style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0,191,165,0.08)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
                 <Plus size={12} />
@@ -328,10 +328,10 @@ export default function LiftLogger() {
           onClick={() => setShowSearch(!showSearch)}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold"
           style={{
-            background: 'rgba(0,229,200,0.08)',
+            background: 'rgba(0,191,165,0.08)',
             color: '#00BFA5',
-            border: '1px solid rgba(0,229,200,0.2)',
-            fontFamily: 'Inter, sans-serif',
+            border: '1px solid rgba(0,191,165,0.2)',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           <Plus size={14} />
@@ -343,7 +343,7 @@ export default function LiftLogger() {
             background: '#242424',
             color: '#A0A0A0',
             border: '1px solid #2E2E2E',
-            fontFamily: 'Inter, sans-serif',
+            fontFamily: 'var(--font-sans)',
           }}
         >
           <Plus size={14} />

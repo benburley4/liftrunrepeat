@@ -40,7 +40,7 @@ export default function Footer() {
               <Image src="/logo.png" alt="LiftRunRepeat" width={32} height={32} className="object-contain" />
               <span
                 className="text-sm font-black tracking-wider uppercase"
-                style={{ fontFamily: 'Montserrat, sans-serif' }}
+                style={{ fontFamily: 'var(--font-heading)' }}
               >
                 <span style={{ color: '#C8102E' }}>LIFT</span>
                 <span style={{ color: '#00BFA5' }}>RUN</span>
@@ -72,7 +72,7 @@ export default function Footer() {
             <div key={category}>
               <h4
                 className="text-xs font-bold uppercase tracking-widest mb-4"
-                style={{ color: '#606060', fontFamily: 'Inter, sans-serif' }}
+                style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}
               >
                 {category}
               </h4>

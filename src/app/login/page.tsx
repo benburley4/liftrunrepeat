@@ -56,7 +56,7 @@ export default function LoginPage() {
     border: '1px solid #2E2E2E',
     color: '#F5F5F5',
     fontSize: '14px',
-    fontFamily: 'Inter, sans-serif',
+    fontFamily: 'var(--font-sans)',
     outline: 'none',
     boxSizing: 'border-box',
   }
@@ -66,7 +66,7 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: '400px' }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <span style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'Montserrat, sans-serif', letterSpacing: '0.06em' }}>
+          <span style={{ fontSize: '24px', fontWeight: 900, fontFamily: 'var(--font-heading)', letterSpacing: '0.06em' }}>
             <span style={{ color: '#C8102E' }}>LIFT</span>
             <span style={{ color: '#00BFA5' }}>RUN</span>
             <span style={{ color: '#F5F5F5' }}>REPEAT</span>
@@ -87,7 +87,7 @@ export default function LoginPage() {
                   color: tab === t ? '#00BFA5' : '#606060',
                   fontSize: '13px',
                   fontWeight: 700,
-                  fontFamily: 'Inter, sans-serif',
+                  fontFamily: 'var(--font-sans)',
                   cursor: 'pointer',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
@@ -103,22 +103,22 @@ export default function LoginPage() {
               resetDone ? (
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
-                  <p style={{ color: '#00BFA5', fontWeight: 700, fontFamily: 'Inter, sans-serif', marginBottom: '8px' }}>Check your email</p>
-                  <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+                  <p style={{ color: '#00BFA5', fontWeight: 700, fontFamily: 'var(--font-sans)', marginBottom: '8px' }}>Check your email</p>
+                  <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
                     A password reset link has been sent to <strong style={{ color: '#A0A0A0' }}>{resetEmail}</strong>.
                   </p>
                   <button onClick={() => { setForgotPassword(false); setResetDone(false); setResetEmail('') }}
-                    style={{ marginTop: '20px', padding: '10px 24px', borderRadius: '10px', background: '#00BFA5', color: '#0D0D0D', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    style={{ marginTop: '20px', padding: '10px 24px', borderRadius: '10px', background: '#00BFA5', color: '#0D0D0D', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
                     Back to Sign In
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleReset} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div>
-                    <p style={{ color: '#A0A0A0', fontSize: '13px', fontFamily: 'Inter, sans-serif', marginBottom: '16px', lineHeight: '1.5' }}>
+                    <p style={{ color: '#A0A0A0', fontSize: '13px', fontFamily: 'var(--font-sans)', marginBottom: '16px', lineHeight: '1.5' }}>
                       Enter your email and we&apos;ll send you a link to reset your password.
                     </p>
-                    <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Email</label>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Email</label>
                     <input
                       type="email" value={resetEmail} onChange={e => setResetEmail(e.target.value)}
                       placeholder="you@example.com" required style={inputStyle}
@@ -127,14 +127,14 @@ export default function LoginPage() {
                     />
                   </div>
                   {error && (
-                    <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>{error}</p>
+                    <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'var(--font-sans)', margin: 0 }}>{error}</p>
                   )}
                   <button type="submit" disabled={loading}
-                    style={{ width: '100%', padding: '14px', borderRadius: '12px', background: loading ? '#1A1A1A' : '#00BFA5', color: loading ? '#606060' : '#0D0D0D', fontWeight: 800, fontSize: '14px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', background: loading ? '#1A1A1A' : '#00BFA5', color: loading ? '#606060' : '#0D0D0D', fontWeight: 800, fontSize: '14px', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-sans)' }}>
                     {loading ? 'Sending…' : 'Send Reset Link'}
                   </button>
                   <button type="button" onClick={() => { setForgotPassword(false); setError('') }}
-                    style={{ background: 'none', border: 'none', color: '#606060', fontSize: '13px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                    style={{ background: 'none', border: 'none', color: '#606060', fontSize: '13px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
                     Back to Sign In
                   </button>
                 </form>
@@ -142,12 +142,12 @@ export default function LoginPage() {
             ) : signupDone ? (
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
-                <p style={{ color: '#00BFA5', fontWeight: 700, fontFamily: 'Inter, sans-serif', marginBottom: '8px' }}>Account created!</p>
-                <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'Inter, sans-serif' }}>
+                <p style={{ color: '#00BFA5', fontWeight: 700, fontFamily: 'var(--font-sans)', marginBottom: '8px' }}>Account created!</p>
+                <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'var(--font-sans)' }}>
                   Check your email to confirm your account, then sign in.
                 </p>
                 <button onClick={() => { setTab('signin'); setSignupDone(false) }}
-                  style={{ marginTop: '20px', padding: '10px 24px', borderRadius: '10px', background: '#00BFA5', color: '#0D0D0D', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+                  style={{ marginTop: '20px', padding: '10px 24px', borderRadius: '10px', background: '#00BFA5', color: '#0D0D0D', fontWeight: 700, fontSize: '13px', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
                   Go to Sign In
                 </button>
               </div>
@@ -155,7 +155,7 @@ export default function LoginPage() {
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {tab === 'signup' && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Username</label>
+                    <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Username</label>
                     <input
                       type="text" value={username} onChange={e => setUsername(e.target.value)}
                       placeholder="e.g. ben_lifts" required style={inputStyle}
@@ -165,7 +165,7 @@ export default function LoginPage() {
                   </div>
                 )}
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Email</label>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Email</label>
                   <input
                     type="email" value={email} onChange={e => setEmail(e.target.value)}
                     placeholder="you@example.com" required style={inputStyle}
@@ -174,7 +174,7 @@ export default function LoginPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'Inter, sans-serif' }}>Password</label>
+                  <label style={{ display: 'block', fontSize: '11px', color: '#606060', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '8px', fontFamily: 'var(--font-sans)' }}>Password</label>
                   <input
                     type="password" value={password} onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••" required minLength={6} style={inputStyle}
@@ -186,7 +186,7 @@ export default function LoginPage() {
                 {tab === 'signin' && (
                   <div style={{ textAlign: 'right', marginTop: '-8px' }}>
                     <button type="button" onClick={() => { setForgotPassword(true); setError(''); setResetEmail(email) }}
-                      style={{ background: 'none', border: 'none', color: '#606060', fontSize: '12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}
+                      style={{ background: 'none', border: 'none', color: '#606060', fontSize: '12px', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}
                       onMouseEnter={e => (e.currentTarget.style.color = '#A0A0A0')}
                       onMouseLeave={e => (e.currentTarget.style.color = '#606060')}>
                       Forgot password?
@@ -195,7 +195,7 @@ export default function LoginPage() {
                 )}
 
                 {error && (
-                  <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'Inter, sans-serif', margin: 0 }}>{error}</p>
+                  <p style={{ color: '#C8102E', fontSize: '13px', fontFamily: 'var(--font-sans)', margin: 0 }}>{error}</p>
                 )}
 
                 <button type="submit" disabled={loading}
@@ -205,7 +205,7 @@ export default function LoginPage() {
                     color: loading ? '#606060' : '#0D0D0D',
                     fontWeight: 800, fontSize: '14px', border: 'none',
                     cursor: loading ? 'not-allowed' : 'pointer',
-                    fontFamily: 'Inter, sans-serif', letterSpacing: '0.02em',
+                    fontFamily: 'var(--font-sans)', letterSpacing: '0.02em',
                     transition: 'all 0.2s',
                   }}>
                   {loading ? 'Please wait…' : tab === 'signin' ? 'Sign In' : 'Create Account'}
