@@ -9,7 +9,10 @@
   --color-crimson-dim: #A50D25;
   --color-teal: #00BFA5;
   --color-teal-dim: #009E88;
-  --color-orange: #FF9500;
+  /* Purple: hybrid sessions + AI features only */
+  --color-purple: #A78BFA;
+  /* Amber: semantic warning / tempo-zone colour only — not a brand accent */
+  --color-amber: #F59E0B;
   --color-text-primary: #F5F5F5;
   --color-text-secondary: #A0A0A0;
   /* Subtle: descriptive copy at small sizes — passes WCAG AA on card surfaces */
@@ -24,6 +27,89 @@
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+/* ─── Scroll-reveal motion ────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+.reveal.reveal-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Chart draw-in: line traces itself, bars grow up, dots pop in */
+.chart-line {
+  stroke-dasharray: 600;
+  stroke-dashoffset: 600;
+}
+.chart-animate .chart-line {
+  animation: chart-draw 1.6s cubic-bezier(0.4, 0, 0.2, 1) 0.2s forwards;
+}
+@keyframes chart-draw {
+  to { stroke-dashoffset: 0; }
+}
+.chart-dot {
+  opacity: 0;
+}
+.chart-animate .chart-dot {
+  animation: chart-pop 0.3s ease-out forwards;
+}
+@keyframes chart-pop {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.chart-bar {
+  transform: scaleY(0);
+  transform-origin: bottom;
+}
+.chart-animate .chart-bar {
+  animation: chart-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes chart-grow {
+  to { transform: scaleY(1); }
+}
+
+/* Hero ambient drift for background glows */
+@keyframes hero-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(2%, -3%); }
+}
+.hero-glow {
+  animation: hero-drift 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .chart-line { stroke-dashoffset: 0; }
+  .chart-dot  { opacity: 1; }
+  .chart-bar  { transform: scaleY(1); }
+  .chart-animate .chart-line,
+  .chart-animate .chart-dot,
+  .chart-animate .chart-bar,
+  .hero-glow {
+    animation: none;
+  }
+}
+
+/* ─── Card depth ──────────────────────────────────────────────────────── */
+/* Subtle top-edge light catch + soft shadow; hover lifts and brightens border */
+.card-depth {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.card-hover {
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 12px 28px rgba(0, 0, 0, 0.45);
 }
 
 :root {
@@ -79,6 +165,18 @@ h1, h2, h3, h4, h5, h6 {
 }
 .section-title-lg {
   font-size: clamp(34px, 6.5vw, 60px);
+}
+
+/* ─── Nav menus ───────────────────────────────────────────────────────── */
+@keyframes menu-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.menu-pop {
+  animation: menu-down 0.18s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-pop { animation: none; }
 }
 
 /* Scrollbar styling */

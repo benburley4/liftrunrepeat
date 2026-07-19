@@ -13,6 +13,8 @@ import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import StatTile from '@/components/ui/StatTile'
 import SectionHeading from '@/components/ui/SectionHeading'
+import Reveal from '@/components/ui/Reveal'
+import InterferenceChart from '@/components/ui/InterferenceChart'
 import { useAuth } from '@/context/AuthContext'
 import { BUILTIN_PLANS, expandPlanToProgramme } from '@/lib/builtinProgrammes'
 import { upsertProgramme, upsertSetting } from '@/lib/db'
@@ -130,16 +132,16 @@ function LoggerModal({ onClose }: { onClose: () => void }) {
 // ── Analytics Modal ────────────────────────────────────────────────────────────
 function AnalyticsModal({ onClose }: { onClose: () => void }) {
   const stats = [
-    { label: 'Total Sessions', value: '84', accent: '#00BFA5' },
+    { label: 'Total Sessions', value: '84', accent: '#A78BFA' },
     { label: 'Total Km Run', value: '612', accent: '#C8102E' },
-    { label: 'PRs Set', value: '23', accent: '#A78BFA' },
-    { label: 'Avg Weekly Vol', value: '14.2t', accent: '#F59E0B' },
+    { label: 'PRs Set', value: '23', accent: '#00BFA5' },
+    { label: 'Avg Weekly Vol', value: '14.2t', accent: '#F5F5F5' },
   ]
 
   return (
     <Modal
       onClose={onClose}
-      eyebrow="Analytics Preview"
+      eyebrow="Progress Preview"
       title="Hybrid Dashboard"
       maxWidth={620}
       footer={
@@ -172,28 +174,12 @@ function AnalyticsModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
-        <div className="relative h-44">
-          <div className="flex items-end gap-1 h-full">
-            {[30, 35, 40, 50, 60, 65, 85, 95, 90, 65, 50, 38].map((h, i) => (
-              <div key={i} className="flex-1 rounded-sm" style={{ height: `${h}%`, background: '#C8102E', opacity: 0.4, minHeight: '4px', marginTop: 'auto' }} />
-            ))}
-          </div>
-          <div className="absolute inset-0 pointer-events-none">
-            <svg className="w-full h-full" viewBox="0 0 120 48" preserveAspectRatio="none">
-              <polyline points="5,40 15,36 25,32 35,28 45,23 55,19 65,19 75,21 85,19 95,14 105,9 115,5"
-                fill="none" stroke="#00BFA5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              {[5,15,25,35,45,55,65,75,85,95,105,115].map((x, i) => {
-                const ys = [40,36,32,28,23,19,19,21,19,14,9,5]
-                return <circle key={i} cx={x} cy={ys[i]} r="2" fill="#00BFA5" />
-              })}
-            </svg>
-          </div>
-        </div>
+        <InterferenceChart />
 
         <div className="rounded-lg px-4 py-3 flex items-start gap-3 mt-4"
           style={{ background: 'rgba(200,16,46,0.08)', border: '1px solid rgba(200,16,46,0.25)' }}>
           <TrendingUp size={15} style={{ color: '#C8102E', flexShrink: 0, marginTop: 2 }} />
-          <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
+          <p className="text-sm leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
             <span style={{ color: '#C8102E', fontWeight: 600 }}>Interference Detected (W7–9):</span> Squat stalled while weekly km peaked at 61 km. Sign up to unlock your personal analysis.
           </p>
         </div>
@@ -377,56 +363,92 @@ export default function HomePage() {
 
       {/* HERO */}
       <section className="relative overflow-hidden min-h-screen flex items-center">
+        {/* Diagonal split: teal (lift) left, crimson (run) right */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,191,165,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 50%, rgba(200,16,46,0.06) 0%, transparent 60%)',
+            background: 'linear-gradient(105deg, rgba(0,191,165,0.07) 0%, transparent 45%, transparent 55%, rgba(200,16,46,0.07) 100%)',
           }}
         />
+        <div
+          className="absolute inset-0 pointer-events-none hero-glow"
+          style={{
+            background: 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0,191,165,0.08) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 50%, rgba(200,16,46,0.08) 0%, transparent 60%)',
+          }}
+        />
+        {/* Diagonal seam */}
+        <div
+          className="absolute pointer-events-none hidden lg:block"
+          style={{
+            top: '-10%', bottom: '-10%', left: '58%', width: '1px',
+            background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.06) 30%, rgba(255,255,255,0.06) 70%, transparent)',
+            transform: 'rotate(15deg)',
+          }}
+        />
+        {/* Heartbeat trace along the hero bottom — draws itself in */}
+        <div className="absolute bottom-10 left-0 right-0 pointer-events-none chart-animate" aria-hidden="true">
+          <svg viewBox="0 0 1200 60" className="w-full h-auto" preserveAspectRatio="none" style={{ opacity: 0.35 }}>
+            <path
+              className="chart-line"
+              d="M0 30 H320 l14-18 18 34 16-26 12 10 H560 l12-16 16 30 14-22 10 8 H860 l14-20 18 36 14-26 12 10 H1200"
+              fill="none" stroke="#00BFA5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ strokeDasharray: 1400, strokeDashoffset: 1400, animationDuration: '2.4s' }}
+            />
+          </svg>
+        </div>
+
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-24 w-full">
           <div className="max-w-4xl">
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
-              style={{ background: 'rgba(0,191,165,0.08)', border: '1px solid rgba(0,191,165,0.2)' }}
-            >
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00BFA5' }} />
-              <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
-                Built for Hybrid Athletes
-              </span>
-            </div>
+            <Reveal>
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-8"
+                style={{ background: 'rgba(0,191,165,0.08)', border: '1px solid rgba(0,191,165,0.2)' }}
+              >
+                <div className="w-1.5 h-1.5 rounded-full" style={{ background: '#00BFA5' }} />
+                <span className="text-xs font-semibold tracking-wider uppercase" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>
+                  Built for Hybrid Athletes
+                </span>
+              </div>
+            </Reveal>
 
-            <h1
-              className="leading-none font-black uppercase mb-6"
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: 'clamp(52px, 10vw, 112px)',
-                letterSpacing: '-0.02em',
-                color: '#F5F5F5',
-              }}
-            >
-              STRONG ENOUGH<br />
-              TO <span style={{ color: '#00BFA5' }}>RUN FAR.</span>
-              <br />
-              FAST ENOUGH<br />
-              TO <span style={{ color: '#C8102E' }}>LIFT HEAVY.</span>
-            </h1>
+            <Reveal delay={100}>
+              <h1
+                className="leading-none font-black uppercase mb-6"
+                style={{
+                  fontFamily: 'var(--font-heading)',
+                  fontSize: 'clamp(52px, 10vw, 112px)',
+                  letterSpacing: '-0.02em',
+                  color: '#F5F5F5',
+                }}
+              >
+                STRONG ENOUGH<br />
+                TO <span style={{ color: '#00BFA5' }}>RUN FAR.</span>
+                <br />
+                FAST ENOUGH<br />
+                TO <span style={{ color: '#C8102E' }}>LIFT HEAVY.</span>
+              </h1>
+            </Reveal>
 
-            <p
-              className="text-xl mb-10 max-w-2xl leading-relaxed"
-              style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
-            >
-              The platform built for hybrid athletes. Log both. Track both. Peak at both.
-            </p>
+            <Reveal delay={200}>
+              <p
+                className="text-xl mb-10 max-w-2xl leading-relaxed"
+                style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
+              >
+                The platform built for hybrid athletes. Log both. Track both. Peak at both.
+              </p>
+            </Reveal>
 
-            <div className="flex flex-wrap gap-3">
-              <Button href="/login" size="lg">
-                Get Started Free
-                <ArrowRight size={18} />
-              </Button>
-              <Button href="/programmes" variant="ghost" accent="#C8102E" size="lg">
-                Browse Programmes
-              </Button>
-            </div>
+            <Reveal delay={300}>
+              <div className="flex flex-wrap gap-3">
+                <Button href="/login" size="lg">
+                  Get Started Free
+                  <ArrowRight size={18} />
+                </Button>
+                <Button href="/programmes" variant="ghost" accent="#C8102E" size="lg">
+                  Browse Programmes
+                </Button>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -434,12 +456,14 @@ export default function HomePage() {
       {/* PHILOSOPHY STRIP */}
       <section className="py-24" style={{ borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <SectionHeading
-            align="center"
-            title="Train Both. Peak Together."
-            sub="Concurrent training interference is real — but manageable. Smart programming means you never have to choose."
-            className="mb-14"
-          />
+          <Reveal>
+            <SectionHeading
+              align="center"
+              title="Train Both. Peak Together."
+              sub="Concurrent training interference is real — but manageable. Smart programming means you never have to choose."
+              className="mb-14"
+            />
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
@@ -459,16 +483,17 @@ export default function HomePage() {
                 icon: Heart,
                 title: 'Recovery',
                 desc: 'Interference happens when programming ignores recovery. Our analytics flag the exact weeks where running volume hurt your strength gains.',
-                accent: '#A78BFA',
+                accent: '#F5F5F5',
               },
               {
                 icon: Sparkles,
                 title: 'AI Coach',
                 desc: 'Generate expert hybrid programmes in seconds. Get personalised coaching reviews with Analysis and Recommendations — then let AI revamp your plan.',
-                accent: '#F59E0B',
+                accent: '#A78BFA',
               },
-            ].map(({ icon: Icon, title, desc, accent }) => (
-              <Card key={title} tint={accent} padding="lg" className="flex flex-col gap-4">
+            ].map(({ icon: Icon, title, desc, accent }, i) => (
+              <Reveal key={title} delay={i * 90}>
+              <Card tint={accent} padding="lg" className="flex flex-col gap-4 h-full">
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center"
                   style={{ background: `${accent}18` }}
@@ -485,6 +510,7 @@ export default function HomePage() {
                   {desc}
                 </p>
               </Card>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -493,20 +519,24 @@ export default function HomePage() {
       {/* PROGRAMME SHOWCASE */}
       <section className="py-24" style={{ background: '#0A0A0A', borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
-            <SectionHeading eyebrow="Programming" title="Featured Programmes" className="[&>h2]:mb-0" />
-            <Link
-              href="/programmes"
-              className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:text-white"
-              style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
-            >
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
+          <Reveal>
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
+              <SectionHeading eyebrow="Programming" title="Featured Programmes" className="[&>h2]:mb-0" />
+              <Link
+                href="/programmes"
+                className="flex items-center gap-1.5 text-sm font-semibold transition-colors hover:text-white"
+                style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}
+              >
+                View all <ArrowRight size={14} />
+              </Link>
+            </div>
+          </Reveal>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {programmes.slice(0, 3).map(p => (
-              <ProgrammeCard key={p.id} programme={p} onStart={() => openProgramme(p)} />
+            {programmes.slice(0, 3).map((p, i) => (
+              <Reveal key={p.id} delay={i * 90} className="h-full [&>div]:h-full">
+                <ProgrammeCard programme={p} onStart={() => openProgramme(p)} />
+              </Reveal>
             ))}
           </div>
         </div>
@@ -515,18 +545,21 @@ export default function HomePage() {
       {/* AI FEATURES */}
       <section className="py-24" style={{ borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <SectionHeading
-            align="center"
-            eyebrow="AI Coaching"
-            eyebrowColor="#A78BFA"
-            title={<>Your AI Coach.<br />Always On.</>}
-            sub="Generate expert hybrid programmes in seconds. Get personalised coaching reviews. Let AI rebuild your programme based on its own recommendations."
-            className="mb-14"
-          />
+          <Reveal>
+            <SectionHeading
+              align="center"
+              eyebrow="AI Coaching"
+              eyebrowColor="#A78BFA"
+              title={<>Your AI Coach.<br />Always On.</>}
+              sub="Generate expert hybrid programmes in seconds. Get personalised coaching reviews. Let AI rebuild your programme based on its own recommendations."
+              className="mb-14"
+            />
+          </Reveal>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* AI Programme Generator card */}
-            <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0F0F1A', border: '1px solid rgba(167,139,250,0.2)' }}>
+            <Reveal className="h-full [&>div]:h-full">
+            <div className="rounded-2xl overflow-hidden flex flex-col card-depth" style={{ background: '#0F0F1A', border: '1px solid rgba(167,139,250,0.2)' }}>
               <div className="px-6 py-5" style={{ borderBottom: '1px solid #1E1E2E' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles size={14} style={{ color: '#A78BFA' }} />
@@ -562,9 +595,11 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
+            </Reveal>
 
             {/* AI Coach Review card */}
-            <div className="rounded-2xl overflow-hidden flex flex-col" style={{ background: '#0F0F1A', border: '1px solid rgba(167,139,250,0.2)' }}>
+            <Reveal delay={90} className="h-full [&>div]:h-full">
+            <div className="rounded-2xl overflow-hidden flex flex-col card-depth" style={{ background: '#0F0F1A', border: '1px solid rgba(167,139,250,0.2)' }}>
               <div className="px-6 py-5" style={{ borderBottom: '1px solid #1E1E2E' }}>
                 <div className="flex items-center gap-2 mb-1">
                   <Brain size={14} style={{ color: '#A78BFA' }} />
@@ -611,6 +646,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -619,6 +655,7 @@ export default function HomePage() {
       <section className="py-24" style={{ borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <Reveal>
             <div>
               <SectionHeading
                 eyebrow="Session Logging"
@@ -632,10 +669,12 @@ export default function HomePage() {
                 <span className="inline-flex items-center gap-2" style={{ color: '#F5F5F5' }}>Open Logger <ArrowRight size={16} /></span>
               </Button>
             </div>
+            </Reveal>
 
             {/* Mock log card */}
+            <Reveal delay={120}>
             <div
-              className="rounded-2xl overflow-hidden"
+              className="rounded-2xl overflow-hidden card-depth"
               style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}
             >
               <div
@@ -719,6 +758,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -727,8 +767,9 @@ export default function HomePage() {
       <section className="py-24" style={{ background: '#0A0A0A', borderTop: '1px solid #1A1A1A' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <Reveal>
             <div
-              className="rounded-2xl p-6"
+              className="rounded-2xl p-6 card-depth"
               style={{
                 background: 'linear-gradient(135deg, rgba(0,191,165,0.04) 0%, rgba(200,16,46,0.04) 100%)',
                 border: '1px solid #2E2E2E',
@@ -736,7 +777,7 @@ export default function HomePage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-xs uppercase tracking-wider" style={{ color: SUBTLE }}>Hybrid Analytics</p>
+                  <p className="text-xs uppercase tracking-wider" style={{ color: SUBTLE }}>Hybrid Progress</p>
                   <h3
                     className="text-xl font-black uppercase"
                     style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}
@@ -756,55 +797,32 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <div className="relative h-48 mb-3">
-                <div className="flex items-end gap-1 h-full">
-                  {[30, 35, 40, 50, 60, 65, 85, 95, 90, 65, 50, 38].map((h, i) => (
-                    <div
-                      key={i}
-                      className="flex-1 rounded-sm"
-                      style={{ height: `${h}%`, background: '#C8102E', opacity: 0.4, minHeight: '4px', marginTop: 'auto' }}
-                    />
-                  ))}
-                </div>
-                <div className="absolute inset-0 pointer-events-none">
-                  <svg className="w-full h-full" viewBox="0 0 120 48" preserveAspectRatio="none">
-                    <polyline
-                      points="5,40 15,36 25,32 35,28 45,23 55,19 65,19 75,21 85,19 95,14 105,9 115,5"
-                      fill="none"
-                      stroke="#00BFA5"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    {[5,15,25,35,45,55,65,75,85,95,105,115].map((x, i) => {
-                      const ys = [40,36,32,28,23,19,19,21,19,14,9,5]
-                      return <circle key={i} cx={x} cy={ys[i]} r="2" fill="#00BFA5" />
-                    })}
-                  </svg>
-                </div>
-              </div>
+              <InterferenceChart className="mb-3" />
 
               <div
                 className="rounded-lg px-4 py-3 flex items-start gap-3"
                 style={{ background: 'rgba(200,16,46,0.1)', border: '1px solid rgba(200,16,46,0.3)' }}
               >
                 <TrendingUp size={16} style={{ color: '#C8102E', flexShrink: 0, marginTop: 2 }} />
-                <p className="text-xs leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
+                <p className="text-sm leading-relaxed" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                   <span style={{ color: '#C8102E', fontWeight: 600 }}>Interference Detected (W7-9):</span> Squat stalled while km peaked at 61 km/wk.
                 </p>
               </div>
             </div>
+            </Reveal>
 
+            <Reveal delay={120}>
             <div>
-              <SectionHeading eyebrow="Analytics" title={<>Know Your<br />Training.</>} />
+              <SectionHeading eyebrow="Progress" title={<>Know Your<br />Training.</>} />
               <p className="text-base leading-relaxed mb-6" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>
                 Track every session on a visual calendar heatmap. See Push/Pull/Legs and body part breakdowns from your actual training history. Overlay strength trends with running volume to reveal the exact weeks where interference hit your gains.
               </p>
               <Button onClick={() => setModal('analytics')} variant="subtle">
                 <BarChart2 size={16} />
-                View Analytics
+                View Progress
               </Button>
             </div>
+            </Reveal>
           </div>
         </div>
       </section>
@@ -817,6 +835,7 @@ export default function HomePage() {
           borderTop: '1px solid rgba(0,191,165,0.15)',
         }}
       >
+        <Reveal>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
           <h2 className="section-title section-title-lg mb-4">
             Ready to Train Like<br />a <span style={{ color: '#00BFA5' }}>Hybrid Athlete?</span>
@@ -829,6 +848,7 @@ export default function HomePage() {
             Start Building Your Schedule
           </Button>
         </div>
+        </Reveal>
       </section>
     </div>
   )

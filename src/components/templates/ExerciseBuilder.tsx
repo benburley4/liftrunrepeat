@@ -230,24 +230,24 @@ function SetRowItem({
           className="px-2 py-1.5 rounded-lg text-sm text-center" style={{ ...inputStyle, width: 'auto' }} />
       </div>
 
-      {/* kg — hidden for bodyweight exercises */}
-      {!isBodyweight && (
-        <div className="flex items-center gap-1">
-          <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>kg</label>
-          <input type="text" inputMode="decimal" placeholder="—"
-            value={set.weight} onChange={e => onUpdate({ weight: e.target.value })}
-            size={Math.max(2, (set.weight || '—').length)}
-            className="px-2 py-1.5 rounded-lg text-sm text-center" style={{ ...inputStyle, width: 'auto' }} />
-        </div>
-      )}
+      {/* kg — for bodyweight exercises this is optional added load (blank = bodyweight only) */}
+      <div className="flex items-center gap-1">
+        <label className="text-xs flex-shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
+          {isBodyweight ? '+kg' : 'kg'}
+        </label>
+        <input type="text" inputMode="decimal" placeholder={isBodyweight ? 'BW' : '—'}
+          value={set.weight} onChange={e => onUpdate({ weight: e.target.value })}
+          size={Math.max(2, (set.weight || 'BW').length)}
+          className="px-2 py-1.5 rounded-lg text-sm text-center" style={{ ...inputStyle, width: 'auto' }} />
+      </div>
 
-      {/* 1RM */}
-      {isBarbell && (
+      {/* 1RM — any exercise with a weight entered; for bodyweight it's the added-load 1RM */}
+      {(!isBodyweight || est1RM !== null) && (
         <div className="flex items-center gap-2 flex-shrink-0">
           <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}>
             1RM:{' '}
             <span style={{ color: est1RM ? '#00BFA5' : '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
-              {est1RM ? `${est1RM} kg` : '—'}
+              {est1RM ? `${isBodyweight ? '+' : ''}${est1RM} kg` : '—'}
             </span>
           </span>
           {pct !== null && (

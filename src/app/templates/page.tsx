@@ -560,10 +560,11 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
 // ─── Custom Template Card ────────────────────────────────────────────────────
 
 function CustomTemplateCard({
-  template, onEdit, onDelete, onToast,
+  template, onEdit, onDuplicate, onDelete, onToast,
 }: {
   template: CustomTemplate
   onEdit: () => void
+  onDuplicate: () => void
   onDelete: () => void
   onToast: (msg: string) => void
 }) {
@@ -752,6 +753,13 @@ function CustomTemplateCard({
             <Pencil size={11} /> Edit
           </button>
           <button
+            onClick={onDuplicate}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+            style={{ background: '#A78BFA18', color: '#A78BFA', border: '1px solid #A78BFA44', fontFamily: 'var(--font-sans)' }}
+          >
+            <Copy size={11} /> Duplicate
+          </button>
+          <button
             onClick={onDelete}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
             style={{ background: '#C8102E18', color: '#C8102E', border: '1px solid #C8102E44', fontFamily: 'var(--font-sans)' }}
@@ -816,6 +824,34 @@ export default function TemplatesPage() {
     deleteTemplate(id)
       .then(() => showToast('Template deleted.'))
       .catch(err => showToast(`Delete failed: ${err?.message ?? 'unknown error'}`))
+  }
+
+  function handleDuplicate(t: CustomTemplate) {
+    if (!withinLimit('MAX_TEMPLATES', customTemplates.length)) {
+      showToast(`Free tier is limited to ${FEATURES.FREE.MAX_TEMPLATES} custom templates. ${FEATURES.UPGRADE_CTA}`)
+      return
+    }
+    const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const regenRun = (e: RunEntry): RunEntry =>
+      'kind' in e && e.kind === 'repeat'
+        ? { ...e, id: `seg-${uid()}`, laps: e.laps.map(l => ({ ...l, id: `seg-${uid()}` })) }
+        : { ...e, id: `seg-${uid()}` }
+    const copy: CustomTemplate = {
+      ...t,
+      id: `custom-${uid()}`,
+      name: `${t.name} (Copy)`,
+      exerciseRows: t.exerciseRows?.map(r => ({
+        ...r,
+        id: `ex-${uid()}`,
+        sets: r.sets.map(s => ({ ...s, id: `set-${uid()}` })),
+      })),
+      runRows: t.runRows?.map(regenRun),
+      hikeData: t.hikeData ? { ...t.hikeData } : undefined,
+    }
+    setCustomTemplates([copy, ...customTemplates])
+    upsertTemplate(copy.id, copy)
+      .then(() => showToast(`Duplicated as “${copy.name}”`))
+      .catch(err => showToast(`Save failed: ${err?.message ?? 'unknown error'}`))
   }
 
   const tabs: { id: TabId; label: string; count?: number }[] = [
@@ -1180,6 +1216,7 @@ export default function TemplatesPage() {
                     key={t.id}
                     template={t}
                     onEdit={() => setEditingTemplate(t)}
+                    onDuplicate={() => handleDuplicate(t)}
                     onDelete={() => handleDelete(t.id)}
                     onToast={showToast}
                   />

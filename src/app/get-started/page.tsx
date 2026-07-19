@@ -1,14 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Compass, BookOpen, ArrowRight } from 'lucide-react'
+import { Compass, BookOpen, ArrowRight, Sparkles, Check } from 'lucide-react'
 import { programmes, Programme } from '@/lib/exerciseLibrary'
 import ProgrammeCard from '@/components/ui/ProgrammeCard'
 import { useAuth } from '@/context/AuthContext'
 import { BUILTIN_PLANS, expandPlanToProgramme } from '@/lib/builtinProgrammes'
 import { upsertProgramme, upsertSetting } from '@/lib/db'
+import { AthleteProfile, loadProfile } from '@/lib/athleteProfile'
+
+// ─── Profile completeness ─────────────────────────────────────────────────────
+
+const PROFILE_SECTIONS: { label: string; isComplete: (p: AthleteProfile) => boolean }[] = [
+  { label: 'About you', isComplete: p => !!((p.dob || p.age) && p.bodyweightKg) },
+  { label: '1RMs', isComplete: p => !!(p.squat1RM || p.bench1RM || p.deadlift1RM || p.ohp1RM) },
+  { label: 'Race PBs', isComplete: p => !!(p.best5k || p.best10k || p.bestHalf || p.bestMarathon) },
+  { label: 'Goal race', isComplete: p => !!p.raceDistance },
+  { label: 'Injuries & context', isComplete: p => !!(p.injuries || p.notes) },
+]
 
 // ─── Quiz definition ──────────────────────────────────────────────────────────
 
@@ -97,6 +108,15 @@ export default function GetStartedPage() {
   const router = useRouter()
   const [starting, setStarting] = useState(false)
   const [startError, setStartError] = useState('')
+  const [profile, setProfile] = useState<AthleteProfile | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    loadProfile().then(setProfile).catch(() => {})
+  }, [user])
+
+  const sectionsComplete = profile ? PROFILE_SECTIONS.filter(s => s.isComplete(profile)).length : 0
+  const profileComplete = sectionsComplete === PROFILE_SECTIONS.length
 
   const done = step >= QUESTIONS.length
   const recommendation = done ? recommend(answers) : null
@@ -127,6 +147,58 @@ export default function GetStartedPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#0D0D0D', padding: '96px 16px 48px' }}>
       <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+        {/* Athlete Profile CTA — top of page, signed-in users only */}
+        {user && (
+          <div style={{ borderRadius: '20px', background: 'rgba(167,139,250,0.05)', border: '1px solid rgba(167,139,250,0.25)', padding: '24px 28px', marginBottom: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(167,139,250,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Sparkles size={18} style={{ color: '#A78BFA' }} />
+              </div>
+              <div style={{ flex: 1, minWidth: '220px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#F5F5F5', fontFamily: 'var(--font-heading)', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                  {profileComplete ? 'Athlete Profile complete' : 'Complete your Athlete Profile'}
+                </h3>
+                <p style={{ fontSize: '13px', color: '#A0A0A0', lineHeight: 1.5, fontFamily: 'var(--font-sans)', margin: '0 0 12px' }}>
+                  {profileComplete
+                    ? 'Your AI coach knows your lifts, race PBs, and goals. Keep it updated as they change.'
+                    : 'Your AI coach tailors every programme, review, and weekly report to your profile — 1RMs, race PBs, goal race, and injuries all shape what it prescribes.'}
+                </p>
+
+                {/* Section progress */}
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                  {PROFILE_SECTIONS.map(s => {
+                    const filled = profile ? s.isComplete(profile) : false
+                    return (
+                      <span key={s.label} style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '4px',
+                        padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-sans)',
+                        background: filled ? 'rgba(0,191,165,0.1)' : '#1E1E1E',
+                        color: filled ? '#00BFA5' : '#606060',
+                        border: filled ? '1px solid rgba(0,191,165,0.3)' : '1px solid #2E2E2E',
+                      }}>
+                        {filled && <Check size={10} />}
+                        {s.label}
+                      </span>
+                    )
+                  })}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  <Link href="/profile"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 20px', borderRadius: '12px', background: profileComplete ? 'transparent' : '#A78BFA', color: profileComplete ? '#A78BFA' : '#0D0D0D', fontWeight: 800, fontSize: '13px', fontFamily: 'var(--font-sans)', textDecoration: 'none', border: profileComplete ? '1px solid rgba(167,139,250,0.4)' : 'none' }}>
+                    {profileComplete ? 'Edit Profile' : 'Complete Profile'} <ArrowRight size={14} />
+                  </Link>
+                  {!profileComplete && (
+                    <span style={{ fontSize: '12px', color: '#8A8A8A', fontFamily: 'var(--font-sans)' }}>
+                      {sectionsComplete} of {PROFILE_SECTIONS.length} sections complete
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Quiz */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
           <Compass size={20} style={{ color: '#00BFA5' }} />
@@ -201,7 +273,6 @@ export default function GetStartedPage() {
             </>
           )}
         </div>
-
         {/* Glossary */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <BookOpen size={18} style={{ color: '#A78BFA' }} />

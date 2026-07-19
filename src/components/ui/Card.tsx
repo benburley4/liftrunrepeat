@@ -10,6 +10,7 @@ export default function Card({
   children,
   tint,
   elevated = false,
+  hover = true,
   padding = 'md',
   className = '',
   style,
@@ -17,6 +18,7 @@ export default function Card({
   children: ReactNode
   tint?: string
   elevated?: boolean
+  hover?: boolean
   padding?: 'none' | 'sm' | 'md' | 'lg'
   className?: string
   style?: CSSProperties
@@ -29,7 +31,10 @@ export default function Card({
         border: '1px solid #2E2E2E',
       }
   return (
-    <div className={`rounded-2xl ${pad} ${className}`} style={{ ...base, ...style }}>
+    <div
+      className={`rounded-2xl card-depth ${hover ? 'card-hover' : ''} ${pad} ${className}`}
+      style={{ ...base, ...style }}
+    >
       {children}
     </div>
   )

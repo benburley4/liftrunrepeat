@@ -49,7 +49,7 @@ export default function Button({
     cursor: disabled ? 'not-allowed' : 'pointer',
     ...(disabled ? { background: '#1A1A1A', color: '#606060', border: '1px solid #2E2E2E' } : {}),
   }
-  const cls = `inline-flex items-center justify-center gap-2 font-bold transition-all hover:opacity-85 active:opacity-70 ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}`
+  const cls = `inline-flex items-center justify-center gap-2 font-bold transition-all hover:brightness-110 hover:-translate-y-px active:scale-[0.98] active:brightness-95 active:translate-y-0 ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}`
 
   if (href && !disabled) {
     return (

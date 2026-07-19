@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, X, Pencil, Sparkles, Loader2 } from 'lucide-react'
+import { Check, X, Pencil, Sparkles, Loader2, Copy as CopyIcon, TrendingUp } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
-import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, segDerivedKm } from '@/components/templates/ExerciseBuilder'
+import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RunSegment, segDerivedKm } from '@/components/templates/ExerciseBuilder'
 import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTemplate, getSetting, upsertSetting } from '@/lib/db'
 import { usePremium } from '@/hooks/usePremium'
 import { FEATURES } from '@/lib/features'
@@ -39,6 +39,8 @@ interface Programme {
   startDate: string // 'YYYY-MM-DD'
   sessionsPerDay?: 1 | 2
   cells: Record<string, CellData> // key: 'w{week}d{day}' or 'w{week}d{day}_2' for second session
+  // week index → deload applied to it; `backup` holds the pre-deload cells so it can be restored
+  deloads?: Record<string, { pct: number; backup: Record<string, CellData> }>
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -114,6 +116,64 @@ function fmtHMmSs(raw: string): string {
   if (d.length <= 1) return d
   if (d.length <= 3) return d[0] + ':' + d.slice(1)
   return d[0] + ':' + d.slice(1, 3) + ':' + d.slice(3)
+}
+
+// ─── Copy-across-weeks helpers ────────────────────────────────────────────────
+
+function scaleWeight(w: string, factor: number, step = 0.5): string {
+  const n = parseFloat(w)
+  if (!n || factor === 1) return w
+  return String(Math.round((n * factor) / step) * step)
+}
+
+// Deload rounding per equipment: barbells load in 2.5 kg plate pairs, dumbbells in 2.5 kg jumps
+function stepForCategory(category: string): number {
+  if (category === 'barbell') return 5
+  if (category === 'dumbbell') return 2.5
+  return 0.5
+}
+
+function scaleDistance(v: string, factor: number): string {
+  const n = parseFloat(v)
+  if (!n || factor === 1) return v
+  return String(Math.round(n * factor * 10) / 10) // nearest 0.1 km
+}
+
+function scaleRunEntry(entry: RunEntry, factor: number): RunEntry {
+  if ('kind' in entry && entry.kind === 'repeat') {
+    return { ...entry, laps: entry.laps.map(l => scaleRunEntry(l, factor) as RunSegment) }
+  }
+  const seg = entry as RunSegment
+  if (seg.metric === 'distance') return { ...seg, value: scaleDistance(seg.value, factor) }
+  return { ...seg }
+}
+
+/**
+ * Deep-copies a template, scaling only lift weights by `factor` — sets, reps,
+ * and runs untouched. Rounds to a loadable increment per equipment type:
+ * barbell 5 kg, dumbbell 2.5 kg, machines/other 0.5 kg.
+ */
+function scaleTemplateLifts(t: StoredTemplate, factor: number): StoredTemplate {
+  return {
+    ...t,
+    exerciseRows: t.exerciseRows?.map(r => ({
+      ...r,
+      sets: r.sets.map(s => ({ ...s, weight: scaleWeight(s.weight, factor, stepForCategory(r.category)) })),
+    })),
+  }
+}
+
+/** Deep-copies a template, scaling lift weights and run/hike distances by `factor`. */
+function scaleTemplate(t: StoredTemplate, factor: number): StoredTemplate {
+  return {
+    ...t,
+    exerciseRows: t.exerciseRows?.map(r => ({
+      ...r,
+      sets: r.sets.map(s => ({ ...s, weight: scaleWeight(s.weight, factor, stepForCategory(r.category)) })),
+    })),
+    runRows: t.runRows?.map(e => scaleRunEntry(e, factor)),
+    hikeData: t.hikeData ? { ...t.hikeData, distanceKm: scaleDistance(t.hikeData.distanceKm, factor) } : undefined,
+  }
 }
 
 function fmtDate(d: Date): string {
@@ -529,10 +589,11 @@ interface PopulatedCellProps {
   data: CellData
   onEdit: () => void
   onDelete: () => void
+  onCopyAcross: () => void
   isSecond?: boolean
 }
 
-function PopulatedCell({ date, data, onEdit, onDelete, isSecond = false }: PopulatedCellProps) {
+function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = false }: PopulatedCellProps) {
   const { template } = data
   const vol = calcVolume(template)
   const col = typeColor(template.type)
@@ -552,6 +613,11 @@ function PopulatedCell({ date, data, onEdit, onDelete, isSecond = false }: Popul
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '100px', background: `${col}20`, color: col, fontWeight: 600 }}>{typeLabel(template.type)}</span>
+          <button
+            onClick={e => { e.stopPropagation(); onCopyAcross() }}
+            title="Copy across all weeks"
+            style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(0,191,165,0.15)', border: '1px solid rgba(0,191,165,0.3)', color: '#00BFA5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+          ><CopyIcon size={9} /></button>
           <button
             onClick={e => { e.stopPropagation(); onDelete() }}
             title="Remove template"
@@ -595,17 +661,20 @@ function PopulatedCell({ date, data, onEdit, onDelete, isSecond = false }: Popul
 type ModalState =
   | { type: 'create'; key: string; initial?: StoredTemplate }
   | { type: 'select'; key: string }
+  | { type: 'copy'; week: number; day: number; sfx: '' | '_2' }
+  | { type: 'deload'; week: number }
   | null
 
 interface CalendarGridProps {
   programme: Programme
   onUpdate: (cells: Record<string, CellData>) => void
+  onPatch: (patch: Partial<Programme>) => void
   onSave: () => void
   onReset: () => void
   onRename: (name: string) => void
 }
 
-function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: CalendarGridProps) {
+function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename }: CalendarGridProps) {
   const [modal, setModal] = useState<ModalState>(null)
   const [saved, setSaved] = useState(false)
   const [editingName, setEditingName] = useState(false)
@@ -634,6 +703,65 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
     onUpdate(next)
   }
 
+  /**
+   * Copies the session in week `srcWeek` to the same day (+ session slot) in
+   * every other week. With overload, weights/distances scale by
+   * (1 + pct/100)^(weekDiff) relative to the source week, so earlier weeks
+   * ramp up to it and later weeks progress beyond it.
+   */
+  function copyAcrossWeeks(srcWeek: number, day: number, sfx: '' | '_2', overloadPct: number, overwrite: boolean) {
+    const srcCell = programme.cells[`w${srcWeek}d${day}${sfx}`]
+    if (!srcCell) return
+    const next = { ...programme.cells }
+    for (let w = 0; w < programme.weeks; w++) {
+      if (w === srcWeek) continue
+      const key = `w${w}d${day}${sfx}`
+      if (next[key] && !overwrite) continue
+      const factor = overloadPct > 0 ? Math.pow(1 + overloadPct / 100, w - srcWeek) : 1
+      next[key] = { template: scaleTemplate(srcCell.template, factor), rpe: 0 }
+    }
+    onUpdate(next)
+    setModal(null)
+  }
+
+  /**
+   * Marks a week as a deload: all lift weights in that week scale to `pct`%
+   * of current, sets/reps and run sessions untouched. Original cells are
+   * backed up so the deload can be undone.
+   */
+  function applyDeload(week: number, pct: number) {
+    const suffixes: ('' | '_2')[] = programme.sessionsPerDay === 2 ? ['', '_2'] : ['']
+    const backup: Record<string, CellData> = {}
+    const nextCells = { ...programme.cells }
+    for (let d = 0; d < 7; d++) {
+      for (const sfx of suffixes) {
+        const key = `w${week}d${d}${sfx}`
+        const cell = programme.cells[key]
+        if (cell && (cell.template.exerciseRows ?? []).length > 0) {
+          backup[key] = cell
+          nextCells[key] = { ...cell, template: scaleTemplateLifts(cell.template, pct / 100) }
+        }
+      }
+    }
+    onPatch({
+      cells: nextCells,
+      deloads: { ...(programme.deloads ?? {}), [week]: { pct, backup } },
+    })
+    setModal(null)
+  }
+
+  /** Restores a deloaded week's original weights from the backup. */
+  function removeDeload(week: number) {
+    const entry = programme.deloads?.[week]
+    if (!entry) return
+    const nextCells = { ...programme.cells }
+    for (const [key, cell] of Object.entries(entry.backup)) {
+      nextCells[key] = cell
+    }
+    const nextDeloads = { ...(programme.deloads ?? {}) }
+    delete nextDeloads[week]
+    onPatch({ cells: nextCells, deloads: nextDeloads })
+  }
 
   function weekTotals(w: number) {
     let weight = 0, distance = 0, rpeSum = 0, rpeCount = 0
@@ -719,14 +847,35 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
 
           {/* Week column headers */}
           <div style={{ display: 'flex', gap: '8px', paddingLeft: `${LEFT}px`, marginBottom: '8px' }}>
-            {Array.from({ length: programme.weeks }, (_, w) => (
-              <div key={w} style={{ flexShrink: 0, width: `${COL}px`, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#fff' }}>Week {w + 1}</div>
-                <div style={{ fontSize: '11px', color: '#6B7280' }}>
-                  {fmtDate(getDate(w, 0))} – {fmtDate(getDate(w, 6))}
+            {Array.from({ length: programme.weeks }, (_, w) => {
+              const deload = programme.deloads?.[w]
+              return (
+                <div key={w} style={{ flexShrink: 0, width: `${COL}px`, textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: deload ? '#F59E0B' : '#fff' }}>Week {w + 1}</div>
+                  <div style={{ fontSize: '11px', color: '#6B7280' }}>
+                    {fmtDate(getDate(w, 0))} – {fmtDate(getDate(w, 6))}
+                  </div>
+                  {deload ? (
+                    <button
+                      onClick={() => removeDeload(w)}
+                      title="Click to restore original weights"
+                      style={{ marginTop: '4px', padding: '2px 8px', borderRadius: '100px', fontSize: '10px', fontWeight: 700, cursor: 'pointer', background: 'rgba(245,158,11,0.15)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.4)' }}
+                    >
+                      DELOAD {deload.pct}% ×
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setModal({ type: 'deload', week: w })}
+                      style={{ marginTop: '4px', padding: '2px 8px', borderRadius: '100px', fontSize: '10px', fontWeight: 600, cursor: 'pointer', background: 'none', color: '#4B5563', border: '1px dashed #2E2E2E', transition: 'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#F59E0B'; e.currentTarget.style.borderColor = '#F59E0B66' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = '#4B5563'; e.currentTarget.style.borderColor = '#2E2E2E' }}
+                    >
+                      Set deload
+                    </button>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Day rows */}
@@ -748,7 +897,8 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
                     {cell
                       ? <PopulatedCell date={date} data={cell}
                           onEdit={() => setModal({ type: 'create', key, initial: cell.template })}
-                          onDelete={() => clearCell(key)} />
+                          onDelete={() => clearCell(key)}
+                          onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '' })} />
                       : <EmptyCell date={date}
                           onCreateNew={() => setModal({ type: 'create', key })}
                           onSelectExisting={() => setModal({ type: 'select', key })} />}
@@ -756,7 +906,8 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
                       cell2
                         ? <PopulatedCell date={date} data={cell2} isSecond
                             onEdit={() => setModal({ type: 'create', key: key2, initial: cell2.template })}
-                            onDelete={() => clearCell(key2)} />
+                            onDelete={() => clearCell(key2)}
+                            onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '_2' })} />
                         : <EmptyCell date={date} isSecond
                             onCreateNew={() => setModal({ type: 'create', key: key2 })}
                             onSelectExisting={() => setModal({ type: 'select', key: key2 })} />
@@ -770,8 +921,10 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
           {/* Totals row */}
           <div style={{ display: 'flex', gap: '8px', paddingLeft: `${LEFT}px`, marginTop: '12px', paddingTop: '12px', borderTop: '2px solid #1E1E1E' }}>
             {totalsArr.map((t, w) => (
-              <div key={w} style={{ flexShrink: 0, width: `${COL}px`, padding: '12px', borderRadius: '12px', background: '#111', border: '1px solid #1E1E1E' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', marginBottom: '8px' }}>Week {w + 1}</div>
+              <div key={w} style={{ flexShrink: 0, width: `${COL}px`, padding: '12px', borderRadius: '12px', background: programme.deloads?.[w] ? 'rgba(245,158,11,0.05)' : '#111', border: programme.deloads?.[w] ? '1px solid rgba(245,158,11,0.3)' : '1px solid #1E1E1E' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: programme.deloads?.[w] ? '#F59E0B' : '#6B7280', marginBottom: '8px' }}>
+                  Week {w + 1}{programme.deloads?.[w] ? ' · Deload' : ''}
+                </div>
                 {t.weight > 0 && <div style={{ fontSize: '11px', color: '#D1D5DB', marginBottom: '4px' }}>🏋 {t.weight.toLocaleString()} kg</div>}
                 {t.distance > 0 && <div style={{ fontSize: '11px', color: '#D1D5DB', marginBottom: '4px' }}>🏃 {t.distance} km</div>}
                 {!t.weight && !t.distance && <div style={{ fontSize: '11px', color: '#374151', marginBottom: '4px' }}>—</div>}
@@ -810,7 +963,267 @@ function CalendarGrid({ programme, onUpdate, onSave, onReset, onRename }: Calend
           onClose={() => setModal(null)}
         />
       )}
+      {modal?.type === 'copy' && (() => {
+        const srcCell = programme.cells[`w${modal.week}d${modal.day}${modal.sfx}`]
+        if (!srcCell) return null
+        const occupied = Array.from({ length: programme.weeks }, (_, w) => w)
+          .filter(w => w !== modal.week && programme.cells[`w${w}d${modal.day}${modal.sfx}`]).length
+        return (
+          <CopyAcrossModal
+            templateName={srcCell.template.name}
+            dayName={DAYS[modal.day]}
+            srcWeek={modal.week}
+            totalWeeks={programme.weeks}
+            occupiedCount={occupied}
+            isSecond={modal.sfx === '_2'}
+            hasLift={(srcCell.template.exerciseRows ?? []).length > 0}
+            hasRun={(srcCell.template.runRows ?? []).length > 0 || !!srcCell.template.hikeData}
+            onApply={(pct, overwrite) => copyAcrossWeeks(modal.week, modal.day, modal.sfx, pct, overwrite)}
+            onClose={() => setModal(null)}
+          />
+        )
+      })()}
+      {modal?.type === 'deload' && (() => {
+        const suffixes: ('' | '_2')[] = programme.sessionsPerDay === 2 ? ['', '_2'] : ['']
+        let liftSessions = 0
+        for (let d = 0; d < 7; d++) {
+          for (const sfx of suffixes) {
+            const c = programme.cells[`w${modal.week}d${d}${sfx}`]
+            if (c && (c.template.exerciseRows ?? []).length > 0) liftSessions++
+          }
+        }
+        return (
+          <DeloadModal
+            week={modal.week}
+            liftSessions={liftSessions}
+            onApply={pct => applyDeload(modal.week, pct)}
+            onClose={() => setModal(null)}
+          />
+        )
+      })()}
     </>
+  )
+}
+
+// ─── Deload Week Modal ────────────────────────────────────────────────────────
+
+const DELOAD_PRESETS = [50, 60, 70, 80]
+
+function DeloadModal({ week, liftSessions, onApply, onClose }: {
+  week: number
+  liftSessions: number
+  onApply: (pct: number) => void
+  onClose: () => void
+}) {
+  const [pct, setPct] = useState(60)
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="menu-pop card-depth"
+        style={{ width: '100%', maxWidth: '420px', borderRadius: '16px', background: '#1A1A1A', border: '1px solid #2E2E2E', overflow: 'hidden' }}
+        onClick={e => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label="Set deload week"
+      >
+        {/* Header */}
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid #2E2E2E' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <TrendingUp size={14} style={{ color: '#F59E0B', transform: 'scaleY(-1)' }} />
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#F59E0B', fontWeight: 600 }}>Deload Week</span>
+          </div>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: '#F5F5F5', margin: 0 }}>Week {week + 1}</p>
+          <p style={{ fontSize: '12px', color: '#8A8A8A', margin: '4px 0 0' }}>
+            Lift weights drop to a percentage of current. Sets, reps, and run sessions stay exactly the same.
+          </p>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: '#F5F5F5', margin: '0 0 8px' }}>Reduce weights to</p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {DELOAD_PRESETS.map(p => (
+                <button key={p} onClick={() => setPct(p)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '10px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-mono)',
+                    background: pct === p ? 'rgba(245,158,11,0.12)' : '#242424',
+                    color: pct === p ? '#F59E0B' : '#A0A0A0',
+                    border: pct === p ? '1px solid #F59E0B' : '1px solid #2E2E2E',
+                  }}>
+                  {p}%
+                </button>
+              ))}
+            </div>
+            <input
+              type="range" min="40" max="90" step="5" value={pct}
+              onChange={e => setPct(parseInt(e.target.value))}
+              style={{ width: '100%', marginTop: '12px', accentColor: '#F59E0B', cursor: 'pointer' }}
+              aria-label="Deload percentage"
+            />
+            <p style={{ fontSize: '12px', color: '#8A8A8A', margin: '6px 0 0', textAlign: 'center' }}>
+              e.g. 100 kg barbell → <span style={{ color: '#F59E0B', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{Math.round(100 * pct / 100 / 5) * 5} kg</span>
+              <span style={{ display: 'block', marginTop: '2px' }}>Rounds to 5 kg for barbells, 2.5 kg for dumbbells, 0.5 kg for machines</span>
+            </p>
+          </div>
+
+          <p style={{ fontSize: '11px', color: '#8A8A8A', margin: 0, lineHeight: 1.5 }}>
+            {liftSessions > 0
+              ? `${liftSessions} lift session${liftSessions === 1 ? '' : 's'} in this week will be adjusted. Original weights are kept — click the deload badge to restore them.`
+              : 'This week has no lift sessions yet — sessions added later will not be auto-adjusted.'}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 20px', borderTop: '1px solid #2E2E2E', display: 'flex', gap: '10px' }}>
+          <button onClick={onClose}
+            style={{ flex: 1, padding: '10px', borderRadius: '10px', background: '#242424', border: '1px solid #2E2E2E', color: '#A0A0A0', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => onApply(pct)}
+            disabled={liftSessions === 0}
+            style={{
+              flex: 2, padding: '10px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 700,
+              background: liftSessions === 0 ? '#2E2E2E' : '#F59E0B',
+              color: liftSessions === 0 ? '#606060' : '#0D0D0D',
+              cursor: liftSessions === 0 ? 'not-allowed' : 'pointer',
+            }}>
+            {liftSessions === 0 ? 'No lift sessions to adjust' : `Set Week ${week + 1} as Deload (${pct}%)`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Copy Across Weeks Modal ──────────────────────────────────────────────────
+
+interface CopyAcrossModalProps {
+  templateName: string
+  dayName: string
+  srcWeek: number
+  totalWeeks: number
+  occupiedCount: number
+  isSecond: boolean
+  hasLift: boolean
+  hasRun: boolean
+  onApply: (overloadPct: number, overwrite: boolean) => void
+  onClose: () => void
+}
+
+function CopyAcrossModal({ templateName, dayName, srcWeek, totalWeeks, occupiedCount, isSecond, hasLift, hasRun, onApply, onClose }: CopyAcrossModalProps) {
+  const [overload, setOverload] = useState<boolean | null>(null)
+  const [pct, setPct] = useState('2.5')
+  const [overwrite, setOverwrite] = useState(false)
+
+  const pctNum = Math.max(0, parseFloat(pct) || 0)
+  const targets = totalWeeks - 1 - (overwrite ? 0 : occupiedCount)
+  const scaled = [
+    hasLift ? 'lift weights (nearest 5 kg barbell / 2.5 kg dumbbell / 0.5 kg machine)' : null,
+    hasRun ? 'run/hike distances (nearest 0.1 km)' : null,
+  ].filter(Boolean).join(' and ')
+
+  return (
+    <div
+      style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="menu-pop card-depth"
+        style={{ width: '100%', maxWidth: '440px', borderRadius: '16px', background: '#1A1A1A', border: '1px solid #2E2E2E', overflow: 'hidden' }}
+        onClick={e => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-label="Copy session across weeks"
+      >
+        {/* Header */}
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid #2E2E2E' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <CopyIcon size={14} style={{ color: '#00BFA5' }} />
+            <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#00BFA5', fontWeight: 600 }}>Copy Across Weeks</span>
+          </div>
+          <p style={{ fontSize: '15px', fontWeight: 700, color: '#F5F5F5', margin: 0 }}>
+            “{templateName}” → every {dayName}{isSecond ? ' (2nd session)' : ''}
+          </p>
+          <p style={{ fontSize: '12px', color: '#8A8A8A', margin: '4px 0 0' }}>
+            From week {srcWeek + 1} to all {totalWeeks} weeks of the programme.
+          </p>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Progressive overload question */}
+          <div>
+            <p style={{ fontSize: '13px', fontWeight: 600, color: '#F5F5F5', margin: '0 0 8px' }}>Apply progressive overload?</p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {[
+                { label: 'Exact copy', value: false },
+                { label: 'Progressive overload', value: true },
+              ].map(opt => (
+                <button key={opt.label} onClick={() => setOverload(opt.value)}
+                  style={{
+                    flex: 1, padding: '10px', borderRadius: '10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer',
+                    background: overload === opt.value ? 'rgba(0,191,165,0.12)' : '#242424',
+                    color: overload === opt.value ? '#00BFA5' : '#A0A0A0',
+                    border: overload === opt.value ? '1px solid #00BFA5' : '1px solid #2E2E2E',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  }}>
+                  {opt.value && <TrendingUp size={12} />}
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Overload % */}
+          {overload && (
+            <div style={{ borderRadius: '12px', padding: '14px', background: 'rgba(0,191,165,0.05)', border: '1px solid rgba(0,191,165,0.2)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#F5F5F5' }}>
+                Increase per week
+                <input
+                  type="number" min="0" step="0.5" value={pct} onChange={e => setPct(e.target.value)}
+                  style={{ width: '70px', padding: '6px 10px', borderRadius: '8px', background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#00BFA5', fontSize: '14px', fontWeight: 700, fontFamily: 'var(--font-mono)', outline: 'none', textAlign: 'right' }}
+                />
+                <span style={{ color: '#00BFA5', fontWeight: 700 }}>%</span>
+              </label>
+              <p style={{ fontSize: '11px', color: '#8A8A8A', margin: '8px 0 0', lineHeight: 1.5 }}>
+                Scales {scaled || 'loads'} relative to week {srcWeek + 1} — later weeks progress beyond it{srcWeek > 0 ? ', earlier weeks ramp up to it' : ''}.
+                {hasRun && !hasLift ? '' : ' Reps and sets stay the same.'}
+              </p>
+            </div>
+          )}
+
+          {/* Overwrite toggle */}
+          {occupiedCount > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13px', color: '#A0A0A0', cursor: 'pointer' }}>
+              <input type="checkbox" checked={overwrite} onChange={e => setOverwrite(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: '#00BFA5', cursor: 'pointer' }} />
+              Overwrite the {occupiedCount} {dayName}{occupiedCount === 1 ? '' : 's'} that already {occupiedCount === 1 ? 'has' : 'have'} a session
+            </label>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '14px 20px', borderTop: '1px solid #2E2E2E', display: 'flex', gap: '10px' }}>
+          <button onClick={onClose}
+            style={{ flex: 1, padding: '10px', borderRadius: '10px', background: '#242424', border: '1px solid #2E2E2E', color: '#A0A0A0', fontSize: '13px', fontWeight: 600, cursor: 'pointer' }}>
+            Cancel
+          </button>
+          <button
+            onClick={() => onApply(overload ? pctNum : 0, overwrite)}
+            disabled={overload === null || targets <= 0}
+            style={{
+              flex: 2, padding: '10px', borderRadius: '10px', border: 'none', fontSize: '13px', fontWeight: 700,
+              background: overload === null || targets <= 0 ? '#2E2E2E' : '#00BFA5',
+              color: overload === null || targets <= 0 ? '#606060' : '#0D0D0D',
+              cursor: overload === null || targets <= 0 ? 'not-allowed' : 'pointer',
+            }}>
+            {targets <= 0 ? 'No empty weeks to fill' : `Copy to ${targets} week${targets === 1 ? '' : 's'}`}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -1139,8 +1552,12 @@ export default function ProgrammesPage() {
   }
 
   function handleUpdate(cells: Record<string, CellData>) {
+    handlePatch({ cells })
+  }
+
+  function handlePatch(patch: Partial<Programme>) {
     if (!programme) return
-    const updated = { ...programme, cells }
+    const updated = { ...programme, ...patch }
     setProgramme(updated)
     setSavedList(prev => prev.map(p => p.id === updated.id ? updated : p))
     upsertProgramme(updated.id, updated).catch(console.error)
@@ -1177,7 +1594,7 @@ export default function ProgrammesPage() {
   return (
     <div style={{ minHeight: '100vh', padding: 'clamp(16px, 4vw, 32px) clamp(12px, 4vw, 24px)', background: '#0D0D0D' }}>
       {programme
-        ? <CalendarGrid programme={programme} onUpdate={handleUpdate} onSave={handleSave} onReset={handleReset} onRename={name => handleRenameProg(programme.id, name)} />
+        ? <CalendarGrid programme={programme} onUpdate={handleUpdate} onPatch={handlePatch} onSave={handleSave} onReset={handleReset} onRename={name => handleRenameProg(programme.id, name)} />
         : (
           <div style={{ maxWidth: '720px', margin: '0 auto' }}>
             {/* Saved programmes */}

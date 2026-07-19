@@ -7,7 +7,7 @@ const footerLinks = {
     { href: '/programmes', label: 'Programmes' },
     { href: '/templates', label: 'Templates' },
     { href: '/log/session', label: 'Today' },
-    { href: '/analytics', label: 'Analytics' },
+    { href: '/progress', label: 'Progress' },
   ],
   Tools: [
     { href: '/tools', label: 'Calculator Hub' },

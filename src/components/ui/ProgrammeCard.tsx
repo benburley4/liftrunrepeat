@@ -17,14 +17,8 @@ const levelColors = { beginner: '#606060', intermediate: '#A0A0A0', advanced: '#
 export default function ProgrammeCard({ programme, onEdit, onDelete, onStart }: ProgrammeCardProps) {
   return (
     <div
-      className="rounded-xl p-5 flex flex-col gap-4 transition-all hover:translate-y-[-2px]"
-      style={{
-        background: '#1A1A1A',
-        border: '1px solid #2E2E2E',
-        transition: 'transform 0.15s ease, border-color 0.15s ease',
-      }}
-      onMouseEnter={e => (e.currentTarget.style.borderColor = '#3E3E3E')}
-      onMouseLeave={e => (e.currentTarget.style.borderColor = '#2E2E2E')}
+      className="rounded-xl p-5 flex flex-col gap-4 card-depth card-hover"
+      style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
@@ -117,8 +111,8 @@ export default function ProgrammeCard({ programme, onEdit, onDelete, onStart }: 
         </Link>
         <button
           onClick={onStart}
-          className="flex-1 py-2 rounded text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
+          className="flex-1 py-2 rounded text-sm font-semibold transition-all hover:brightness-110 active:scale-[0.98]"
+          style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}
         >
           Start Programme
         </button>

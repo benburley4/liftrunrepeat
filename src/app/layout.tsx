@@ -25,8 +25,19 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  ),
   title: 'LiftRunRepeat — Train Both. Peak Together.',
   description: 'The only platform built for hybrid athletes. Lift, run, repeat. Log both. Track both. Peak at both.',
+  icons: { icon: '/logo.svg' },
+  openGraph: {
+    title: 'LiftRunRepeat — Train Both. Peak Together.',
+    description: 'The only platform built for hybrid athletes. Log both. Track both. Peak at both.',
+    siteName: 'LiftRunRepeat',
+    type: 'website',
+  },
 }
 
 export default function RootLayout({

@@ -179,7 +179,6 @@ export async function getCoachReports(): Promise<CoachReport[]> {
     .from('coach_reports')
     .select('id, week_ending, report_text, stats, created_at')
     .order('week_ending', { ascending: false })
-    .limit(12)
   throwIfError(error)
   return (data ?? []).map(row => ({
     id: row.id,
@@ -205,16 +204,7 @@ export async function saveCoachReport(weekEnding: string, reportText: string, st
       { onConflict: 'user_id,week_ending' }
     )
   throwIfError(error)
-  // Trim to last 12 weeks — delete any beyond that
-  const { data: rows } = await supabase
-    .from('coach_reports')
-    .select('id')
-    .eq('user_id', user.id)
-    .order('week_ending', { ascending: false })
-  if (rows && rows.length > 12) {
-    const toDelete = rows.slice(12).map((r: { id: string }) => r.id)
-    await supabase.from('coach_reports').delete().in('id', toDelete)
-  }
+  // All reports are kept — users can delete individual ones from the Weekly Review tab
 }
 
 // ─── Custom Exercises ─────────────────────────────────────────────────────────

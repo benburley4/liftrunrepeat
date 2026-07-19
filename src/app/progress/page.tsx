@@ -84,7 +84,9 @@ export default function AnalyticsPage() {
   const [editSession, setEditSession] = useState<SavedSession | null>(null)
   const [aiCoachText, setAiCoachText] = useState('')
   const [pastReports, setPastReports] = useState<CoachReport[]>([])
+  const [displayedReportWeek, setDisplayedReportWeek] = useState<string | null>(null)
   const [expandedReport, setExpandedReport] = useState<string | null>(null)
+  const [expandedReportMonth, setExpandedReportMonth] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [historySubTab, setHistorySubTab] = useState<'sessions' | 'exercises'>('sessions')
   const [selectedExercise, setSelectedExercise] = useState<string | null>(null)
@@ -396,11 +398,18 @@ export default function AnalyticsPage() {
   async function loadPastReports() {
     try {
       const reports = await getCoachReports()
-      setPastReports(reports)
-      // If a report exists for the current week, pre-populate the current view
-      const weekEnding = currentWeekEnding()
-      const thisWeek = reports.find(r => r.weekEnding === weekEnding)
-      if (thisWeek && !aiCoachText) setAiCoachText(thisWeek.reportText)
+      const sorted = [...reports].sort((a, b) => b.weekEnding.localeCompare(a.weekEnding))
+      setPastReports(sorted)
+      // Show the most recent report in the main slot as long as it's ≤7 days old
+      const newest = sorted[0]
+      if (newest && !aiCoachText) {
+        const now = new Date(); now.setHours(0, 0, 0, 0)
+        const ageDays = Math.floor((now.getTime() - new Date(newest.weekEnding + 'T00:00:00').getTime()) / 86400000)
+        if (ageDays <= 7) {
+          setAiCoachText(newest.reportText)
+          setDisplayedReportWeek(newest.weekEnding)
+        }
+      }
     } catch { /* table may not exist yet */ }
   }
 
@@ -631,6 +640,87 @@ export default function AnalyticsPage() {
     }
   }, [history])
 
+  // ── Progress: last 4 weeks vs previous 4, from actual training history ──────
+  const progressStats = useMemo(() => {
+    function segKm(seg: LoggedRunSegment): number {
+      if (seg.metric === 'distance') return parseFloat(seg.actualValue) || 0
+      if (seg.metric === 'time' && seg.actualPace) {
+        const [m, sc] = seg.actualPace.split(':').map(Number)
+        const paceMin = m + (sc || 0) / 60
+        return paceMin > 0 ? (parseFloat(seg.actualValue) || 0) / paceMin : 0
+      }
+      return 0
+    }
+    function sessionKm(s: SavedSession): number {
+      return (s.run ?? []).reduce((rs, entry) => {
+        if ('kind' in entry && entry.kind === 'repeat')
+          return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
+        return rs + segKm(entry as LoggedRunSegment)
+      }, 0) + (s.hikeKm ?? 0)
+    }
+    function sessionVolume(s: SavedSession): number {
+      return (s.exercises ?? []).reduce((es, ex) =>
+        es + ex.actualSets.reduce((ss, set) =>
+          ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0)
+    }
+
+    const now = new Date(); now.setHours(0, 0, 0, 0)
+    const cut4 = new Date(now); cut4.setDate(now.getDate() - 28)
+    const cut8 = new Date(now); cut8.setDate(now.getDate() - 56)
+    const recent = history.filter(s => new Date(s.date + 'T00:00:00') >= cut4)
+    const previous = history.filter(s => {
+      const d = new Date(s.date + 'T00:00:00'); return d >= cut8 && d < cut4
+    })
+    if (previous.length === 0) return null // not enough history to compare yet
+
+    const sum = (arr: SavedSession[], f: (s: SavedSession) => number) => arr.reduce((a, s) => a + f(s), 0)
+    const recentVol = sum(recent, sessionVolume)
+    const prevVol = sum(previous, sessionVolume)
+    const recentKm = sum(recent, sessionKm)
+    const prevKm = sum(previous, sessionKm)
+
+    const pct = (cur: number, prev: number) => prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null
+
+    // Best estimated 1RM per exercise in each window; keep the most-trained
+    // exercises that appear in both windows so the comparison is meaningful.
+    function bestRMs(arr: SavedSession[]): Record<string, { rm: number; sets: number }> {
+      const out: Record<string, { rm: number; sets: number }> = {}
+      for (const s of arr) {
+        for (const ex of s.exercises ?? []) {
+          const name = (ex.exerciseName || '').trim()
+          if (!name) continue
+          for (const set of ex.actualSets) {
+            const w = parseFloat(set.weight), r = parseInt(set.reps)
+            if (isNaN(w) || isNaN(r) || w <= 0 || r <= 0) continue
+            const entry = (out[name] ??= { rm: 0, sets: 0 })
+            entry.rm = Math.max(entry.rm, epleyRM(w, r))
+            entry.sets++
+          }
+        }
+      }
+      return out
+    }
+    const recentRMs = bestRMs(recent)
+    const prevRMs = bestRMs(previous)
+    const lifts = Object.keys(recentRMs)
+      .filter(name => prevRMs[name])
+      .sort((a, b) => (recentRMs[b].sets + prevRMs[b].sets) - (recentRMs[a].sets + prevRMs[a].sets))
+      .slice(0, 3)
+      .map(name => ({
+        name,
+        from: Math.round(prevRMs[name].rm),
+        to: Math.round(recentRMs[name].rm),
+        pct: pct(recentRMs[name].rm, prevRMs[name].rm),
+      }))
+
+    return {
+      sessions: { from: previous.length, to: recent.length },
+      volume: { from: Math.round(prevVol), to: Math.round(recentVol), pct: pct(recentVol, prevVol) },
+      km: { from: Math.round(prevKm * 10) / 10, to: Math.round(recentKm * 10) / 10, pct: pct(recentKm, prevKm) },
+      lifts,
+    }
+  }, [history])
+
   const runningData = useMemo(() => {
     function segKm(seg: LoggedRunSegment): number {
       if (seg.metric === 'distance') return parseFloat(seg.actualValue) || 0
@@ -816,7 +906,7 @@ export default function AnalyticsPage() {
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'ai-coach', label: 'AI Coach' },
+    { id: 'ai-coach', label: 'Weekly Review' },
     { id: 'prs', label: 'Personal Records' },
     { id: 'history', label: 'History' },
     { id: 'strength', label: 'Strength' },
@@ -833,7 +923,7 @@ export default function AnalyticsPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8">
           <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5' }}>Dashboard</p>
           <h1 className="text-5xl font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
-            Analytics
+            Progress
           </h1>
         </div>
       </div>
@@ -883,6 +973,65 @@ export default function AnalyticsPage() {
             </div>
           ))}
         </div>
+
+        {/* Progress panel — last 4 weeks vs previous 4, from real history */}
+        {progressStats && (
+          <div className="rounded-xl p-5 mb-6" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp size={14} style={{ color: '#00BFA5' }} />
+                <span className="text-sm font-black uppercase" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>Your Progress</span>
+              </div>
+              <span className="text-xs" style={{ color: '#606060' }}>Last 4 weeks vs previous 4</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-1">
+              {[
+                { label: 'Lift Volume', from: `${(progressStats.volume.from / 1000).toFixed(1)}t`, to: `${(progressStats.volume.to / 1000).toFixed(1)}t`, pct: progressStats.volume.pct, accent: '#00BFA5' },
+                { label: 'Running + Hiking', from: `${progressStats.km.from} km`, to: `${progressStats.km.to} km`, pct: progressStats.km.pct, accent: '#C8102E' },
+                { label: 'Sessions', from: String(progressStats.sessions.from), to: String(progressStats.sessions.to), pct: progressStats.sessions.from > 0 ? Math.round(((progressStats.sessions.to - progressStats.sessions.from) / progressStats.sessions.from) * 100) : null, accent: '#A78BFA' },
+              ].map(({ label, from, to, pct, accent }) => (
+                <div key={label} className="rounded-lg px-4 py-3" style={{ background: '#141414', border: '1px solid #2E2E2E' }}>
+                  <p className="text-xs uppercase tracking-wider mb-1.5" style={{ color: '#606060' }}>{label}</p>
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>{from} →</span>
+                    <span className="text-lg font-bold" style={{ color: accent, fontFamily: 'var(--font-mono)' }}>{to}</span>
+                    {pct !== null && pct !== 0 && (
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{
+                        background: pct > 0 ? 'rgba(0,191,165,0.12)' : 'rgba(200,16,46,0.12)',
+                        color: pct > 0 ? '#00BFA5' : '#C8102E',
+                        fontFamily: 'var(--font-mono)',
+                      }}>{pct > 0 ? '+' : ''}{pct}%</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {progressStats.lifts.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs uppercase tracking-wider mb-2" style={{ color: '#606060' }}>Estimated 1RM — most-trained lifts</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {progressStats.lifts.map(l => (
+                    <div key={l.name} className="rounded-lg px-4 py-3 flex items-center justify-between gap-2" style={{ background: '#141414', border: '1px solid #2E2E2E' }}>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold truncate" style={{ color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>{l.name}</p>
+                        <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-mono)' }}>{l.from} → {l.to} kg</p>
+                      </div>
+                      {l.pct !== null && (
+                        <span className="text-xs font-bold px-1.5 py-0.5 rounded shrink-0" style={{
+                          background: l.pct > 0 ? 'rgba(0,191,165,0.12)' : l.pct < 0 ? 'rgba(200,16,46,0.12)' : '#1E1E1E',
+                          color: l.pct > 0 ? '#00BFA5' : l.pct < 0 ? '#C8102E' : '#606060',
+                          fontFamily: 'var(--font-mono)',
+                        }}>{l.pct > 0 ? '+' : ''}{l.pct}%</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Overtraining warning */}
         {overviewStats.overtrained && (
@@ -1783,10 +1932,10 @@ export default function AnalyticsPage() {
                 <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>AI Coach</span>
               </div>
               <h3 className="text-2xl font-black uppercase mb-2" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
-                Training Analysis
+                Weekly Review
               </h3>
               <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)', maxWidth: 560 }}>
-                Your AI coach analyses your session history — load, strength trends, running volume, training balance, and recovery — and gives you personalised recommendations. Reports auto-generate every Sunday night and are saved for the last 12 weeks.
+                Every Sunday night, your AI coach reviews the week you actually trained — sessions, load, strength trends, running volume, and recovery — and tells you what&apos;s working and what to change next week. Every past review is kept below.
               </p>
               {history.length === 0 && (
                 <p className="text-xs mt-2" style={{ color: '#C8102E', fontFamily: 'var(--font-sans)' }}>
@@ -1798,6 +1947,11 @@ export default function AnalyticsPage() {
             {/* AI output */}
             {aiCoachText && (
               <div className="space-y-4">
+                {displayedReportWeek && (
+                  <p className="text-xs uppercase tracking-widest" style={{ color: '#A78BFA', fontFamily: 'var(--font-sans)' }}>
+                    Latest report — week ending {new Date(displayedReportWeek + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                )}
                 {renderAICoachText(aiCoachText)}
               </div>
             )}
@@ -1815,58 +1969,92 @@ export default function AnalyticsPage() {
               </div>
             )}
 
-            {/* Past reports */}
-            {pastReports.filter(r => r.weekEnding !== currentWeekEnding()).length > 0 && (
-              <div>
-                <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
-                  Past Reports
-                </p>
-                <div className="space-y-2">
-                  {pastReports
-                    .filter(r => r.weekEnding !== currentWeekEnding())
-                    .map(report => {
-                      const isOpen = expandedReport === report.id
-                      const weekLabel = new Date(report.weekEnding + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+            {/* Past reports — grouped by month, excluding the report shown in the main slot */}
+            {(() => {
+              const past = pastReports.filter(r => r.weekEnding !== (displayedReportWeek ?? currentWeekEnding()))
+              if (past.length === 0) return null
+              const byMonth: Record<string, typeof past> = {}
+              for (const r of past) { const key = r.weekEnding.slice(0, 7); (byMonth[key] ??= []).push(r) }
+              const months = Object.keys(byMonth).sort((a, b) => b.localeCompare(a))
+              return (
+                <div>
+                  <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
+                    Past Reports
+                  </p>
+                  <div className="rounded-xl overflow-hidden" style={{ background: '#141414', border: '1px solid #2E2E2E' }}>
+                    {months.map((mKey, mi) => {
+                      const monthLabel = new Date(mKey + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()
+                      const monthOpen = expandedReportMonth === mKey
+                      const reports = byMonth[mKey]
                       return (
-                        <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                        <div key={mKey} style={{ borderBottom: mi < months.length - 1 ? '1px solid #1E1E1E' : 'none' }}>
                           <button
-                            onClick={() => setExpandedReport(isOpen ? null : report.id)}
+                            onClick={() => setExpandedReportMonth(monthOpen ? null : mKey)}
                             className="w-full flex items-center justify-between px-5 py-4"
                             style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
                           >
-                            <div className="flex items-center gap-3">
-                              <Sparkles size={13} style={{ color: '#A78BFA', flexShrink: 0 }} />
-                              <div>
-                                <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
-                                  Week ending {weekLabel}
-                                </p>
-                                <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
-                                  {report.reportText.split('\n').find(l => l.startsWith('- '))?.replace('- ', '').slice(0, 80) ?? 'AI Coach report'}...
-                                </p>
-                              </div>
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-sm font-black uppercase tracking-wide" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
+                                {monthLabel}
+                              </span>
+                              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#242424', color: '#8A8A8A', fontFamily: 'var(--font-mono)' }}>
+                                {reports.length}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={e => { e.stopPropagation(); if (confirm('Delete this report?')) handleDeleteReport(report.id) }}
-                                className="p-1.5 rounded-lg" style={{ color: '#3E3E3E', cursor: 'pointer', background: 'none', border: 'none' }}
-                                onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
-                                onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}
-                                title="Delete report"
-                              ><Trash2 size={13} /></button>
-                              <ChevronDown size={14} style={{ color: '#606060', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                            </div>
+                            <ChevronDown size={14} style={{ color: '#606060', flexShrink: 0, transform: monthOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                           </button>
-                          {isOpen && (
-                            <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
-                              {renderAICoachText(report.reportText)}
+
+                          {monthOpen && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {reports.map(report => {
+                                const isOpen = expandedReport === report.id
+                                const weekLabel = new Date(report.weekEnding + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
+                                return (
+                                  <div key={report.id} className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                                    <button
+                                      onClick={() => setExpandedReport(isOpen ? null : report.id)}
+                                      className="w-full flex items-center justify-between px-5 py-4"
+                                      style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <Sparkles size={13} style={{ color: '#A78BFA', flexShrink: 0 }} />
+                                        <div>
+                                          <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
+                                            Week ending {weekLabel}
+                                          </p>
+                                          <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>
+                                            {report.reportText.split('\n').find(l => l.startsWith('- '))?.replace('- ', '').slice(0, 80) ?? 'Weekly review'}...
+                                          </p>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={e => { e.stopPropagation(); if (confirm('Delete this report?')) handleDeleteReport(report.id) }}
+                                          className="p-1.5 rounded-lg" style={{ color: '#3E3E3E', cursor: 'pointer', background: 'none', border: 'none' }}
+                                          onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
+                                          onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}
+                                          title="Delete report"
+                                        ><Trash2 size={13} /></button>
+                                        <ChevronDown size={14} style={{ color: '#606060', flexShrink: 0, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                                      </div>
+                                    </button>
+                                    {isOpen && (
+                                      <div className="px-5 pb-5 space-y-4" style={{ borderTop: '1px solid #2E2E2E', paddingTop: '16px' }}>
+                                        {renderAICoachText(report.reportText)}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
                             </div>
                           )}
                         </div>
                       )
                     })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         )}
 

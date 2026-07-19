@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { User, Save, Sparkles } from 'lucide-react'
-import { AthleteProfile, loadProfile, saveProfile, daysToRace } from '@/lib/athleteProfile'
+import { AthleteProfile, loadProfile, saveProfile, daysToRace, derivedAge, derivedTrainingYears } from '@/lib/athleteProfile'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -27,12 +27,13 @@ const labelStyle: React.CSSProperties = {
   fontFamily: 'var(--font-sans)',
 }
 
-function Field({ label, value, onChange, placeholder, type = 'text' }: {
+function Field({ label, value, onChange, placeholder, type = 'text', hint }: {
   label: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
   type?: string
+  hint?: string
 }) {
   return (
     <div>
@@ -46,6 +47,139 @@ function Field({ label, value, onChange, placeholder, type = 'text' }: {
         onFocus={e => (e.target.style.borderColor = '#00BFA544')}
         onBlur={e => (e.target.style.borderColor = '#2E2E2E')}
       />
+      {hint && (
+        <p style={{ margin: '5px 0 0', fontSize: '12px', fontWeight: 700, color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>{hint}</p>
+      )}
+    </div>
+  )
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * Day / Month / Year entry that reads and writes a 'YYYY-MM-DD' string.
+ * Partial entries are held locally and only committed once all three parts
+ * form a valid date; clearing any part clears the stored value.
+ */
+function DatePartsField({ label, value, onChange, hint }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  hint?: string
+}) {
+  const [parts, setParts] = useState({ d: '', m: '', y: '' })
+
+  useEffect(() => {
+    if (!value) return
+    const [y, m, d] = value.split('-')
+    setParts({ d: String(parseInt(d) || ''), m: String(parseInt(m) || ''), y })
+  }, [value])
+
+  function update(next: { d: string; m: string; y: string }) {
+    setParts(next)
+    const day = parseInt(next.d), month = parseInt(next.m), year = parseInt(next.y)
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+      const composed = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const check = new Date(composed + 'T00:00:00')
+      if (check.getDate() === day && check.getMonth() === month - 1) {
+        onChange(composed)
+        return
+      }
+    }
+    if (value) onChange('')
+  }
+
+  const partStyle: React.CSSProperties = { ...inputStyle, textAlign: 'center' }
+
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text" inputMode="numeric" placeholder="DD" maxLength={2} aria-label={`${label} — day`}
+          value={parts.d}
+          onChange={e => update({ ...parts, d: e.target.value.replace(/\D/g, '') })}
+          style={{ ...partStyle, width: '52px', flexShrink: 0 }}
+          onFocus={e => (e.target.style.borderColor = '#00BFA544')}
+          onBlur={e => (e.target.style.borderColor = '#2E2E2E')}
+        />
+        <select
+          value={parts.m} aria-label={`${label} — month`}
+          onChange={e => update({ ...parts, m: e.target.value })}
+          style={{ ...partStyle, flex: 1, textAlign: 'left', cursor: 'pointer', color: parts.m ? '#F5F5F5' : '#606060' }}
+          onFocus={e => (e.target.style.borderColor = '#00BFA544')}
+          onBlur={e => (e.target.style.borderColor = '#2E2E2E')}
+        >
+          <option value="">Month</option>
+          {MONTH_NAMES.map((name, i) => (
+            <option key={name} value={i + 1}>{name}</option>
+          ))}
+        </select>
+        <input
+          type="text" inputMode="numeric" placeholder="YYYY" maxLength={4} aria-label={`${label} — year`}
+          value={parts.y}
+          onChange={e => update({ ...parts, y: e.target.value.replace(/\D/g, '') })}
+          style={{ ...partStyle, width: '68px', flexShrink: 0 }}
+          onFocus={e => (e.target.style.borderColor = '#00BFA544')}
+          onBlur={e => (e.target.style.borderColor = '#2E2E2E')}
+        />
+      </div>
+      {hint && (
+        <p style={{ margin: '5px 0 0', fontSize: '12px', fontWeight: 700, color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>{hint}</p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Hours / minutes / seconds selectors that read and write a race-time string:
+ * 'H:MM:SS' when hours > 0, otherwise 'MM:SS'. All-empty clears the value.
+ */
+function TimePartsField({ label, value, onChange }: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+}) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const parts = (() => {
+    const bits = value.split(':').map(b => parseInt(b))
+    if (bits.length === 3 && bits.every(n => !isNaN(n))) return { h: String(bits[0]), m: String(bits[1]), s: String(bits[2]) }
+    if (bits.length === 2 && bits.every(n => !isNaN(n))) return { h: '0', m: String(bits[0]), s: String(bits[1]) }
+    return { h: '', m: '', s: '' }
+  })()
+
+  function update(next: { h: string; m: string; s: string }) {
+    if (next.h === '' && next.m === '' && next.s === '') { onChange(''); return }
+    const h = parseInt(next.h || '0'), m = parseInt(next.m || '0'), s = parseInt(next.s || '0')
+    onChange(h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`)
+  }
+
+  const selStyle: React.CSSProperties = { ...inputStyle, flex: 1, textAlign: 'center', cursor: 'pointer', padding: '10px 6px' }
+  const unitStyle: React.CSSProperties = { fontSize: '11px', color: '#606060', alignSelf: 'center', fontFamily: 'var(--font-sans)' }
+
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <select value={parts.h} aria-label={`${label} — hours`} onChange={e => update({ ...parts, h: e.target.value })}
+          style={{ ...selStyle, color: parts.h !== '' ? '#F5F5F5' : '#606060' }}>
+          <option value="">–</option>
+          {Array.from({ length: 10 }, (_, i) => <option key={i} value={i}>{i}</option>)}
+        </select>
+        <span style={unitStyle}>h</span>
+        <select value={parts.m} aria-label={`${label} — minutes`} onChange={e => update({ ...parts, m: e.target.value })}
+          style={{ ...selStyle, color: parts.m !== '' ? '#F5F5F5' : '#606060' }}>
+          <option value="">–</option>
+          {Array.from({ length: 60 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+        </select>
+        <span style={unitStyle}>m</span>
+        <select value={parts.s} aria-label={`${label} — seconds`} onChange={e => update({ ...parts, s: e.target.value })}
+          style={{ ...selStyle, color: parts.s !== '' ? '#F5F5F5' : '#606060' }}>
+          <option value="">–</option>
+          {Array.from({ length: 60 }, (_, i) => <option key={i} value={i}>{pad(i)}</option>)}
+        </select>
+        <span style={unitStyle}>s</span>
+      </div>
     </div>
   )
 }
@@ -92,6 +226,8 @@ export default function ProfilePage() {
   }
 
   const raceDays = daysToRace(profile)
+  const age = derivedAge(profile)
+  const trainingYears = derivedTrainingYears(profile)
 
   return (
     <div style={{ minHeight: '100vh', background: '#0D0D0D', padding: '96px 16px 48px' }}>
@@ -112,11 +248,19 @@ export default function ProfilePage() {
         ) : (
           <>
             <SectionCard title="About You">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
-                <Field label="Age" value={profile.age ?? ''} onChange={set('age')} placeholder="e.g. 34" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px' }}>
+                <DatePartsField
+                  label="Date of birth"
+                  value={profile.dob ?? ''} onChange={set('dob')}
+                  hint={age ? `Age: ${age}` : undefined}
+                />
                 <Field label="Sex" value={profile.sex ?? ''} onChange={set('sex')} placeholder="e.g. Male" />
                 <Field label="Bodyweight (kg)" value={profile.bodyweightKg ?? ''} onChange={set('bodyweightKg')} placeholder="e.g. 78" />
-                <Field label="Training age (years)" value={profile.trainingAgeYears ?? ''} onChange={set('trainingAgeYears')} placeholder="e.g. 5" />
+                <DatePartsField
+                  label="Training start date"
+                  value={profile.trainingStartDate ?? ''} onChange={set('trainingStartDate')}
+                  hint={trainingYears ? `Training age: ${trainingYears} yr${trainingYears === '1' ? '' : 's'}` : undefined}
+                />
               </div>
             </SectionCard>
 
@@ -126,6 +270,15 @@ export default function ProfilePage() {
                 <Field label="Bench Press" value={profile.bench1RM ?? ''} onChange={set('bench1RM')} placeholder="e.g. 100" />
                 <Field label="Deadlift" value={profile.deadlift1RM ?? ''} onChange={set('deadlift1RM')} placeholder="e.g. 180" />
                 <Field label="Overhead Press" value={profile.ohp1RM ?? ''} onChange={set('ohp1RM')} placeholder="e.g. 60" />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Race PBs (Best Times)">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '16px' }}>
+                <TimePartsField label="5K" value={profile.best5k ?? ''} onChange={set('best5k')} />
+                <TimePartsField label="10K" value={profile.best10k ?? ''} onChange={set('best10k')} />
+                <TimePartsField label="Half Marathon" value={profile.bestHalf ?? ''} onChange={set('bestHalf')} />
+                <TimePartsField label="Full Marathon" value={profile.bestMarathon ?? ''} onChange={set('bestMarathon')} />
               </div>
             </SectionCard>
 
