@@ -32,6 +32,8 @@ function MiniLine({ data, dataKey, unit, color = '#00BFA5', domain }: {
   )
 }
 
+const WEIGHT_TREND = '#D946EF'   // magenta trend over grey readings
+
 /** Load vs recovery, night vitals and weight — below the main Recovery trends. */
 export default function RecoveryExtras({ rows, today }: { rows: ZeppDay[]; today: string }) {
   const weeks = useMemo(() => weeklyLoadRecovery(rows, today, 16).map(w => ({ ...w, label: fmtDay(w.week) })), [rows, today])
@@ -93,15 +95,15 @@ export default function RecoveryExtras({ rows, today }: { rows: ZeppDay[]; today
       )}
 
       {weight.length > 1 && (
-        <ChartCard title="Bodyweight" sub="Smart-scale readings in kg, with 7-reading average (dashed)" height="h-56">
+        <ChartCard title="Bodyweight" sub="Smart-scale readings in kg (grey dots) with the 7-reading average trend (magenta)" height="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={weight} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
               <XAxis dataKey="label" {...axisProps} minTickGap={28} />
               <YAxis {...axisProps} width={40} domain={['dataMin - 1', 'dataMax + 1']} tickFormatter={v => String(Math.round(v))} />
               <Tooltip {...chartTooltipStyle} formatter={(v: unknown, n: unknown) => [`${v} kg`, n === 'avg' ? '7-reading avg' : 'Weight']} />
-              <Line dataKey="kg" stroke="#00BFA5" strokeWidth={0} dot={{ r: 2.5, fill: '#00BFA5' }} isAnimationActive={false} />
-              <Line dataKey="avg" stroke={BASELINE_GREY} strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+              <Line dataKey="kg" stroke="#8A8A8A" strokeWidth={0} dot={{ r: 2.5, fill: '#8A8A8A', stroke: 'none' }} activeDot={{ r: 4, fill: '#F5F5F5' }} isAnimationActive={false} />
+              <Line dataKey="avg" stroke={WEIGHT_TREND} strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: WEIGHT_TREND }} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
