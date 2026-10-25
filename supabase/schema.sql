@@ -124,6 +124,10 @@ create table if not exists zepp_workout_series (
   primary key (user_id, workout_id)
 );
 alter table zepp_workout_series enable row level security;
+-- Steps tab (same migration): daily walking distance, active calories, step goal.
+alter table zepp_daily add column if not exists distance_m      real;
+alter table zepp_daily add column if not exists active_calories real;
+alter table zepp_daily add column if not exists step_goal       integer;
 drop policy if exists "own rows select" on zepp_workout_series;
 create policy "own rows select" on zepp_workout_series for select using (auth.uid() = user_id);
 

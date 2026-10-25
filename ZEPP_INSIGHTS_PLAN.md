@@ -115,6 +115,29 @@ shows nothing fake — per IMPROVEMENT_PLAN B6).
 
 ---
 
+## Site-wide review (2026-10-25) — where watch data improves each page
+
+Ordered by value for a hybrid lifter/hiker. ✅ = done.
+
+| # | Page / area | Today | Improvement with Zepp data |
+|---|---|---|---|
+| R1 | **Progress › Running** | Counts only sessions with run segments → empty for a hiker (1 run vs ~500 walks/hikes). | Rename **On Foot**: weekly km / time / climb across runs + hikes + walks, HR and pace trend, longest/biggest-climb records, walking cadence & stride trend. |
+| R2 | **Progress › new Steps tab** | Not shown anywhere. | Today, 7/30-day, month, year averages; all-time cumulative steps + km; goal hit-rate; daily chart with goal line, weekly/monthly bars; walking cadence & stride from walk workouts. Needs `distance_m`, `active_calories`, `step_goal` in `zepp_daily`. |
+| R3 | **Progress › High load warning** | Fires on lifted-kg ramp > 30% alone. | Use watch training load (acute vs 4-week) + readiness/HRV: warn only when load is up *and* recovery is down; otherwise "load up, recovering well". |
+| R4 | **Progress › Hybrid** | Dual-axis chart (km vs tonnage). | One common load unit for lifting + cardio: HR-zone minutes / Zepp training load per session → stacked weekly load by type (no dual axis). |
+| R5 | **Today (log session)** | Manual entry only. | Readiness banner with today's call; "watch recorded a workout today — use its time & HR"; list of watch strength sessions needing sets (`needsSets`). |
+| R6 | **Home dashboard** | Training stats only. | Readiness + steps + last night's sleep tiles; link to Recovery. |
+| R7 | **Programmes / AI generator & revamp** | No recovery input. | Feed 4-week readiness/HRV trend and typical weekly hike volume so plans start from real recovery and NEAT. |
+| R8 | **AI Coach programme review** | Reviews the plan text. | Add "how your body responded": readiness/HRV/RHR trend across the programme's weeks. |
+| R9 | **Strength tab / PRs** | Tonnage, 1RM. | Session density (kg/min), HR during lifting, hike PRs (longest, most climb, fastest 5 km). |
+| R10 | **Tools** | Manual inputs. | Prefill resting HR / max HR (VO2 estimate, HR zones), bodyweight (Wilks, macros), active calories (TDEE). |
+| R11 | **Running page › Connect your wearable** | Greyed-out Garmin/Strava. | Show Zepp as connected with last sync time; HR zones from the watch's max HR. |
+| R12 | **Profile** | Manual. | Prefill weight, height, resting/max HR from the watch (editable). |
+| R13 | **Recovery page** | Today + trends ✅ | Load vs recovery, cardio efficiency, weight, illness early-warning (resp. rate + skin temp + RHR up together), SpO₂ / stress. |
+| R14 | **Morning Telegram** | — | 07:00 message: readiness, call, today's programmed session (Telegram, per notification preference). |
+| R15 | **History** | Watch panel ✅, readiness tile ✅ | Hide watch walks < 2 km in lists (decided); "add sets" prompt. |
+| R16 | **Privacy page** | No mention of watch data. | Add HR/HRV/sleep/SpO₂ (sensitive health data): where stored, how to delete. |
+
 ## Phase 4 — Later
 
 - **Cloud sync (Option B):** if Zepp grants Open Platform credentials
