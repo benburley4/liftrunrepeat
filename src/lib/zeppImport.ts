@@ -38,6 +38,15 @@ export const DEFAULT_TIME_ZONE = 'Asia/Hong_Kong'
 
 // Auto-detected movement blocks (5–15 min, no distance) — not training sessions.
 export const SKIPPED_ZEPP_TYPES = new Set(['activity'])
+// Shorter recordings are accidental starts (e.g. 0-min "runs" of 80 m).
+export const MIN_WORKOUT_MINUTES = 5
+
+export interface PlanOptions {
+  timeZone?: string
+  /** Only watch-only lifting sessions starting at/after this ISO time get the
+   *  "add your sets" prompt — history from before the site was used doesn't. */
+  needsSetsSince?: string
+}
 
 // ─── Zepp type → session type mapping ────────────────────────────────────────
 
@@ -64,6 +73,7 @@ export function mapZeppType(workoutType: string): { type: string; name: string }
   const key = (workoutType ?? '').trim().toLowerCase()
   const known = ZEPP_TYPE_MAP[key]
   if (known) return known
+  if (key.startsWith('unknown')) return { type: 'hybrid', name: 'Workout' }
   const name = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Workout'
   return { type: 'hybrid', name }
 }
@@ -140,7 +150,7 @@ function applyMeasurements(session: Record<string, unknown>, w: ZeppWorkout, sta
   session.zepp = zeppStats(w)
 }
 
-export function zeppWorkoutToSession(w: ZeppWorkout, name: string, timeZone = DEFAULT_TIME_ZONE) {
+export function zeppWorkoutToSession(w: ZeppWorkout, name: string, timeZone = DEFAULT_TIME_ZONE, promptSets = true) {
   const { type } = mapZeppType(w.workoutType)
   const session: Record<string, unknown> = {
     type, name,
@@ -152,7 +162,7 @@ export function zeppWorkoutToSession(w: ZeppWorkout, name: string, timeZone = DE
   }
   applyMeasurements(session, w)
   // Watch-only lifting session: the UI prompts to add the sets.
-  if (type === 'lift') session.needsSets = true
+  if (type === 'lift' && promptSets) session.needsSets = true
   return session
 }
 
@@ -182,15 +192,21 @@ function freeName(base: string, taken: Set<string>): string {
   }
 }
 
+function durationMin(w: ZeppWorkout): number {
+  return (new Date(w.endTime).getTime() - new Date(w.startTime).getTime()) / 60000
+}
+
 export function planZeppImport(
   workouts: ZeppWorkout[],
   existing: ExistingSession[],
-  timeZone = DEFAULT_TIME_ZONE,
+  { timeZone = DEFAULT_TIME_ZONE, needsSetsSince }: PlanOptions = {},
 ): PlannedRow[] {
   const planned: PlannedRow[] = []
   const byWorkoutId = new Map<string, ExistingSession>()
   const takenNames = new Map<string, Set<string>>()        // date → names in use
-  const manualByDate = new Map<string, ExistingSession[]>() // unlinked manual sessions
+  // Unlinked manual sessions, deduped like sessionDedupe: only the latest save
+  // per date + name is visible on the site, so only it is a match candidate.
+  const visibleManual = new Map<string, ExistingSession>()
 
   for (const s of existing) {
     const date = String(s.data.date ?? '')
@@ -199,15 +215,23 @@ export function planZeppImport(
     const linked = linkedWorkoutId(s.data)
     if (linked) byWorkoutId.set(linked, s)
     else if (!s.data.source) {
-      if (!manualByDate.has(date)) manualByDate.set(date, [])
-      manualByDate.get(date)!.push(s)
+      const key = `${date}|${nameKey(s.data.name)}`
+      const cur = visibleManual.get(key)
+      if (!cur || String(s.data.savedAt ?? s.savedAt) > String(cur.data.savedAt ?? cur.savedAt)) visibleManual.set(key, s)
     }
+  }
+  const manualByDate = new Map<string, ExistingSession[]>()
+  for (const s of visibleManual.values()) {
+    const date = String(s.data.date ?? '')
+    if (!manualByDate.has(date)) manualByDate.set(date, [])
+    manualByDate.get(date)!.push(s)
   }
 
   // 1. Re-apply workouts already linked to a session.
   const unlinked: ZeppWorkout[] = []
   for (const w of workouts) {
     if (SKIPPED_ZEPP_TYPES.has((w.workoutType ?? '').trim().toLowerCase())) continue
+    if (durationMin(w) < MIN_WORKOUT_MINUTES) continue
     const s = byWorkoutId.get(String(w.workoutId))
     if (!s) { unlinked.push(w); continue }
     const data = { ...s.data }
@@ -250,7 +274,8 @@ export function planZeppImport(
     const taken = takenNames.get(date)!
     const name = freeName(mapZeppType(w.workoutType).name, taken)
     taken.add(nameKey(name))
-    planned.push({ savedAt: w.startTime, data: zeppWorkoutToSession(w, name, timeZone), action: 'new' })
+    const promptSets = !needsSetsSince || new Date(w.startTime) >= new Date(needsSetsSince)
+    planned.push({ savedAt: w.startTime, data: zeppWorkoutToSession(w, name, timeZone, promptSets), action: 'new' })
   }
 
   return planned

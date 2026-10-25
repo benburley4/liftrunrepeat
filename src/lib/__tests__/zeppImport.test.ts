@@ -130,6 +130,32 @@ describe('planZeppImport', () => {
     expect(again.data.needsSets).toBe(false)
   })
 
+  it('only prompts for sets on recent watch-only strength workouts', () => {
+    const strength: ZeppWorkout = { ...walk, workoutType: 'strength', distanceM: null, elevationGainM: null }
+    const [old] = planZeppImport([strength], [], { needsSetsSince: '2026-11-01T00:00:00Z' })
+    expect(old.data.needsSets).toBeUndefined()
+    const [recent] = planZeppImport([strength], [], { needsSetsSince: '2026-10-20T00:00:00Z' })
+    expect(recent.data.needsSets).toBe(true)
+  })
+
+  it('skips accidental recordings shorter than 5 minutes', () => {
+    const blip: ZeppWorkout = { ...walk, workoutType: 'run', endTime: '2026-10-25T04:38:45+00:00', distanceM: 80 }
+    expect(planZeppImport([blip], [])).toEqual([])
+  })
+
+  it('maps unnamed Zepp types to a generic workout', () => {
+    expect(mapZeppType('unknown:221')).toEqual({ type: 'hybrid', name: 'Workout' })
+  })
+
+  it('matches only the visible copy of a duplicated manual session', () => {
+    const older: ExistingSession = { savedAt: 'a', data: { ...manualHike.data, savedAt: '2026-10-25T04:00:00Z', hikeKm: null } }
+    const newer: ExistingSession = { savedAt: 'b', data: { ...manualHike.data, savedAt: '2026-10-25T07:00:00Z' } }
+    const second: ZeppWorkout = { ...walk, workoutId: '200', startTime: '2026-10-25T09:00:00+00:00', endTime: '2026-10-25T10:00:00+00:00', distanceM: 4000 }
+    const rows = planZeppImport([walk, second], [older, newer])
+    expect(rows.filter(r => r.action === 'enrich').map(r => r.savedAt)).toEqual(['b'])
+    expect(rows.find(r => r.action === 'new')!.data.name).toBe('Walk')
+  })
+
   it('skips auto-detected activity blocks', () => {
     const blip: ZeppWorkout = { ...walk, workoutType: 'activity', distanceM: 0 }
     expect(planZeppImport([blip], [])).toEqual([])

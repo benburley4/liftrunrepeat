@@ -143,7 +143,9 @@ if (readError) {
   process.exit(1)
 }
 
-const plan = planZeppImport(workouts, rows.map(r => ({ savedAt: r.saved_at, data: r.data })))
+const plan = planZeppImport(workouts, rows.map(r => ({ savedAt: r.saved_at, data: r.data })), {
+  needsSetsSince: new Date(Date.now() - 14 * 86400e3).toISOString(),
+})
 const count = a => plan.filter(p => p.action === a).length
 console.log(`${workouts.length} Zepp workouts (${fromDate} to ${toDate}): `
   + `${count('new')} new, ${count('enrich')} enriched manual, ${count('update')} already linked`)

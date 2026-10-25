@@ -163,3 +163,9 @@ shows nothing fake — per IMPROVEMENT_PLAN B6).
   **migration not yet run**), 1.2 (`src/lib/zeppDaily.ts` + sync), 1.3
   (`needsSets`), 1.5 (scale bodyweight, 95 → 97.6 kg) done. Existing work
   committed and production redeployed from the commit.
+- 2026-10-25: ZeppBridge backfill reached Dec 2025 (first data 2025-12-25).
+  Phase 1.4 done: full-history import (218 new, 89 manual sessions enriched,
+  596 sessions total). Planner now skips < 5 min recordings, maps unnamed
+  types to "Workout", matches only the visible copy of duplicated manual
+  sessions, and prompts for sets only on strength workouts from the last
+  14 days. `zepp_daily` still waiting on the migration.
