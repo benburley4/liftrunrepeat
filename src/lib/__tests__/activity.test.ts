@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  weekStartOf, stepsSummary, weeklySteps, monthlySteps, footKind, footKm, weeklyOnFoot, footRecords,
+  weekStartOf, stepsSummary, stepsTotals, weeklySteps, monthlySteps, footKind, footKm, weeklyOnFoot, footRecords,
   footEfficiencyByMonth, hrLoad, weeklyHybridLoad, assessLoad, plausibleRecording, watchContextToPrompt, watchDefaults,
 } from '../activity'
 import type { SessionData } from '../computeStats'
@@ -43,6 +43,12 @@ describe('steps', () => {
       today: 10000, avg7: 16000, avg30: 13000, monthAvg: 14667, yearAvg: 13000,
       totalSteps: 52000, totalKm: 39.5, daysTracked: 4, goalHitPct: 75,
       best: { date: '2026-10-24', steps: 22000 },
+    })
+  })
+  it('totals steps and km by period', () => {
+    expect(stepsTotals(rows, '2026-10-25')).toEqual({
+      steps: { today: 10000, week: 32000, d7: 32000, d30: 52000, month: 44000, year: 52000, all: 52000 },
+      km: { today: 7.5, week: 24.5, d7: 24.5, d30: 39.5, month: 33.5, year: 39.5, all: 39.5 },
     })
   })
   it('groups by week and month', () => {

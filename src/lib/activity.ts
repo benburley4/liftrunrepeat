@@ -61,6 +61,30 @@ export function stepsSummary(rows: ZeppDay[], today: string): StepsSummary {
   }
 }
 
+export interface PeriodTotals { today: number; week: number; d7: number; d30: number; month: number; year: number; all: number }
+
+/**
+ * Cumulative steps and walking km for today, this week (Monday on), the last
+ * 7 and 30 days, this month, this year and all time.
+ */
+export function stepsTotals(rows: ZeppDay[], today: string): { steps: PeriodTotals; km: PeriodTotals } {
+  const days = stepDays(rows, today)
+  const sum = (from: string, pick: (r: ZeppDay) => number) => days.filter(r => r.date >= from).reduce((n, r) => n + pick(r), 0)
+  const periods = (pick: (r: ZeppDay) => number): PeriodTotals => ({
+    today: sum(today, pick),
+    week: sum(weekStartOf(today), pick),
+    d7: sum(shiftDate(today, -6), pick),
+    d30: sum(shiftDate(today, -29), pick),
+    month: sum(`${today.slice(0, 7)}-01`, pick),
+    year: sum(`${today.slice(0, 4)}-01-01`, pick),
+    all: sum('0000', pick),
+  })
+  const steps = periods(r => r.steps!)
+  const m = periods(r => r.distance_m ?? 0)
+  const km = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, Math.round(v / 100) / 10])) as unknown as PeriodTotals
+  return { steps, km }
+}
+
 export interface StepsPeriod { key: string; avg: number; total: number; km: number; days: number }
 
 function groupSteps(days: ZeppDay[], keyOf: (date: string) => string): StepsPeriod[] {

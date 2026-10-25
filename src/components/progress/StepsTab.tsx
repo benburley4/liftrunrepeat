@@ -3,12 +3,19 @@
 import { useMemo, useState } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import StatTile from '@/components/ui/StatTile'
-import { stepsSummary, weeklySteps, monthlySteps, footEfficiencyByMonth, DEFAULT_STEP_GOAL } from '@/lib/activity'
+import { stepsSummary, stepsTotals, weeklySteps, monthlySteps, footEfficiencyByMonth, DEFAULT_STEP_GOAL } from '@/lib/activity'
 import type { ZeppDay } from '@/lib/recovery'
 import type { SessionData } from '@/lib/computeStats'
 import { chartTooltipStyle, axisProps, fmtDay, fmtMonth, cardStyle, STEPS_COLOR } from './progressStyle'
 
 const RANGES = [{ label: '30 days', days: 30 }, { label: '90 days', days: 90 }, { label: '1 year', days: 365 }] as const
+
+type Mode = 'avg' | 'total' | 'km'
+const MODES: { id: Mode; label: string }[] = [
+  { id: 'avg', label: 'Average' },
+  { id: 'total', label: 'Total' },
+  { id: 'km', label: 'Distance' },
+]
 
 function Heading({ children, sub }: { children: React.ReactNode; sub?: string }) {
   return (
@@ -19,18 +26,42 @@ function Heading({ children, sub }: { children: React.ReactNode; sub?: string })
   )
 }
 
-const fmtK = (n: number | null) => (n == null ? '–' : n.toLocaleString())
+function Pills<T extends string | number>({ options, value, onChange, label }: {
+  options: { id: T; label: string }[]; value: T; onChange: (v: T) => void; label: string
+}) {
+  return (
+    <div className="flex gap-2" role="group" aria-label={label}>
+      {options.map(o => (
+        <button key={String(o.id)} onClick={() => onChange(o.id)} aria-pressed={value === o.id}
+          className="rounded-full px-3 py-1 text-xs"
+          style={{
+            background: value === o.id ? 'rgba(0,191,165,0.12)' : '#242424',
+            border: `1px solid ${value === o.id ? 'rgba(0,191,165,0.4)' : '#2E2E2E'}`,
+            color: value === o.id ? '#00BFA5' : '#A0A0A0',
+          }}>{o.label}</button>
+      ))}
+    </div>
+  )
+}
+
+const fmtN = (n: number | null) => (n == null ? '–' : n.toLocaleString())
+const fmtBig = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n.toLocaleString())
+const fmtKm = (n: number) => (n >= 1000 ? Math.round(n).toLocaleString() : n.toLocaleString())
+const kAxis = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))
 
 export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; sessions: SessionData[]; today: string }) {
+  const [mode, setMode] = useState<Mode>('avg')
   const [range, setRange] = useState<number>(90)
   const summary = useMemo(() => stepsSummary(rows, today), [rows, today])
+  const totals = useMemo(() => stepsTotals(rows, today), [rows, today])
   const goal = rows.findLast(r => r.step_goal)?.step_goal || DEFAULT_STEP_GOAL
 
   const daily = useMemo(() => {
     const from = new Date(`${today}T00:00:00Z`)
     from.setUTCDate(from.getUTCDate() - (range - 1))
     const f = from.toISOString().slice(0, 10)
-    return rows.filter(r => r.date >= f && r.date <= today && r.steps).map(r => ({ date: r.date, label: fmtDay(r.date), steps: r.steps }))
+    return rows.filter(r => r.date >= f && r.date <= today && r.steps)
+      .map(r => ({ date: r.date, label: fmtDay(r.date), steps: r.steps, km: r.distance_m != null ? Math.round(r.distance_m / 100) / 10 : null }))
   }, [rows, range, today])
   const weekly = useMemo(() => weeklySteps(rows, today, 26).map(w => ({ ...w, label: fmtDay(w.key) })), [rows, today])
   const monthly = useMemo(() => monthlySteps(rows, today).map(m => ({ ...m, label: fmtMonth(m.key) })), [rows, today])
@@ -45,19 +76,49 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
     )
   }
 
+  const t = totals.steps, k = totals.km
+  const tiles: { value: string; label: string }[] =
+    mode === 'avg' ? [
+      { value: fmtN(summary.today), label: 'Steps today' },
+      { value: fmtN(summary.avg7), label: '7-day average' },
+      { value: fmtN(summary.avg30), label: '30-day average' },
+      { value: summary.goalHitPct != null ? `${summary.goalHitPct}%` : '–', label: `Days at goal (${goal.toLocaleString()})` },
+      { value: fmtN(summary.monthAvg), label: 'This month, avg/day' },
+      { value: fmtN(summary.yearAvg), label: 'This year, avg/day' },
+      { value: fmtBig(summary.totalSteps), label: `All-time steps · ${summary.daysTracked} days` },
+      { value: fmtKm(summary.totalKm), label: 'All-time km walked' },
+    ] : mode === 'total' ? [
+      { value: fmtN(t.today), label: 'Steps today' },
+      { value: fmtN(t.week), label: 'This week (from Monday)' },
+      { value: fmtN(t.d7), label: 'Last 7 days' },
+      { value: fmtN(t.d30), label: 'Last 30 days' },
+      { value: fmtN(t.month), label: 'This month' },
+      { value: fmtBig(t.year), label: 'This year' },
+      { value: fmtBig(t.all), label: `All time · ${summary.daysTracked} days` },
+      { value: summary.goalHitPct != null ? `${summary.goalHitPct}%` : '–', label: `Days at goal (${goal.toLocaleString()})` },
+    ] : [
+      { value: fmtKm(k.today), label: 'km today' },
+      { value: fmtKm(k.week), label: 'km this week (from Monday)' },
+      { value: fmtKm(k.d7), label: 'km last 7 days' },
+      { value: fmtKm(k.d30), label: 'km last 30 days' },
+      { value: fmtKm(k.month), label: 'km this month' },
+      { value: fmtKm(k.year), label: 'km this year' },
+      { value: fmtKm(k.all), label: 'km all time' },
+      { value: String(Math.round((k.d30 / 30) * 10) / 10), label: 'km/day, 30-day average' },
+    ]
+
+  const periodKey = mode === 'avg' ? 'avg' : mode === 'total' ? 'total' : 'km'
+  const periodFmt = (v: unknown) => mode === 'km' ? `${v} km` : mode === 'total' ? `${Number(v).toLocaleString()} steps` : `${Number(v).toLocaleString()} /day`
+  const periodName = mode === 'avg' ? 'Average' : mode === 'total' ? 'Total' : 'Distance'
+
   return (
     <div className="space-y-6">
+      <Pills options={MODES} value={mode} onChange={setMode} label="Steps view" />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatTile value={fmtK(summary.today)} label="Steps today" animate={false} />
-        <StatTile value={fmtK(summary.avg7)} label="7-day average" animate={false} />
-        <StatTile value={fmtK(summary.avg30)} label="30-day average" animate={false} />
-        <StatTile value={summary.goalHitPct != null ? `${summary.goalHitPct}%` : '–'} label={`Days at goal (${goal.toLocaleString()})`} animate={false} />
-        <StatTile value={fmtK(summary.monthAvg)} label="This month, avg/day" animate={false} />
-        <StatTile value={fmtK(summary.yearAvg)} label="This year, avg/day" animate={false} />
-        <StatTile value={`${(summary.totalSteps / 1e6).toFixed(2)}M`} label={`All-time steps · ${summary.daysTracked} days`} animate={false} />
-        <StatTile value={`${summary.totalKm.toLocaleString()}`} label="All-time km walked" animate={false} />
+        {tiles.map(tile => <StatTile key={tile.label} value={tile.value} label={tile.label} animate={false} />)}
       </div>
-      {summary.best && (
+      {mode === 'avg' && summary.best && (
         <p className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>
           Best day: <span style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{summary.best.steps.toLocaleString()}</span> steps on {fmtDay(summary.best.date)}
         </p>
@@ -65,28 +126,21 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
 
       <div className="rounded-xl p-5" style={cardStyle}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <Heading sub={`Dashed line = your goal of ${goal.toLocaleString()} steps`}>Daily Steps</Heading>
-          <div className="flex gap-2" role="group" aria-label="Time range">
-            {RANGES.map(r => (
-              <button key={r.days} onClick={() => setRange(r.days)} aria-pressed={range === r.days}
-                className="rounded-full px-3 py-1 text-xs"
-                style={{
-                  background: range === r.days ? 'rgba(0,191,165,0.12)' : '#242424',
-                  border: `1px solid ${range === r.days ? 'rgba(0,191,165,0.4)' : '#2E2E2E'}`,
-                  color: range === r.days ? '#00BFA5' : '#A0A0A0',
-                }}>{r.label}</button>
-            ))}
-          </div>
+          <Heading sub={mode === 'km' ? 'Walking distance per day' : `Dashed line = your goal of ${goal.toLocaleString()} steps`}>
+            {mode === 'km' ? 'Daily Distance' : 'Daily Steps'}
+          </Heading>
+          <Pills options={RANGES.map(r => ({ id: r.days as number, label: r.label }))} value={range} onChange={setRange} label="Time range" />
         </div>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={daily} margin={{ top: 5, right: 8, left: 0, bottom: 0 }} barCategoryGap={1}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
               <XAxis dataKey="label" {...axisProps} minTickGap={24} />
-              <YAxis {...axisProps} width={44} tickFormatter={v => `${Math.round(v / 1000)}k`} />
-              <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} formatter={(v: unknown) => [Number(v).toLocaleString(), 'Steps']} />
-              <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />
-              <Bar dataKey="steps" fill={STEPS_COLOR} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+              <YAxis {...axisProps} width={44} tickFormatter={mode === 'km' ? undefined : kAxis} />
+              <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                formatter={(v: unknown) => mode === 'km' ? [`${v} km`, 'Distance'] : [Number(v).toLocaleString(), 'Steps']} />
+              {mode !== 'km' && <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />}
+              <Bar dataKey={mode === 'km' ? 'km' : 'steps'} fill={STEPS_COLOR} radius={[2, 2, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -94,34 +148,37 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl p-5" style={cardStyle}>
-          <Heading sub="Average steps per day, by week (last 26 weeks)">Weekly Average</Heading>
+          <Heading sub={mode === 'avg' ? 'Average steps per day, by week (last 26 weeks)' : mode === 'total' ? 'Total steps per week (last 26 weeks)' : 'Walking km per week (last 26 weeks)'}>
+            {mode === 'avg' ? 'Weekly Average' : mode === 'total' ? 'Weekly Total' : 'Weekly Distance'}
+          </Heading>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={weekly} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
                 <XAxis dataKey="label" {...axisProps} minTickGap={24} />
-                <YAxis {...axisProps} width={44} tickFormatter={v => `${Math.round(v / 1000)}k`} />
+                <YAxis {...axisProps} width={44} tickFormatter={mode === 'km' ? undefined : kAxis} />
                 <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} labelFormatter={l => `Week of ${l}`}
-                  formatter={(v: unknown) => [`${Number(v).toLocaleString()} /day`, 'Average']} />
-                <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />
-                <Bar dataKey="avg" fill={STEPS_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  formatter={(v: unknown) => [periodFmt(v), periodName]} />
+                {mode === 'avg' && <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />}
+                <Bar dataKey={periodKey} fill={STEPS_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
         <div className="rounded-xl p-5" style={cardStyle}>
-          <Heading sub="Average steps per day and km walked, by month">Monthly</Heading>
+          <Heading sub={mode === 'avg' ? 'Average steps per day, by month' : mode === 'total' ? 'Total steps per month' : 'Walking km per month'}>
+            Monthly
+          </Heading>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthly} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
                 <XAxis dataKey="label" {...axisProps} />
-                <YAxis {...axisProps} width={44} tickFormatter={v => `${Math.round(v / 1000)}k`} />
+                <YAxis {...axisProps} width={44} tickFormatter={mode === 'km' ? undefined : kAxis} />
                 <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }}
-                  formatter={(v: unknown, _n: unknown, p: { payload?: { km?: number; total?: number } }) =>
-                    [`${Number(v).toLocaleString()} /day · ${p.payload?.km ?? 0} km · ${(p.payload?.total ?? 0).toLocaleString()} total`, 'Average']} />
-                <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />
-                <Bar dataKey="avg" fill={STEPS_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                  formatter={(v: unknown) => [periodFmt(v), periodName]} />
+                {mode === 'avg' && <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />}
+                <Bar dataKey={periodKey} fill={STEPS_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
