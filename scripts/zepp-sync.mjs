@@ -120,6 +120,8 @@ const weightSince = new Date(new Date(ALL ? '2000-01-01' : since).getTime() - 8 
 const weights = db.prepare(`
   SELECT timestamp, value AS kg FROM metric_samples
   WHERE metric = 'weight' AND timestamp >= ? ORDER BY timestamp`).all(weightSince)
+// When ZeppBridge last pulled from the Zepp cloud (shown in the site's watch box).
+const bridgeSyncAt = db.prepare(`SELECT value FROM app_meta WHERE key = 'last_cloud_sync_at'`).get()?.value ?? null
 db.close()
 
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
@@ -157,8 +159,24 @@ if (DRY_RUN) {
   }
 }
 
+// ── Status for the site's watch box (user_settings.zepp_sync_status) ────────
+async function writeStatus() {
+  if (DRY_RUN) return
+  const status = {
+    at: new Date().toISOString(),
+    ok: process.exitCode !== 1,
+    latestDay: daily.at(-1)?.date ?? null,
+    bridgeSyncAt,
+    message: `${workouts.length} workouts, ${daily.length} days checked`,
+  }
+  const { error } = await supabase.from('user_settings')
+    .upsert({ user_id: USER_ID, key: 'zepp_sync_status', value: JSON.stringify(status) }, { onConflict: 'key,user_id' })
+  if (error) console.error('Status update failed:', error.message)
+}
+
 if (!workouts.length) {
   console.log(`No Zepp workouts since ${since.slice(0, 10)}`)
+  await writeStatus()
   process.exit()
 }
 
@@ -241,3 +259,5 @@ if (DRY_RUN) {
   }
   if (written) console.log(`Wrote ${written} workout traces (${rowsToWrite.filter(r => r.route).length} with GPS routes)`)
 }
+
+await writeStatus()

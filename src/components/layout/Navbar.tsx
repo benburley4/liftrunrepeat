@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { Menu, X, LogOut, User as UserIcon, ChevronDown } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { signOut, getUsername } from '@/lib/auth'
+import WatchSyncBox from './WatchSyncBox'
 
 type NavItem = { href: string; label: string }
 type NavGroup = { label: string; items: NavItem[] }
@@ -156,6 +157,9 @@ export default function Navbar() {
                 </div>
               )
             })}
+
+            {/* Watch sync box (signed-in users) */}
+            {user && <div className="ml-2"><WatchSyncBox /></div>}
           </div>
 
           {/* Right side */}
@@ -277,6 +281,13 @@ export default function Navbar() {
                 ))}
               </div>
             ))}
+
+            {user && (
+              <div className="mt-3">
+                <p className="px-3 mb-2 text-xs font-bold uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>Watch</p>
+                <WatchSyncBox variant="inline" />
+              </div>
+            )}
 
             <div className="mt-3 pt-3" style={{ borderTop: '1px solid #2E2E2E' }}>
               {user ? (

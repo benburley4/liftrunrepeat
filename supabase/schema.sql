@@ -52,7 +52,8 @@ create table if not exists ai_reports (
 -- ─── user_settings ───────────────────────────────────────────────────────────
 -- Key/value per user. Known keys: current_programme_id, gen_form_state,
 -- ai_usage, is_premium, athlete_profile, onboarding_done, bodyweight_kg
--- (also written by zepp-sync from the smart scale), bodyweight_source.
+-- (also written by zepp-sync from the smart scale), bodyweight_source,
+-- zepp_sync_request (navbar "Sync now"), zepp_sync_status (written by zepp-sync).
 create table if not exists user_settings (
   key     text not null,
   user_id uuid references auth.users not null,
