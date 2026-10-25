@@ -29,7 +29,9 @@ export default function CountUp({ value, duration = 1200 }: { value: string | nu
         observer.disconnect()
         const start = performance.now()
         function tick(now: number) {
-          const t = Math.min((now - start) / duration, 1)
+          // rAF timestamps can predate `start` by a frame — clamp so the first
+          // frame never renders a negative value.
+          const t = Math.min(Math.max((now - start) / duration, 0), 1)
           const eased = 1 - Math.pow(1 - t, 3)
           setDisplay(`${prefix}${(end * eased).toFixed(decimals)}${suffix}`)
           if (t < 1) requestAnimationFrame(tick)

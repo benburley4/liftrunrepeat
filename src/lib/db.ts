@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { dedupeSessions } from './sessionDedupe'
+import type { ZeppDailyRow } from './zeppDaily'
 
 export interface StoredSession {
   type: string
@@ -112,6 +113,17 @@ export async function deleteTemplate(id: string): Promise<void> {
     .delete()
     .eq('id', id)
   throwIfError(error)
+}
+
+// ─── Zepp daily recovery data (written by scripts/zepp-sync.mjs) ─────────────
+
+export async function getZeppDaily(): Promise<ZeppDailyRow[]> {
+  const { data, error } = await supabase
+    .from('zepp_daily')
+    .select('*')
+    .order('date', { ascending: true })
+  throwIfError(error)
+  return (data ?? []) as ZeppDailyRow[]
 }
 
 // ─── User Settings ────────────────────────────────────────────────────────────

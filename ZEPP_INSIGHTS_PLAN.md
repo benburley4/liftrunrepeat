@@ -169,3 +169,9 @@ shows nothing fake — per IMPROVEMENT_PLAN B6).
   types to "Workout", matches only the visible copy of duplicated manual
   sessions, and prompts for sets only on strength workouts from the last
   14 days. `zepp_daily` still waiting on the migration.
+- 2026-10-25: Migration run; 305 days loaded into `zepp_daily` (RLS verified:
+  anon reads 0 rows). Phase 2.1 + 2.3 built: `/recovery` (Insights menu) with
+  Today (readiness, call, drivers, physical/mental) and Trends (30-day vs
+  previous, readiness / HRV / sleeping HR / sleep-stage charts, 30/90/180/All).
+  Logic in `src/lib/recovery.ts` (tested); sleep-stage palette validated for
+  CVD on the dark surface. Previewed at desktop and 500px. Not yet deployed.

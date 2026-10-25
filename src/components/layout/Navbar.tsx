@@ -29,6 +29,7 @@ const groups: NavGroup[] = [
     label: 'Insights',
     items: [
       { href: '/progress', label: 'Progress' },
+      { href: '/recovery', label: 'Recovery' },
       { href: '/library', label: 'Library' },
       { href: '/tools', label: 'Tools' },
     ],
