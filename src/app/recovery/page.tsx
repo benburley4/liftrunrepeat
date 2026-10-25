@@ -6,8 +6,9 @@ import Card from '@/components/ui/Card'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ReadinessToday from '@/components/recovery/ReadinessToday'
 import RecoveryTrends from '@/components/recovery/RecoveryTrends'
+import RecoveryExtras from '@/components/recovery/RecoveryExtras'
 import { getZeppDaily } from '@/lib/db'
-import { localToday, ZeppDay } from '@/lib/recovery'
+import { localToday, currentIllnessSigns, ZeppDay } from '@/lib/recovery'
 
 export default function RecoveryPage() {
   const [rows, setRows] = useState<ZeppDay[] | null>(null)
@@ -71,8 +72,21 @@ export default function RecoveryPage() {
 
         {rows !== null && rows.length > 0 && (
           <>
+            {(() => {
+              // Early illness / strain warning from last night's (or the night before's) vitals
+              const ill = currentIllnessSigns(rows, today)
+              return ill ? (
+                <Card tint="#F59E0B" hover={false}>
+                  <p className="text-sm font-bold" style={{ color: '#F5F5F5' }}>Possible illness or heavy strain</p>
+                  <p className="text-sm mt-1" style={{ color: '#A0A0A0' }}>
+                    {ill.signs.join(' · ')}. These often appear a day or two before symptoms — keep training easy and prioritise sleep until they settle.
+                  </p>
+                </Card>
+              ) : null
+            })()}
             <ReadinessToday rows={rows} today={today} />
             <RecoveryTrends rows={rows} today={today} />
+            <RecoveryExtras rows={rows} today={today} />
           </>
         )}
       </div>

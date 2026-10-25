@@ -127,6 +127,17 @@ export async function getZeppDaily(): Promise<ZeppDailyRow[]> {
   return (data ?? []) as ZeppDailyRow[]
 }
 
+/** Watch-recorded strength sessions still waiting for their sets to be logged. */
+export async function getSessionsNeedingSets(): Promise<StoredSession[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('data')
+    .eq('data->>needsSets', 'true')
+    .order('saved_at', { ascending: false })
+  throwIfError(error)
+  return (data ?? []).map(row => row.data as StoredSession)
+}
+
 /** Per-minute trace for one watch workout, or null when none was synced. */
 export async function getZeppWorkoutSeries(workoutId: string): Promise<SeriesPoint[] | null> {
   const { data, error } = await supabase

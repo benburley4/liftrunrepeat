@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readinessLevel, latestReadiness, readinessDrivers, lastDays, withRollingMean, periodChange, recoveryToPrompt, freshWatchReadiness, ZeppDay } from '../recovery'
+import { readinessLevel, latestReadiness, readinessDrivers, lastDays, withRollingMean, periodChange, recoveryToPrompt, freshWatchReadiness, illnessSigns, currentIllnessSigns, weeklyLoadRecovery, ZeppDay } from '../recovery'
 
 function day(date: string, fields: Partial<ZeppDay> = {}): ZeppDay {
   return {
@@ -123,5 +123,38 @@ describe('freshWatchReadiness', () => {
   })
   it('is null when the latest score is older than yesterday', () => {
     expect(freshWatchReadiness(rows, '2026-10-26')).toBeNull()
+  })
+})
+
+describe('illnessSigns', () => {
+  const base = Array.from({ length: 14 }, (_, i) => day(new Date(Date.UTC(2026, 9, 10 + i)).toISOString().slice(0, 10), { resp_rate: 14 }))
+  it('needs a breathing-rate rise plus another sign', () => {
+    const sick = day('2026-10-24', { resp_rate: 15.6, sleep_rhr: 62, rhr_baseline: 57, sleep_hrv_ms: 30, hrv_baseline_ms: 37 })
+    expect(illnessSigns([...base, sick], sick)).toEqual({
+      date: '2026-10-24',
+      signs: ['breathing rate 15.6/min vs 14 usual', 'sleeping HR +5 bpm', 'HRV 19% below baseline'],
+    })
+  })
+  it('stays quiet on a breathing-rate rise alone, or without one', () => {
+    expect(illnessSigns([...base], day('2026-10-24', { resp_rate: 15.6, sleep_rhr: 57, rhr_baseline: 57 }))).toBeNull()
+    expect(illnessSigns([...base], day('2026-10-24', { resp_rate: 14.2, sleep_rhr: 65, rhr_baseline: 57 }))).toBeNull()
+  })
+})
+
+describe('weeklyLoadRecovery', () => {
+  it('averages load, readiness and HRV per Monday-start week', () => {
+    const rows = [day('2026-10-19', { training_load: 600, readiness: 70, sleep_hrv_ms: 35 }), day('2026-10-25', { training_load: 700, readiness: 60, sleep_hrv_ms: 31 })]
+    expect(weeklyLoadRecovery(rows, '2026-10-25', 1)).toEqual([{ week: '2026-10-19', load: 650, readiness: 65, hrv: 33 }])
+  })
+})
+
+describe('currentIllnessSigns', () => {
+  const base = Array.from({ length: 14 }, (_, i) => day(new Date(Date.UTC(2026, 9, 10 + i)).toISOString().slice(0, 10), { resp_rate: 14 }))
+  const sick = day('2026-10-24', { resp_rate: 15.6, sleep_rhr: 62, rhr_baseline: 57 })
+  it("checks last night's vitals", () => {
+    expect(currentIllnessSigns([...base, sick], '2026-10-25')?.date).toBe('2026-10-24')
+  })
+  it('ignores older nights', () => {
+    expect(currentIllnessSigns([...base, sick], '2026-10-27')).toBeNull()
   })
 })

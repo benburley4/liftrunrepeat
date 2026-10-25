@@ -241,6 +241,58 @@ export function recoveryToPrompt(rows: ZeppDay[], weekEnding: string, sessions: 
   return lines.join('\n')
 }
 
+// ─── Early illness / strain warning ──────────────────────────────────────────
+
+export interface IllnessSigns { date: string; signs: string[] }
+
+/**
+ * Illness often shows up overnight before you feel it: breathing rate up
+ * against your recent normal, together with an elevated sleeping HR or a HRV
+ * drop. Needs the breathing-rate rise plus at least one other sign.
+ */
+export function illnessSigns(rows: ZeppDay[], day: ZeppDay): IllnessSigns | null {
+  const prior = rows.filter(r => r.date < day.date && r.date >= shiftDate(day.date, -14))
+  const respBase = mean(prior.map(r => r.resp_rate))
+  if (day.resp_rate == null || respBase == null || day.resp_rate - respBase < 1) return null
+  const signs = [`breathing rate ${round1(day.resp_rate)}/min vs ${round1(respBase)} usual`]
+  const rhr = day.sleep_rhr ?? day.resting_hr
+  if (rhr != null && day.rhr_baseline && rhr - day.rhr_baseline >= 3) signs.push(`sleeping HR +${Math.round(rhr - day.rhr_baseline)} bpm`)
+  if (day.sleep_hrv_ms != null && day.hrv_baseline_ms && day.sleep_hrv_ms <= day.hrv_baseline_ms * 0.85)
+    signs.push(`HRV ${Math.round((1 - day.sleep_hrv_ms / day.hrv_baseline_ms) * 100)}% below baseline`)
+  return signs.length >= 2 ? { date: day.date, signs } : null
+}
+
+/** Illness signs for the most recent night, if it is today's or yesterday's. */
+export function currentIllnessSigns(rows: ZeppDay[], today: string): IllnessSigns | null {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i]
+    if (r.date > today || r.resp_rate == null) continue
+    return r.date >= shiftDate(today, -1) ? illnessSigns(rows, r) : null
+  }
+  return null
+}
+
+// ─── Load vs recovery by week ────────────────────────────────────────────────
+
+export interface LoadRecoveryWeek { week: string; load: number | null; readiness: number | null; hrv: number | null }
+
+/** Weekly (Monday-start) avg watch training load vs avg readiness and HRV. */
+export function weeklyLoadRecovery(rows: ZeppDay[], today: string, weeks = 16): LoadRecoveryWeek[] {
+  const monday = (d: string) => {
+    const dow = new Date(`${d}T00:00:00Z`).getUTCDay()
+    return shiftDate(d, dow === 0 ? -6 : 1 - dow)
+  }
+  const first = shiftDate(monday(today), -7 * (weeks - 1))
+  const out: LoadRecoveryWeek[] = []
+  for (let i = 0; i < weeks; i++) {
+    const wk = shiftDate(first, 7 * i)
+    const list = rows.filter(r => r.date >= wk && r.date < shiftDate(wk, 7) && r.date <= today)
+    const r = (k: keyof ZeppDay) => { const m = mean(list.map(x => x[k] as number | null)); return m == null ? null : Math.round(m) }
+    out.push({ week: wk, load: r('training_load'), readiness: r('readiness'), hrv: r('sleep_hrv_ms') })
+  }
+  return out
+}
+
 export interface PeriodChange { current: number | null; previous: number | null; change: number | null }
 
 /** Average of `key` over the last `days` vs the `days` before that. */

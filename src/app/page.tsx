@@ -16,6 +16,7 @@ import SectionHeading from '@/components/ui/SectionHeading'
 import Reveal from '@/components/ui/Reveal'
 import InterferenceChart from '@/components/ui/InterferenceChart'
 import { useAuth } from '@/context/AuthContext'
+import TodayWatchCard from '@/components/watch/TodayWatchCard'
 import { BUILTIN_PLANS, expandPlanToProgramme } from '@/lib/builtinProgrammes'
 import { upsertProgramme, upsertSetting } from '@/lib/db'
 
@@ -341,6 +342,7 @@ function BuilderModal({ onClose }: { onClose: () => void }) {
 
 // ── Home Page ──────────────────────────────────────────────────────────────────
 export default function HomePage() {
+  const { user } = useAuth()
   const [modal, setModal] = useState<ModalType>(null)
   const [activeProgramme, setActiveProgramme] = useState<Programme | null>(null)
 
@@ -360,6 +362,9 @@ export default function HomePage() {
         <ProgrammeModal programme={activeProgramme} onClose={() => { setModal(null); setActiveProgramme(null) }} />
       )}
       {modal === 'builder' && <BuilderModal onClose={() => setModal(null)} />}
+
+      {/* Signed-in: today's watch readiness, steps and sleep (renders nothing without watch data) */}
+      {user && <TodayWatchCard variant="home" />}
 
       {/* HERO */}
       <section className="relative overflow-hidden min-h-screen flex items-center">

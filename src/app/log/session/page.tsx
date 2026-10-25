@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Check, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
+import TodayWatchCard from '@/components/watch/TodayWatchCard'
 import { upsertSession, getSessionsOnDate, getProgrammes, getTemplates, getCustomExercises, type StoredSession } from '@/lib/db'
 import { dedupeSessions, sessionKey, separateSessionName } from '@/lib/sessionDedupe'
 import Modal from '@/components/ui/Modal'
@@ -715,6 +716,9 @@ export default function LogSessionPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+        {/* Watch: readiness call, steps, sleep, recorded workouts, sessions waiting for sets */}
+        <TodayWatchCard variant="today" date={selectedIso} onPickDate={setSelectedIso} />
 
         {/* No session planned — manual entry prompt */}
         {!todayPlan && loggedExercises.length === 0 && loggedRun.length === 0 && !loggedHike && (
