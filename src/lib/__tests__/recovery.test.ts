@@ -9,6 +9,7 @@ function day(date: string, fields: Partial<ZeppDay> = {}): ZeppDay {
     sleep_min: null, sleep_score: null, deep_min: null, light_min: null, rem_min: null, awake_min: null,
     wake_count: null, nap_min: null, training_load: null, pai_daily: null, pai_total: null, steps: null,
     active_min: null, stress_avg: null, spo2_score: null, resp_rate: null, weight_kg: null,
+    distance_m: null, active_calories: null, step_goal: null,
     ...fields,
   }
 }

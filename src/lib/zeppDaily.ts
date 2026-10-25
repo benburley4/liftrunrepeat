@@ -48,6 +48,9 @@ export interface ZeppDailyRow {
   spo2_score: number | null
   resp_rate: number | null
   weight_kg: number | null
+  distance_m: number | null
+  active_calories: number | null
+  step_goal: number | null
 }
 
 // zepp_daily column ← ZeppBridge daily_metrics name(s), first present wins.
@@ -70,6 +73,9 @@ const METRIC_COLUMNS: Record<string, string[]> = {
   stress_avg:         ['stress'],
   spo2_score:         ['spo2_night_score'],
   resp_rate:          ['respiratory_rate'],
+  distance_m:         ['distance'],
+  active_calories:    ['active_calories'],
+  step_goal:          ['step_goal'],
 }
 
 export const DEFAULT_TIME_ZONE = 'Asia/Hong_Kong'
@@ -87,6 +93,7 @@ function emptyRow(date: string): ZeppDailyRow {
     sleep_min: null, sleep_score: null, deep_min: null, light_min: null, rem_min: null, awake_min: null,
     wake_count: null, nap_min: null, training_load: null, pai_daily: null, pai_total: null, steps: null,
     active_min: null, stress_avg: null, spo2_score: null, resp_rate: null, weight_kg: null,
+    distance_m: null, active_calories: null, step_goal: null,
   }
 }
 
