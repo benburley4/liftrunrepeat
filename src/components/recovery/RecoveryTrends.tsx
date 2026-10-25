@@ -36,6 +36,7 @@ function signed(n: number | null, unit = '', dp = 0): string {
 
 export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today: string }) {
   const [range, setRange] = useState<number | null>(90)
+  const [period, setPeriod] = useState<7 | 30>(7)
 
   const data = useMemo(() => {
     const sel = lastDays(rows, range, today)
@@ -53,10 +54,10 @@ export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today
   }, [rows, range, today])
 
   const cmp = {
-    readiness: periodChange(rows, 'readiness', 30, today),
-    hrv: periodChange(rows, 'sleep_hrv_ms', 30, today),
-    rhr: periodChange(rows, 'sleep_rhr', 30, today),
-    sleep: periodChange(rows, 'sleep_min', 30, today),
+    readiness: periodChange(rows, 'readiness', period, today),
+    hrv: periodChange(rows, 'sleep_hrv_ms', period, today),
+    rhr: periodChange(rows, 'sleep_rhr', period, today),
+    sleep: periodChange(rows, 'sleep_min', period, today),
   }
 
   const tooltipLabel = (_: unknown, p: readonly { payload?: { date?: string } }[] | undefined) =>
@@ -65,11 +66,24 @@ export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today
 
   return (
     <div className="space-y-6">
-      {/* 30-day summary vs the 30 days before */}
+      {/* Last 7 / 30 days vs the period before */}
       <div>
-        <p className="text-xs uppercase tracking-widest mb-3" style={{ color: 'var(--color-text-subtle)' }}>
-          Last 30 days vs previous 30
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <p className="text-xs uppercase tracking-widest" style={{ color: 'var(--color-text-subtle)' }}>
+            Last {period} days vs previous {period}
+          </p>
+          <div className="flex gap-2" role="group" aria-label="Comparison period">
+            {([7, 30] as const).map(p => (
+              <button key={p} onClick={() => setPeriod(p)} aria-pressed={period === p}
+                className="rounded-full px-3 py-1 text-xs"
+                style={{
+                  background: period === p ? 'rgba(0,191,165,0.12)' : '#1E1E1E',
+                  border: `1px solid ${period === p ? 'rgba(0,191,165,0.4)' : '#2E2E2E'}`,
+                  color: period === p ? '#00BFA5' : '#A0A0A0',
+                }}>{p} days</button>
+            ))}
+          </div>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <StatTile value={cmp.readiness.current != null ? Math.round(cmp.readiness.current) : '–'} label={`Avg readiness${signed(cmp.readiness.change)}`} />
           <StatTile value={cmp.hrv.current != null ? Math.round(cmp.hrv.current) : '–'} label={`HRV, ms${signed(cmp.hrv.change)}`} />
