@@ -6,6 +6,7 @@ import { Watch, Info } from 'lucide-react'
 import type { ZeppStats } from '@/lib/zeppImport'
 import type { SeriesPoint } from '@/lib/zeppSeries'
 import { getZeppWorkoutSeries } from '@/lib/db'
+import TrainingEffectRings from './TrainingEffectRings'
 import { chartTooltipStyle, axisProps } from '@/components/recovery/chartStyle'
 
 const ACCENT = '#C8102E'   // heart rate
@@ -68,10 +69,8 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
   if (pace && pace < 60) stats.push({ label: 'Avg pace', value: fmtPace(pace) })
   if (zepp.calories) stats.push({ label: 'Calories', value: zepp.calories, unit: 'kcal' })
   if (zepp.steps) stats.push({ label: 'Steps', value: zepp.steps.toLocaleString() })
+  if (zepp.elevationGainM) stats.push({ label: 'Ascent', value: zepp.elevationGainM, unit: 'm' })
   if (zepp.elevationLossM) stats.push({ label: 'Descent', value: zepp.elevationLossM, unit: 'm' })
-  if (zepp.trainingEffect != null) stats.push(zepp.anaerobicTrainingEffect != null
-    ? { label: 'Training effect aer / anaer', value: `${zepp.trainingEffect} / ${zepp.anaerobicTrainingEffect}` }
-    : { label: 'Training effect', value: zepp.trainingEffect })
   if (zepp.avgCadenceSpm) stats.push({ label: 'Cadence', value: zepp.avgCadenceSpm, unit: 'spm' })
 
   const zones = zepp.hrZones ?? []
@@ -107,6 +106,13 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
       )}
 
       <div className="p-4 space-y-6">
+        {(zepp.trainingEffect != null || zepp.anaerobicTrainingEffect != null) && (
+          <div>
+            <SectionLabel>Training effect</SectionLabel>
+            <TrainingEffectRings aerobic={zepp.trainingEffect} anaerobic={zepp.anaerobicTrainingEffect} />
+          </div>
+        )}
+
         {chartData.length > 1 && (
           <div>
             <SectionLabel>Heart rate{zepp.avgHr ? ` · avg ${zepp.avgHr} bpm (dashed)` : ''}</SectionLabel>
