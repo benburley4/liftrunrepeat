@@ -26,7 +26,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { createClient } from '@supabase/supabase-js'
 import { planZeppImport } from '../src/lib/zeppImport.ts'
 import { buildZeppDaily, scaleBodyweight } from '../src/lib/zeppDaily.ts'
-import { downsampleSeries } from '../src/lib/zeppSeries.ts'
+import { downsampleSeries, buildRoute } from '../src/lib/zeppSeries.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ZEPP_DB = process.env.ZEPP_DB
@@ -97,10 +97,15 @@ for (const w of workouts) {
 const samplesStmt = db.prepare(`
   SELECT timestamp, heart_rate AS heartRate, altitude, speed
   FROM workout_samples WHERE workout_id = ? ORDER BY timestamp`)
+// GPS routes: privacy-trimmed (first/last 200 m) and simplified — see buildRoute.
+const routeStmt = db.prepare(`
+  SELECT latitude, longitude FROM route_points WHERE workout_id = ? ORDER BY timestamp`)
 const series = workouts
-  .filter(w => w.sampleCount > 0)
-  .map(w => ({ workoutId: w.workoutId, points: downsampleSeries(samplesStmt.all(w.workoutId), w.startTime) }))
-  .filter(s => s.points.length > 1)
+  .map(w => {
+    const points = w.sampleCount > 0 ? downsampleSeries(samplesStmt.all(w.workoutId), w.startTime) : []
+    return { workoutId: w.workoutId, points: points.length > 1 ? points : null, route: buildRoute(routeStmt.all(w.workoutId)) }
+  })
+  .filter(s => s.points || s.route)
 
 // Daily recovery data for zepp_daily (same window).
 const dailyMetrics = db.prepare(`
@@ -212,19 +217,27 @@ if (DRY_RUN) {
 const linkedIds = new Set(plan.map(p => p.data.zepp?.workoutId).filter(Boolean))
 const traceRows = series
   .filter(s => linkedIds.has(s.workoutId))
-  .map(s => ({ user_id: USER_ID, workout_id: s.workoutId, points: s.points, updated_at: new Date().toISOString() }))
+  .map(s => ({ user_id: USER_ID, workout_id: s.workoutId, points: s.points, route: s.route, updated_at: new Date().toISOString() }))
 if (DRY_RUN) {
-  console.log(`${traceRows.length} workout traces`)
+  console.log(`${traceRows.length} workout traces (${traceRows.filter(r => r.route).length} with GPS routes)`)
 } else {
   let written = 0
-  for (let i = 0; i < traceRows.length; i += 50) {
+  let rowsToWrite = traceRows
+  for (let i = 0; i < rowsToWrite.length; i += 50) {
     const { error } = await supabase.from('zepp_workout_series')
-      .upsert(traceRows.slice(i, i + 50), { onConflict: 'user_id,workout_id' })
-    if (!error) { written += Math.min(50, traceRows.length - i); continue }
+      .upsert(rowsToWrite.slice(i, i + 50), { onConflict: 'user_id,workout_id' })
+    if (!error) { written += Math.min(50, rowsToWrite.length - i); continue }
+    if (/route|points/.test(error.message) && i === 0 && rowsToWrite === traceRows) {
+      // Route column not migrated yet: keep writing HR traces without routes.
+      console.log('zepp_workout_series.route missing — run the 2026-10-25 (c) migration; writing traces without routes')
+      rowsToWrite = traceRows.filter(r => r.points).map(({ route, ...r }) => r)
+      i = -50
+      continue
+    }
     if (/zepp_workout_series/.test(error.message) && /not find|does not exist/i.test(error.message))
       console.log('zepp_workout_series table missing — run the 2026-10-25 (b) migration in supabase/schema.sql')
     else { console.error('Trace upsert failed:', error.message); process.exitCode = 1 }
     break
   }
-  if (written) console.log(`Wrote ${written} workout traces`)
+  if (written) console.log(`Wrote ${written} workout traces (${rowsToWrite.filter(r => r.route).length} with GPS routes)`)
 }

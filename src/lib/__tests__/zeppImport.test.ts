@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapZeppType, localDate, zeppKm, planZeppImport, ZeppWorkout, ExistingSession } from '../zeppImport'
+import { mapZeppType, localDate, zeppKm, planZeppImport, runPace, ZeppWorkout, ExistingSession } from '../zeppImport'
 
 const walk: ZeppWorkout = {
   workoutId: '100',
@@ -166,6 +166,13 @@ describe('planZeppImport', () => {
     const rows = planZeppImport([walk, second], [older, newer])
     expect(rows.filter(r => r.action === 'enrich').map(r => r.savedAt)).toEqual(['b'])
     expect(rows.find(r => r.action === 'new')!.data.name).toBe('Walk')
+  })
+
+  it('gives watch runs their moving pace so they count for run PRs', () => {
+    const run: ZeppWorkout = { ...walk, workoutType: 'run', startTime: '2026-10-25T00:00:00+00:00', endTime: '2026-10-25T00:31:00+00:00', distanceM: 5000, movingSeconds: 1800 }
+    const [row] = planZeppImport([run], [])
+    expect(row.data.run).toEqual([expect.objectContaining({ metric: 'distance', actualValue: '5', actualPace: '6:00' })])
+    expect(runPace({ ...run, movingSeconds: 60 }, 5)).toBe('')   // 12 s/km — impossible
   })
 
   it('skips auto-detected activity blocks', () => {

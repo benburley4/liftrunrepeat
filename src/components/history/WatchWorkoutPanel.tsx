@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Watch, Info } from 'lucide-react'
 import type { ZeppStats } from '@/lib/zeppImport'
-import type { SeriesPoint } from '@/lib/zeppSeries'
+import type { SeriesPoint, LatLon } from '@/lib/zeppSeries'
+import RouteMap from './RouteMap'
 import { getZeppWorkoutSeries } from '@/lib/db'
 import TrainingEffectRings from './TrainingEffectRings'
 import { chartTooltipStyle, axisProps } from '@/components/recovery/chartStyle'
@@ -51,10 +52,11 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
   manualOriginal?: { hikeKm: number | null; hikeElevationM: number | null } | null
 }) {
   const [series, setSeries] = useState<SeriesPoint[] | null>(null)
+  const [route, setRoute] = useState<LatLon[] | null>(null)
 
   useEffect(() => {
     let live = true
-    getZeppWorkoutSeries(zepp.workoutId).then(p => { if (live) setSeries(p) })
+    getZeppWorkoutSeries(zepp.workoutId).then(d => { if (live) { setSeries(d.points); setRoute(d.route) } })
     return () => { live = false }
   }, [zepp.workoutId])
 
@@ -110,6 +112,13 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
           <div>
             <SectionLabel>Training effect</SectionLabel>
             <TrainingEffectRings aerobic={zepp.trainingEffect} anaerobic={zepp.anaerobicTrainingEffect} />
+          </div>
+        )}
+
+        {route && route.length > 1 && (
+          <div>
+            <SectionLabel>Route</SectionLabel>
+            <RouteMap route={route} />
           </div>
         )}
 

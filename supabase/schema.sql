@@ -124,6 +124,10 @@ create table if not exists zepp_workout_series (
   primary key (user_id, workout_id)
 );
 alter table zepp_workout_series enable row level security;
+-- MIGRATION (2026-10-25 c): GPS route per workout — [[lat, lon], …], simplified,
+-- with the first and last 200 m removed (privacy zone). Written by zepp-sync.
+alter table zepp_workout_series add column if not exists route jsonb;
+alter table zepp_workout_series alter column points drop not null;
 -- Steps tab (same migration): daily walking distance, active calories, step goal.
 alter table zepp_daily add column if not exists distance_m      real;
 alter table zepp_daily add column if not exists active_calories real;

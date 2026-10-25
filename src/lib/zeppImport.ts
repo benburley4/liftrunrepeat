@@ -156,6 +156,18 @@ export type ZeppStats = ReturnType<typeof zeppStats> & { distanceMismatch?: bool
 export const KM_REPLACE_TOLERANCE = 0.25
 export const MIN_MATCH_RATIO = 0.3
 
+/**
+ * Moving pace "m:ss" (per km) for a watch run, or '' when implausible
+ * (outside 2:30–15:00 /km — a recording left running or a GPS glitch).
+ */
+export function runPace(w: ZeppWorkout, km: number): string {
+  const sec = w.movingSeconds || (new Date(w.endTime).getTime() - new Date(w.startTime).getTime()) / 1000
+  const perKm = sec / km
+  if (!(perKm >= 150 && perKm <= 900)) return ''
+  const m = Math.floor(perKm / 60), r = Math.round(perKm % 60)
+  return r === 60 ? `${m + 1}:00` : `${m}:${String(r).padStart(2, '0')}`
+}
+
 /** Copies the watch's distance/elevation onto a session's own fields. */
 function applyMeasurements(session: Record<string, unknown>, w: ZeppWorkout, statsOnly = false) {
   if (statsOnly) {
@@ -172,9 +184,11 @@ function applyMeasurements(session: Record<string, unknown>, w: ZeppWorkout, sta
   } else if (session.type === 'cycle' || session.type === 'swim') {
     if (km) session.distanceKm = km
   } else if (session.type === 'run' && type === 'run' && km) {
-    // Only fill an empty run log; never overwrite structured manual segments.
-    const run = session.run as unknown[] | undefined
-    if (!run || run.length === 0) {
+    // Fill an empty run log (or refresh the one the watch created); never
+    // overwrite structured manual segments.
+    const run = session.run as { id?: string }[] | undefined
+    const watchOwned = run?.length === 1 && String(run[0].id ?? '').startsWith('zepp-')
+    if (!run || run.length === 0 || watchOwned) {
       session.run = [{
         id: `zepp-${w.workoutId}`,
         segmentType: 'run',
@@ -182,7 +196,7 @@ function applyMeasurements(session: Record<string, unknown>, w: ZeppWorkout, sta
         plannedValue: String(km),
         plannedPace: '',
         actualValue: String(km),
-        actualPace: '',
+        actualPace: runPace(w, km),
       }]
     }
   }

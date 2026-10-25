@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import { dedupeSessions } from './sessionDedupe'
 import type { ZeppDailyRow } from './zeppDaily'
-import type { SeriesPoint } from './zeppSeries'
+import type { SeriesPoint, LatLon } from './zeppSeries'
 
 export interface StoredSession {
   type: string
@@ -150,15 +150,15 @@ export async function getLatestWatchHrZones(): Promise<{ upperBpm: number; secon
   return ((data?.[0] as { hrZones?: unknown } | undefined)?.hrZones as { upperBpm: number; seconds: number }[]) ?? null
 }
 
-/** Per-minute trace for one watch workout, or null when none was synced. */
-export async function getZeppWorkoutSeries(workoutId: string): Promise<SeriesPoint[] | null> {
-  const { data, error } = await supabase
-    .from('zepp_workout_series')
-    .select('points')
-    .eq('workout_id', workoutId)
-    .maybeSingle()
-  if (error) return null  // table not migrated yet / no access — the panel just omits the charts
-  return (data?.points as SeriesPoint[] | undefined) ?? null
+/** Per-minute trace and GPS route for one watch workout (either may be null). */
+export async function getZeppWorkoutSeries(workoutId: string): Promise<{ points: SeriesPoint[] | null; route: LatLon[] | null }> {
+  const empty = { points: null, route: null }
+  let res = await supabase.from('zepp_workout_series').select('points, route').eq('workout_id', workoutId).maybeSingle()
+  // Route column not migrated yet → fall back to the trace alone.
+  if (res.error) res = await supabase.from('zepp_workout_series').select('points').eq('workout_id', workoutId).maybeSingle()
+  if (res.error || !res.data) return empty  // table missing / no access / nothing synced — the panel just omits these
+  const row = res.data as { points?: SeriesPoint[] | null; route?: LatLon[] | null }
+  return { points: row.points ?? null, route: row.route ?? null }
 }
 
 // ─── User Settings ────────────────────────────────────────────────────────────
