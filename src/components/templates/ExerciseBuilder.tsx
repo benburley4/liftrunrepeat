@@ -5,6 +5,10 @@ import { Plus, Trash2, X } from 'lucide-react'
 import { exercises, Exercise } from '@/lib/exerciseLibrary'
 import { getCustomExercises } from '@/lib/db'
 import { formatTimeInput } from '@/lib/utils'
+import { exerciseVolume } from '@/lib/exerciseLoad'
+import { pctOfBest, intensityColor } from '@/lib/trainingMaxes'
+import { useBestE1RMs, useVolumeMultipliers } from '@/lib/useExerciseLoad'
+import VolumeMultiplierSelect from './VolumeMultiplierSelect'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,18 +29,6 @@ export interface ExRow {
 interface ExerciseBuilderProps {
   rows: ExRow[]
   onChange: (rows: ExRow[]) => void
-}
-
-// ─── Mock stored 1RMs (kg) ── in prod these come from session analytics ───────
-
-const STORED_1RM: Record<string, number> = {
-  squat:           142.5,
-  bench:           100,
-  deadlift:        180,
-  ohp:             72.5,
-  row:             100,
-  rdl:             130,
-  'incline-press': 90,
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -210,7 +202,8 @@ function SetRowItem({
   const w       = parseFloat(set.weight)
   const r       = parseInt(set.reps)
   const est1RM  = (!isNaN(w) && !isNaN(r) && w > 0 && r > 0) ? epley(w, r) : null
-  const pct     = (est1RM && stored1RM) ? Math.round((est1RM / stored1RM) * 100) : null
+  // Planned weight as % of the best logged e1RM (standard %1RM intensity)
+  const pct     = pctOfBest(set.weight, stored1RM ?? undefined)
   const isEmpty = !set.reps && !set.weight
 
   return (
@@ -251,11 +244,11 @@ function SetRowItem({
             </span>
           </span>
           {pct !== null && (
-            <span className="text-xs px-1.5 py-0.5 rounded font-bold" style={{
-              background: pct >= 90 ? '#EF444420' : pct >= 75 ? '#F59E0B20' : '#00BFA520',
-              color: pct >= 90 ? '#EF4444' : pct >= 75 ? '#F59E0B' : '#00BFA5',
+            <span className="text-xs px-1.5 py-0.5 rounded font-bold" title="Weight as % of your best logged est. 1RM" style={{
+              background: `${intensityColor(pct)}20`,
+              color: intensityColor(pct),
               fontFamily: 'var(--font-mono)',
-            }}>{pct}%</span>
+            }}>{pct}% of best</span>
           )}
         </div>
       )}
@@ -295,7 +288,10 @@ function ExerciseBlock({
 }) {
   const isBarbell    = row.category === 'barbell'
   const isBodyweight = row.category === 'bodyweight'
-  const stored1RM    = STORED_1RM[row.exerciseId] ?? null
+  const bests        = useBestE1RMs()
+  const volMults     = useVolumeMultipliers()
+  // Best logged e1RM; bodyweight lifts log added load only, so a % would mislead
+  const stored1RM    = isBodyweight ? null : bests.get(row.exerciseName.trim().toLowerCase()) ?? null
 
   function updateSet(si: number, partial: Partial<SetRow>) {
     const next = row.sets.map((s, i) => i === si ? { ...s, ...partial } : s)
@@ -312,10 +308,7 @@ function ExerciseBlock({
   }
 
   // Total volume across all sets
-  const totalVol = row.sets.reduce((acc, s) => {
-    const w = parseFloat(s.weight); const r = parseInt(s.reps)
-    return acc + ((!isNaN(w) && !isNaN(r) && w > 0 && r > 0) ? w * r : 0)
-  }, 0)
+  const totalVol = exerciseVolume(row.exerciseName, row.sets, volMults, row.category)
 
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
@@ -341,10 +334,11 @@ function ExerciseBlock({
           </span>
         )}
         {stored1RM !== null && (
-          <span className="text-xs flex-shrink-0" style={{ color: '#3E3E3E', fontFamily: 'var(--font-mono)' }}>
-            Best: {stored1RM} kg
+          <span className="text-xs flex-shrink-0" title="Best estimated 1RM from your logged sets (≤10 reps)" style={{ color: 'var(--color-text-subtle)', fontFamily: 'var(--font-mono)' }}>
+            Best e1RM: {stored1RM} kg
           </span>
         )}
+        <VolumeMultiplierSelect name={row.exerciseName} category={row.category} />
         <button onClick={onRemove}
           className="p-1.5 rounded-lg flex-shrink-0 transition-colors"
           style={{ color: '#3E3E3E' }}

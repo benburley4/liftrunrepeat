@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { dedupeSessions } from './sessionDedupe'
 
 export interface StoredSession {
   type: string
@@ -20,6 +21,16 @@ export async function getSessions(): Promise<StoredSession[]> {
     .from('sessions')
     .select('data')
     .order('saved_at', { ascending: false })
+  throwIfError(error)
+  return dedupeSessions((data ?? []).map(row => row.data as StoredSession))
+}
+
+/** Every saved session on one date, duplicates included (for the save-time check). */
+export async function getSessionsOnDate(date: string): Promise<StoredSession[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('data')
+    .eq('data->>date', date)
   throwIfError(error)
   return (data ?? []).map(row => row.data as StoredSession)
 }

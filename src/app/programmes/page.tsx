@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { Check, X, Pencil, Sparkles, Loader2, Copy as CopyIcon, TrendingUp } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RunSegment, segDerivedKm } from '@/components/templates/ExerciseBuilder'
 import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTemplate, getSetting, upsertSetting } from '@/lib/db'
 import { usePremium } from '@/hooks/usePremium'
@@ -11,37 +13,10 @@ import { authHeaders } from '@/lib/auth'
 import { loadProfile, profileToPrompt } from '@/lib/athleteProfile'
 import { validateAIProgramme } from '@/lib/programmeSchema'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type TemplateKind = 'lift' | 'run' | 'hybrid' | 'hike'
-
-// Matches the shape stored in thhl_custom_templates (Templates tab)
-interface StoredTemplate {
-  id: string
-  name: string
-  type: TemplateKind
-  description?: string
-  duration?: string
-  exerciseRows?: ExRow[]
-  runRows?: RunEntry[]
-  hikeData?: { distanceKm: string; elevationGainM: string }
-}
-
-interface CellData {
-  template: StoredTemplate
-  rpe: number
-}
-
-interface Programme {
-  id: string
-  name: string
-  weeks: number
-  startDate: string // 'YYYY-MM-DD'
-  sessionsPerDay?: 1 | 2
-  cells: Record<string, CellData> // key: 'w{week}d{day}' or 'w{week}d{day}_2' for second session
-  // week index → deload applied to it; `backup` holds the pre-deload cells so it can be restored
-  deloads?: Record<string, { pct: number; backup: Record<string, CellData> }>
-}
+import type { TemplateKind, StoredTemplate, CellData, Programme } from '@/lib/programmeTypes'
+import { exerciseVolume, type VolumeMultipliers } from '@/lib/exerciseLoad'
+import { useVolumeMultipliers } from '@/lib/useExerciseLoad'
+import ProgrammeDetailView from '@/components/programmes/ProgrammeDetailView'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -52,6 +27,7 @@ const STORAGE_KEY = 'lrr_programme_v3' // legacy — migrated on first load
 const SAVED_KEY = 'lrr_saved_programmes_v1'
 const CURRENT_KEY = 'lrr_current_programme_id'
 const TEMPLATES_KEY = 'thhl_custom_templates'
+const VIEW_KEY = 'lrr_programme_view'
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
@@ -196,12 +172,10 @@ function thisOrNextMonday(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function calcVolume(t: StoredTemplate): { weight: number; distance: number } {
+function calcVolume(t: StoredTemplate, mults?: VolumeMultipliers): { weight: number; distance: number } {
   let weight = 0, distance = 0
   for (const row of t.exerciseRows ?? []) {
-    for (const set of row.sets) {
-      weight += (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0)
-    }
+    weight += exerciseVolume(row.exerciseName, row.sets, mults, row.category)
   }
   for (const entry of t.runRows ?? []) {
     if ('kind' in entry) {
@@ -449,6 +423,7 @@ interface SelectTemplateModalProps {
 
 function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
   const [search, setSearch] = useState('')
+  const volMults = useVolumeMultipliers()
   const [templates, setTemplates] = useState<StoredTemplate[]>([])
 
   useEffect(() => {
@@ -501,7 +476,7 @@ function SelectTemplateModal({ onSelect, onClose }: SelectTemplateModalProps) {
           )}
           {filtered.map(t => {
             const col = typeColor(t.type)
-            const vol = calcVolume(t)
+            const vol = calcVolume(t, volMults)
             return (
               <button key={t.id} onClick={() => onSelect(t)}
                 className="text-left rounded-xl overflow-hidden transition-all"
@@ -558,9 +533,22 @@ interface EmptyCellProps {
   onCreateNew: () => void
   onSelectExisting: () => void
   isSecond?: boolean
+  compact?: boolean
 }
 
-function EmptyCell({ date, onCreateNew, onSelectExisting, isSecond = false }: EmptyCellProps) {
+function EmptyCell({ date, onCreateNew, onSelectExisting, isSecond = false, compact = false }: EmptyCellProps) {
+  if (compact) {
+    const iconBtn = (color: string): CSSProperties => ({ width: '22px', height: '22px', borderRadius: '6px', fontSize: '12px', lineHeight: 1, cursor: 'pointer', background: 'none', color, border: `1px dashed ${color}40`, padding: 0 })
+    return (
+      <div style={{ borderRadius: '10px', padding: '8px 10px', minHeight: '56px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', background: '#0D0D0D', border: `1px solid ${isSecond ? '#A78BFA20' : '#1A1A1A'}` }}>
+        <span style={{ fontSize: '11px', color: isSecond ? '#A78BFA80' : '#374151' }}>{isSecond ? '2nd' : fmtDate(date)}</span>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <button onClick={onCreateNew} title="Create template" aria-label="Create template" style={iconBtn('#00BFA5')}>+</button>
+          <button onClick={onSelectExisting} title="Use template" aria-label="Use template" style={iconBtn('#C8102E')}>↗</button>
+        </div>
+      </div>
+    )
+  }
   return (
     <div style={{ borderRadius: '12px', padding: '10px', minHeight: '120px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#0D0D0D', border: `1px solid ${isSecond ? '#A78BFA20' : '#1A1A1A'}` }}>
       <div style={{ fontSize: '11px', color: isSecond ? '#A78BFA80' : '#374151', marginBottom: '2px' }}>{isSecond ? '2nd Session' : fmtDate(date)}</div>
@@ -591,18 +579,20 @@ interface PopulatedCellProps {
   onDelete: () => void
   onCopyAcross: () => void
   isSecond?: boolean
+  compact?: boolean
 }
 
-function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = false }: PopulatedCellProps) {
+function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = false, compact = false }: PopulatedCellProps) {
   const { template } = data
-  const vol = calcVolume(template)
+  const volMults = useVolumeMultipliers()
+  const vol = calcVolume(template, volMults)
   const col = typeColor(template.type)
 
   return (
     <div
       onClick={onEdit}
       role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && onEdit()}
-      style={{ borderRadius: '12px', padding: '10px', minHeight: '120px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#141414', border: `1px solid ${col}40`, boxShadow: `0 2px 16px ${col}10`, cursor: 'pointer', transition: 'all 0.15s' }}
+      style={{ borderRadius: compact ? '10px' : '12px', padding: compact ? '8px 10px' : '10px', minHeight: compact ? '56px' : '120px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#141414', border: `1px solid ${col}40`, boxShadow: `0 2px 16px ${col}10`, cursor: 'pointer', transition: 'all 0.15s' }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 4px 24px ${col}25`; e.currentTarget.style.transform = 'translateY(-1px)' }}
       onMouseLeave={e => { e.currentTarget.style.boxShadow = `0 2px 16px ${col}10`; e.currentTarget.style.transform = 'none' }}
     >
@@ -612,7 +602,7 @@ function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = 
           {isSecond ? '2nd Session' : fmtDate(date)}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '100px', background: `${col}20`, color: col, fontWeight: 600 }}>{typeLabel(template.type)}</span>
+          {!compact && <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '100px', background: `${col}20`, color: col, fontWeight: 600 }}>{typeLabel(template.type)}</span>}
           <button
             onClick={e => { e.stopPropagation(); onCopyAcross() }}
             title="Copy across all weeks"
@@ -630,7 +620,7 @@ function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = 
       <div style={{ fontSize: '13px', fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{template.name}</div>
 
       {/* Exercise preview */}
-      <div style={{ fontSize: '11px', color: '#9CA3AF', flex: 1 }}>
+      {!compact && <div style={{ fontSize: '11px', color: '#9CA3AF', flex: 1 }}>
         {(template.exerciseRows ?? []).slice(0, 3).map(r => (
           <div key={r.id} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {r.exerciseName || '—'} · {r.sets.length} sets
@@ -642,7 +632,7 @@ function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = 
         {(template.runRows ?? []).length > 0 && (template.exerciseRows ?? []).length === 0 && (
           <div style={{ color: '#9CA3AF' }}>Run: {(template.runRows ?? []).length} segments</div>
         )}
-      </div>
+      </div>}
 
       {/* Volume */}
       {(vol.weight > 0 || vol.distance > 0) && (
@@ -677,9 +667,18 @@ interface CalendarGridProps {
 function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename }: CalendarGridProps) {
   const [modal, setModal] = useState<ModalState>(null)
   const [saved, setSaved] = useState(false)
+  const volMults = useVolumeMultipliers()
   const [editingName, setEditingName] = useState(false)
   const [nameValue, setNameValue] = useState(programme.name)
+  const [view, setView] = useState<'summary' | 'detailed'>(() => {
+    try { return localStorage.getItem(VIEW_KEY) === 'detailed' ? 'detailed' : 'summary' } catch { return 'summary' }
+  })
   const monday = getMonday(programme.startDate)
+
+  function changeView(v: 'summary' | 'detailed') {
+    setView(v)
+    try { localStorage.setItem(VIEW_KEY, v) } catch { /* per-device convenience only */ }
+  }
 
   function handleSave() {
     onSave()
@@ -770,7 +769,7 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
       for (const sfx of suffixes) {
         const cell = programme.cells[`w${w}d${d}${sfx}`]
         if (cell) {
-          const vol = calcVolume(cell.template)
+          const vol = calcVolume(cell.template, volMults)
           weight += vol.weight
           distance += vol.distance
           if (cell.rpe > 0) { rpeSum += cell.rpe; rpeCount++ }
@@ -791,7 +790,7 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
   )
   const grandRpe = grand.rpeCount > 0 ? Math.round((grand.rpeSum / grand.rpeCount) * 10) / 10 : 0
 
-  const COL = 172 // px per week column
+  const COL = 132 // px per week column
   const LEFT = 90 // px for day label
 
   return (
@@ -829,7 +828,15 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
             {programme.weeks} Weeks · Starting {fmtDate(monday)} → {fmtDate(addDays(monday, programme.weeks * 7 - 1))}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div role="group" aria-label="Programme view" style={{ display: 'flex', padding: '3px', borderRadius: '10px', background: '#141414', border: '1px solid #2E2E2E' }}>
+            {(['summary', 'detailed'] as const).map(v => (
+              <button key={v} onClick={() => changeView(v)} aria-pressed={view === v}
+                style={{ padding: '5px 12px', borderRadius: '7px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, fontFamily: 'var(--font-sans)', background: view === v ? '#00BFA520' : 'none', color: view === v ? '#00BFA5' : '#8A8A8A' }}>
+                {v === 'summary' ? 'Summary' : 'Detailed'}
+              </button>
+            ))}
+          </div>
           <button onClick={handleSave}
             style={{ padding: '8px 16px', borderRadius: '10px', background: saved ? '#00BFA520' : '#00BFA5', border: saved ? '1px solid #00BFA5' : 'none', color: saved ? '#00BFA5' : '#0D0D0D', fontSize: '13px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             {saved ? '✓ Saved' : 'Save Programme'}
@@ -841,8 +848,12 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
         </div>
       </div>
 
+      {view === 'detailed' && (
+        <ProgrammeDetailView programme={programme} monday={monday} onUpdate={onUpdate} />
+      )}
+
       {/* Scrollable calendar */}
-      <div style={{ overflowX: 'auto', paddingBottom: '16px' }}>
+      {view === 'summary' && <div style={{ overflowX: 'auto', paddingBottom: '16px' }}>
         <div style={{ minWidth: `${LEFT + programme.weeks * (COL + 8) + COL + 8}px` }}>
 
           {/* Week column headers */}
@@ -895,20 +906,20 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
                 return (
                   <div key={w} style={{ flexShrink: 0, width: `${COL}px`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {cell
-                      ? <PopulatedCell date={date} data={cell}
+                      ? <PopulatedCell compact date={date} data={cell}
                           onEdit={() => setModal({ type: 'create', key, initial: cell.template })}
                           onDelete={() => clearCell(key)}
                           onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '' })} />
-                      : <EmptyCell date={date}
+                      : <EmptyCell compact date={date}
                           onCreateNew={() => setModal({ type: 'create', key })}
                           onSelectExisting={() => setModal({ type: 'select', key })} />}
                     {programme.sessionsPerDay === 2 && (
                       cell2
-                        ? <PopulatedCell date={date} data={cell2} isSecond
+                        ? <PopulatedCell compact date={date} data={cell2} isSecond
                             onEdit={() => setModal({ type: 'create', key: key2, initial: cell2.template })}
                             onDelete={() => clearCell(key2)}
                             onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '_2' })} />
-                        : <EmptyCell date={date} isSecond
+                        : <EmptyCell compact date={date} isSecond
                             onCreateNew={() => setModal({ type: 'create', key: key2 })}
                             onSelectExisting={() => setModal({ type: 'select', key: key2 })} />
                     )}
@@ -947,7 +958,7 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
           </div>
 
         </div>
-      </div>
+      </div>}
 
       {/* Modals */}
       {modal?.type === 'create' && (
@@ -1315,6 +1326,7 @@ export default function ProgrammesPage() {
   const [currentProgId, setCurrentProgIdState] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<Programme | null>(null)
 
   // Generate form
   const emptyStandards = { squat: '', deadlift: '', bench: '', pullups: '', run5k: '', run10k: '', runHalf: '', runFull: '' }
@@ -1593,6 +1605,26 @@ export default function ProgrammesPage() {
 
   return (
     <div style={{ minHeight: '100vh', padding: 'clamp(16px, 4vw, 32px) clamp(12px, 4vw, 24px)', background: '#0D0D0D' }}>
+      {pendingDelete && (
+        <Modal
+          onClose={() => setPendingDelete(null)}
+          eyebrow="Delete programme"
+          eyebrowColor="#C8102E"
+          title="Are you sure?"
+          maxWidth={420}
+          footer={<>
+            <Button variant="subtle" fullWidth onClick={() => setPendingDelete(null)}>Cancel</Button>
+            <Button accent="#C8102E" fullWidth onClick={() => { handleDeleteProg(pendingDelete.id); setPendingDelete(null) }}>Delete</Button>
+          </>}
+        >
+          <p style={{ fontSize: '14px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>
+            <strong>{pendingDelete.name}</strong> ({pendingDelete.weeks} weeks) will be permanently deleted.
+          </p>
+          <p style={{ fontSize: '13px', color: 'var(--color-text-subtle)', fontFamily: 'var(--font-sans)' }}>
+            This can&apos;t be undone. Logged sessions are not affected.
+          </p>
+        </Modal>
+      )}
       {programme
         ? <CalendarGrid programme={programme} onUpdate={handleUpdate} onPatch={handlePatch} onSave={handleSave} onReset={handleReset} onRename={name => handleRenameProg(programme.id, name)} />
         : (
@@ -1653,7 +1685,7 @@ export default function ProgrammesPage() {
                             style={{ padding: '5px 10px', borderRadius: '8px', background: isCurrent ? '#00BFA520' : '#1A1A1A', border: `1px solid ${isCurrent ? '#00BFA540' : '#2E2E2E'}`, color: isCurrent ? '#00BFA5' : '#606060', cursor: 'pointer', fontSize: '11px', fontWeight: 600, fontFamily: 'var(--font-sans)', whiteSpace: 'nowrap' }}
                             title={isCurrent ? 'Unset as current' : 'Set as current programme'}
                           >{isCurrent ? '✓ Current' : 'Set as Current'}</button>
-                          <button onClick={e => { e.stopPropagation(); if (confirm('Delete this programme?')) handleDeleteProg(p.id) }}
+                          <button onClick={e => { e.stopPropagation(); setPendingDelete(p) }}
                             style={{ padding: '6px', borderRadius: '8px', background: 'none', border: 'none', color: '#3E3E3E', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}
                             onMouseEnter={e => (e.currentTarget.style.color = '#C8102E')}
                             onMouseLeave={e => (e.currentTarget.style.color = '#3E3E3E')}

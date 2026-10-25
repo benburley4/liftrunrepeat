@@ -1,5 +1,7 @@
 // Shared server-side stats computation — mirrors the useMemo logic in analytics/page.tsx
 
+import { exerciseVolume, type VolumeMultipliers } from './exerciseLoad'
+
 export interface ActualSet { reps: string; weight: string; rpe: string }
 export interface PlannedSet { reps: string; weight: string }
 export interface LoggedExercise { id: string; exerciseName: string; plannedSets: PlannedSet[]; actualSets: ActualSet[] }
@@ -36,11 +38,12 @@ function sessionKm(s: SessionData): number {
   return runKm + (s.hikeKm ?? 0) + elevEquiv
 }
 
-function sessionLoad(s: SessionData): number {
-  const liftLoad = (s.exercises ?? []).reduce((sum, ex) =>
-    sum + ex.actualSets.reduce((ss, set) =>
-      ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
-  return liftLoad + sessionKm(s)
+function sessionVolume(s: SessionData, mults?: VolumeMultipliers): number {
+  return (s.exercises ?? []).reduce((sum, ex) => sum + exerciseVolume(ex.exerciseName, ex.actualSets, mults), 0)
+}
+
+function sessionLoad(s: SessionData, mults?: VolumeMultipliers): number {
+  return sessionVolume(s, mults) / 1000 + sessionKm(s)
 }
 
 export function epleyRM(w: number, r: number) { return r === 1 ? w : Math.round(w * (1 + r / 30)) }
@@ -77,13 +80,70 @@ export const BODY_KEYWORDS: [RegExp, string][] = [
 export function classifyPPL(name: string) { for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat; return 'Push' }
 export function classifyBody(name: string) { for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp; return 'Back' }
 
-function sessionLiftLoad(s: SessionData): number {
-  return (s.exercises ?? []).reduce((sum, ex) =>
-    sum + ex.actualSets.reduce((ss, set) =>
-      ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
+function sessionLiftLoad(s: SessionData, mults?: VolumeMultipliers): number {
+  return sessionVolume(s, mults) / 1000
 }
 
-export function computeStats(history: SessionData[], referenceDate?: string) {
+// exerciseName -> chronological {date, e1RM} entries, used to look up the best RM
+// *known at the time* of a given session (never a later PR) when judging intensity.
+function buildRmTimeline(history: SessionData[]): Record<string, { date: string; rm: number }[]> {
+  const timeline: Record<string, { date: string; rm: number }[]> = {}
+  for (const s of history) {
+    for (const ex of s.exercises ?? []) {
+      for (const set of ex.actualSets) {
+        const w = parseFloat(set.weight), r = parseInt(set.reps)
+        if (isNaN(w) || isNaN(r) || r <= 0) continue
+        ;(timeline[ex.exerciseName] ??= []).push({ date: s.date, rm: epleyRM(w, r) })
+      }
+    }
+  }
+  for (const key in timeline) timeline[key].sort((a, b) => a.date.localeCompare(b.date))
+  return timeline
+}
+
+function priorBestRM(timeline: { date: string; rm: number }[] | undefined, beforeDate: string): number {
+  if (!timeline) return 0
+  let best = 0
+  for (const entry of timeline) {
+    if (entry.date >= beforeDate) break
+    if (entry.rm > best) best = entry.rm
+  }
+  return best
+}
+
+// Reps-weighted average %1RM across a set of sessions — the intensity counterpart
+// to tonnage. Only counts sets on exercises with an established prior 1RM, so a
+// brand-new exercise doesn't skew the week's intensity reading.
+function weekIntensityPct(sessions: SessionData[], rmTimeline: Record<string, { date: string; rm: number }[]>): number | null {
+  let repWeightedSum = 0, repTotal = 0
+  for (const s of sessions) {
+    for (const ex of s.exercises ?? []) {
+      const best = priorBestRM(rmTimeline[ex.exerciseName], s.date)
+      if (best <= 0) continue
+      for (const set of ex.actualSets) {
+        const w = parseFloat(set.weight), r = parseInt(set.reps)
+        if (isNaN(w) || isNaN(r) || r <= 0) continue
+        repWeightedSum += (w / best) * r
+        repTotal += r
+      }
+    }
+  }
+  return repTotal > 0 ? (repWeightedSum / repTotal) * 100 : null
+}
+
+function weekAvgRPE(sessions: SessionData[]): number | null {
+  const rpes: number[] = []
+  for (const s of sessions)
+    for (const ex of s.exercises ?? [])
+      for (const set of ex.actualSets) {
+        const rpe = parseFloat(set.rpe)
+        if (!isNaN(rpe)) rpes.push(rpe)
+      }
+  return rpes.length > 0 ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null
+}
+
+// mults: the user's volume multiplier overrides (user_settings 'volume_multipliers')
+export function computeStats(history: SessionData[], referenceDate?: string, mults?: VolumeMultipliers) {
   // referenceDate: YYYY-MM-DD of the Sunday the report is FOR (defaults to today)
   const now = referenceDate ? new Date(referenceDate + 'T00:00:00') : new Date()
   now.setHours(0, 0, 0, 0)
@@ -103,7 +163,7 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
   for (const s of history) {
     const wk = weekStart(s.date)
     if (!byWeek[wk]) byWeek[wk] = { total: 0, lift: 0 }
-    const load = sessionLoad(s); const liftL = sessionLiftLoad(s)
+    const load = sessionLoad(s, mults); const liftL = sessionLiftLoad(s, mults)
     byWeek[wk].total += load; byWeek[wk].lift += liftL
   }
   const allWeekLoads = Object.values(byWeek)
@@ -138,24 +198,45 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
   score += restBonus
   if (restBonus > 0) tsbFactors.push({ name: `${daysSinceLast}d rest`, points: restBonus })
 
-  // 4. Ramp rate
+  // 4. Ramp rate — tonnage AND intensity (%1RM), since they're independent deload
+  // axes: an athlete can cut load relative to 1RM while holding (or raising) reps,
+  // which spikes raw tonnage without adding real training stress.
+  const rmTimeline = buildRmTimeline(history)
+  const lastWeekSessions = history.filter(s => weekStart(s.date) === lastWk)
+  const intensityThisWeek = weekIntensityPct(thisWeek, rmTimeline)
+  const intensityLastWeek = weekIntensityPct(lastWeekSessions, rmTimeline)
+  const avgRpeThisWeek = weekAvgRPE(thisWeek)
+
+  let intensityDeload = false
+  if (intensityThisWeek !== null && intensityLastWeek !== null && intensityLastWeek > 0) {
+    const intensityRamp = (intensityThisWeek - intensityLastWeek) / intensityLastWeek
+    intensityDeload = intensityRamp < -0.1
+  }
+
   let overtrained = false
+  let volumeDeload = false
   if (lastWeekLoad > 0) {
     const ramp = (thisWeekLoad - lastWeekLoad) / lastWeekLoad
-    if (ramp > 0.1) {
+    volumeDeload = ramp < -0.1
+
+    if (ramp > 0.1 && !intensityDeload) {
       const rampPenalty = -Math.round(Math.min(15, ramp * 30))
       score += rampPenalty
       tsbFactors.push({ name: 'Volume spike', points: rampPenalty })
       if (ramp > 0.3) overtrained = true
-    } else if (ramp < -0.1) {
-      score += 5
-      tsbFactors.push({ name: 'Deload week', points: 5 })
+    } else if (volumeDeload || intensityDeload) {
+      const bonus = volumeDeload && intensityDeload ? 8 : 5
+      const label = volumeDeload && intensityDeload
+        ? 'Full deload week (volume + intensity)'
+        : intensityDeload ? 'Intensity deload week' : 'Volume deload week'
+      score += bonus
+      tsbFactors.push({ name: label, points: bonus })
     }
   }
 
   // 5. Cross-sport balance bonus: reward balanced weeks, not specialised ones
-  const recentLiftTotal = recent7.reduce((s, sess) => s + sessionLiftLoad(sess), 0)
-  const recentTotal = recent7.reduce((s, sess) => s + sessionLoad(sess), 0)
+  const recentLiftTotal = recent7.reduce((s, sess) => s + sessionLiftLoad(sess, mults), 0)
+  const recentTotal = recent7.reduce((s, sess) => s + sessionLoad(sess, mults), 0)
   const liftRatio = recentTotal > 0 ? recentLiftTotal / recentTotal : 0.5
   if (liftRatio >= 0.3 && liftRatio <= 0.7) {
     score += 5
@@ -176,14 +257,8 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
     : 'Hard week — well earned rest'
 
   const kmThisWeek = thisWeek.reduce((sum, s) => sum + sessionKm(s), 0)
-  const volumeThisWeek = thisWeek.reduce((sum, s) =>
-    sum + (s.exercises ?? []).reduce((es, ex) =>
-      es + ex.actualSets.reduce((ss, set) =>
-        ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0), 0)
-  const totalVolume = history.reduce((sum, s) =>
-    sum + (s.exercises ?? []).reduce((es, ex) =>
-      es + ex.actualSets.reduce((ss, set) =>
-        ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0), 0)
+  const volumeThisWeek = thisWeek.reduce((sum, s) => sum + sessionVolume(s, mults), 0)
+  const totalVolume = history.reduce((sum, s) => sum + sessionVolume(s, mults), 0)
 
   // Strength PRs
   const exStats: Record<string, { totalSets: number; rm: number; weight: number; reps: number; date: string }> = {}
@@ -295,6 +370,11 @@ export function computeStats(history: SessionData[], referenceDate?: string) {
       overtrained,
       readinessLabel,
       readinessTrend,
+      intensityThisWeek: intensityThisWeek !== null ? Math.round(intensityThisWeek) : null,
+      intensityLastWeek: intensityLastWeek !== null ? Math.round(intensityLastWeek) : null,
+      avgRpeThisWeek: avgRpeThisWeek !== null ? Math.round(avgRpeThisWeek * 10) / 10 : null,
+      volumeDeload,
+      intensityDeload,
     },
     totalSessions: history.length,
     strengthSummary: liftSessions.length > 0 ? { topExercises, prs } : null,

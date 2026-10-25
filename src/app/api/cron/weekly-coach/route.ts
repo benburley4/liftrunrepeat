@@ -27,6 +27,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { computeStats, SessionData } from '@/lib/computeStats'
+import type { VolumeMultipliers } from '@/lib/exerciseLoad'
+import { dedupeSessions } from '@/lib/sessionDedupe'
 import { COACH_SYSTEM_PROMPT } from '@/lib/coachPrompt'
 import { completeChat, deepseekConfigured } from '@/lib/server/deepseek'
 import { profileToPrompt, AthleteProfile } from '@/lib/athleteProfile'
@@ -61,6 +63,13 @@ async function generateReport(
     `- Total volume lifted (all time): ${overview.totalVolume} kg`,
     `- Readiness score: ${overview.tsb}% — ${overview.readinessLabel}${factorStr ? ` (factors: ${factorStr})` : ''}`,
     overview.overtrained ? `- ⚠ HIGH LOAD WARNING: volume >30% above last week — injury risk elevated` : '',
+    overview.intensityThisWeek !== null
+      ? `- Avg intensity this week: ${overview.intensityThisWeek}% of 1RM${overview.intensityLastWeek !== null ? ` (last week: ${overview.intensityLastWeek}%)` : ''}`
+      : '',
+    overview.avgRpeThisWeek !== null ? `- Avg RPE this week: ${overview.avgRpeThisWeek}` : '',
+    overview.volumeDeload || overview.intensityDeload
+      ? `- DELOAD DETECTED: ${overview.volumeDeload && overview.intensityDeload ? 'volume AND intensity both down' : overview.intensityDeload ? 'intensity down (kept/raised reps at a lower %1RM)' : 'volume down'} — treat this as a planned recovery week, not a red flag, even if raw kg tonnage rose`
+      : '',
     `- Total sessions logged: ${totalSessions}`,
     ``,
     strengthSummary
@@ -147,7 +156,7 @@ export async function GET(req: NextRequest) {
         .order('saved_at', { ascending: false })
       if (sessErr) throw new Error(sessErr.message)
 
-      const history = (sessionRows ?? []).map(r => r.data as SessionData)
+      const history = dedupeSessions((sessionRows ?? []).map(r => r.data as SessionData))
       if (history.length === 0) { results.push({ userId, status: 'skipped (no sessions)' }); continue }
 
       // Athlete profile (B1) — so the coach knows goals, 1RMs, race date, injuries
@@ -174,7 +183,17 @@ export async function GET(req: NextRequest) {
         ? extractRecommendations(prevRows[0].report_text)
         : ''
 
-      const stats = computeStats(history, weekEnding)
+      // Per-exercise volume multipliers (dumbbells / single-leg), same as the app shows
+      const { data: multRow } = await supabaseAdmin
+        .from('user_settings')
+        .select('value')
+        .eq('user_id', userId)
+        .eq('key', 'volume_multipliers')
+        .maybeSingle()
+      let mults: VolumeMultipliers | undefined
+      try { mults = multRow?.value ? JSON.parse(multRow.value) as VolumeMultipliers : undefined } catch { /* malformed — use defaults */ }
+
+      const stats = computeStats(history, weekEnding, mults)
       const reportText = await generateReport(stats, profileText, previousRecommendations)
 
       const { error: saveErr } = await supabaseAdmin

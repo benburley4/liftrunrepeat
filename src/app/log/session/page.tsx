@@ -3,7 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Check, Calendar, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
-import { upsertSession, getProgrammes, getTemplates, getCustomExercises } from '@/lib/db'
+import { upsertSession, getSessionsOnDate, getProgrammes, getTemplates, getCustomExercises, type StoredSession } from '@/lib/db'
+import { dedupeSessions, sessionKey, separateSessionName } from '@/lib/sessionDedupe'
+import Modal from '@/components/ui/Modal'
+import Button from '@/components/ui/Button'
 import { exercises as staticExercises } from '@/lib/exerciseLibrary'
 import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, type BwOverrides } from '@/lib/bodyweight'
 import { formatTimeInput } from '@/lib/utils'
@@ -283,6 +286,8 @@ export default function LogSessionPage() {
   const [firstPlan, setFirstPlan] = useState<{ cell: CellData; week: number; dayName: string; progName: string } | null>(null)
   const userOverride = useRef(false) // prevents async programme load from overwriting manual template selection
   const savedAtRef = useRef<string | null>(null) // reuse savedAt on re-save to avoid duplicate DB rows
+  const [checkingDup, setCheckingDup] = useState(false)
+  const [dupPrompt, setDupPrompt] = useState<{ existing: StoredSession; takenNames: string[] } | null>(null)
 
   function todayIso() {
     const d = new Date()
@@ -494,8 +499,32 @@ export default function LogSessionPage() {
     }])
   }
 
+  const defaultSessionName = sessionName || `${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)} Session`
+
+  // First save of this page: if the same date + name is already logged, ask
+  // whether this replaces it or is a separate session, instead of silently
+  // creating a duplicate (see lib/sessionDedupe).
   const handleSave = async () => {
-    if (saved) return   // prevent double-save
+    if (saved || checkingDup) return
+    if (!savedAtRef.current) {
+      setCheckingDup(true)
+      try {
+        const sameDay = await getSessionsOnDate(dateIso)
+        const existing = dedupeSessions(sameDay).find(s => sessionKey(s) === sessionKey({ date: dateIso, name: defaultSessionName }))
+        if (existing) {
+          setDupPrompt({ existing, takenNames: sameDay.map(s => s.name) })
+          return
+        }
+      } catch (err) {
+        console.error('Duplicate check failed — saving anyway:', err)
+      } finally {
+        setCheckingDup(false)
+      }
+    }
+    await saveSession()
+  }
+
+  const saveSession = async (nameOverride?: string) => {
     // For hike sessions, save distance+elevation from loggedHike; run: [] avoids double-counting
     let hikeKm: number | undefined
     let hikeElevationM: number | undefined
@@ -511,7 +540,7 @@ export default function LogSessionPage() {
     savedAtRef.current = savedAt
     const session = {
       type: sessionType,
-      name: sessionName || `${sessionType.charAt(0).toUpperCase() + sessionType.slice(1)} Session`,
+      name: nameOverride ?? defaultSessionName,
       date: dateIso,
       savedAt,
       exercises: loggedExercises,
@@ -527,6 +556,40 @@ export default function LogSessionPage() {
   return (
     <div style={{ background: '#0D0D0D', minHeight: '100vh' }}>
       <QuickLogFAB />
+
+      {dupPrompt && (
+        <Modal
+          onClose={() => setDupPrompt(null)}
+          eyebrow="Already logged"
+          eyebrowColor="#F59E0B"
+          title="Replace or add?"
+          maxWidth={460}
+          footer={<>
+            <Button variant="subtle" fullWidth onClick={() => {
+              const name = separateSessionName(defaultSessionName, dupPrompt.takenNames)
+              setDupPrompt(null)
+              setSessionName(name)
+              saveSession(name).catch(console.error)
+            }}>Save as separate</Button>
+            <Button fullWidth onClick={() => {
+              // Reuse the existing row's savedAt so the upsert overwrites it
+              savedAtRef.current = dupPrompt.existing.savedAt
+              setDupPrompt(null)
+              saveSession().catch(console.error)
+            }}>Update existing</Button>
+          </>}
+        >
+          <p style={{ margin: 0, fontSize: '14px', color: '#F5F5F5', fontFamily: 'var(--font-sans)' }}>
+            You already logged <strong>{dupPrompt.existing.name}</strong> on {dateStr}
+            {' '}(saved {new Date(dupPrompt.existing.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}).
+          </p>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-subtle)', fontFamily: 'var(--font-sans)' }}>
+            <strong>Update existing</strong>{' '}replaces it with what&apos;s on this page.
+            {' '}<strong>Save as separate</strong> keeps both, e.g. a second hike that day, and names this one
+            {' '}&ldquo;{separateSessionName(defaultSessionName, dupPrompt.takenNames)}&rdquo;.
+          </p>
+        </Modal>
+      )}
 
       {/* Header */}
       <div className="pt-16 pb-6" style={{ background: '#0A0A0A', borderBottom: '1px solid #1A1A1A' }}>

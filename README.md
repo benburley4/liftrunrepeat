@@ -36,6 +36,10 @@ run it in the Supabase SQL editor. **Migrations marked in that file must run
 before deploying code that depends on them** (currently: the
 `(user_id, saved_at)` sessions key).
 
+The free Supabase plan has no backups, so `node scripts/backup-db.mjs` dumps
+every table to `backups/db-YYYY-MM-DD.json` (30 days kept, gitignored). It runs
+nightly at 03:00 via the Windows task `HybridLife_DBBackup`.
+
 ## AI features
 
 All AI routes require a signed-in user (Supabase bearer token) and share one

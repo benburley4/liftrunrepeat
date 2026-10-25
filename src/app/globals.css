@@ -123,8 +123,9 @@
 
 html {
   background: #0D0D0D;
-  /* Prevent horizontal scroll on mobile */
-  overflow-x: hidden;
+  /* Prevent horizontal scroll on mobile. clip (not hidden) so position: sticky
+     still works — hidden makes html/body scroll containers and breaks it. */
+  overflow-x: clip;
 }
 
 body {
@@ -132,7 +133,7 @@ body {
   color: #F5F5F5;
   font-family: var(--font-sans);
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 h1, h2, h3, h4, h5, h6 {

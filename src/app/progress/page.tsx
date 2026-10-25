@@ -8,6 +8,8 @@ import {
 import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronRight, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
 import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, getSetting, upsertSetting, CoachReport } from '@/lib/db'
 import { epleyRM, classifyPPL, classifyBody } from '@/lib/computeStats'
+import { exerciseVolume } from '@/lib/exerciseLoad'
+import { useVolumeMultipliers } from '@/lib/useExerciseLoad'
 import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, type BwOverrides } from '@/lib/bodyweight'
 import type { SessionData as SavedSession, ActualSet, LoggedExercise, LoggedRunSegment, LoggedRepeat, LoggedRunEntry } from '@/lib/computeStats'
 import ConsistencyHeatmap from '@/components/ui/ConsistencyHeatmap'
@@ -75,6 +77,7 @@ function RunRow({ lap, editing, onUpdate }: {
 }
 
 export default function AnalyticsPage() {
+  const volMults = useVolumeMultipliers()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [hoveredLine, setHoveredLine] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
@@ -114,17 +117,8 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     getSessions().then(raw => {
-      const sessions = raw as unknown as SavedSession[]
-      // Deduplicate by date+name, keeping the latest savedAt for each.
-      // This collapses re-saves of the same session (e.g. after page refresh)
-      // while still allowing two differently-named sessions on the same day.
-      const seen = new Map<string, SavedSession>()
-      for (const s of sessions) {
-        const key = `${s.date}|${(s.name ?? '').toLowerCase().trim()}`
-        const existing = seen.get(key)
-        if (!existing || s.savedAt > existing.savedAt) seen.set(key, s)
-      }
-      setHistory(Array.from(seen.values()))
+      // getSessions() already collapses duplicate saves (see lib/sessionDedupe)
+      setHistory(raw as unknown as SavedSession[])
     }).catch(console.error)
   }, [])
 
@@ -183,8 +177,8 @@ export default function AnalyticsPage() {
     // Weekly chart rows
     const weeklyData = weeks.map(wk => {
       const sessions = byWeek[wk] ?? []
-      const volume = sessions.flatMap(s => s.exercises ?? []).flatMap(ex => ex.actualSets)
-        .reduce((sum, set) => sum + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0)
+      const volume = sessions.flatMap(s => s.exercises ?? [])
+        .reduce((sum, ex) => sum + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0)
       const row: Record<string, string | number> = { week: fmtWeek(wk), volume: Math.round(volume) }
       for (const exName of topExercises) {
         let maxRM = 0
@@ -212,7 +206,7 @@ export default function AnalyticsPage() {
       }))
 
     return { weeklyData, topExercises, prs }
-  }, [history])
+  }, [history, volMults])
 
   // Per-exercise RM table + charts. Estimates are bodyweight- and RPE-aware:
   //   • Bodyweight moves (pull-up, dip, nordic…) use load = bodyweight + added weight.
@@ -517,14 +511,12 @@ export default function AnalyticsPage() {
 
     const totalVolume = history.reduce((sum, s) =>
       sum + (s.exercises ?? []).reduce((es, ex) =>
-        es + ex.actualSets.reduce((ss, set) =>
-          ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0), 0)
+        es + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0), 0)
 
     // ── Readiness score: personalised, history-aware ──────────────────────────
     function sessionLoad(s: SavedSession) {
       const liftLoad = (s.exercises ?? []).reduce((sum, ex) =>
-        sum + ex.actualSets.reduce((ss, set) =>
-          ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
+        sum + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0) / 1000
       const runLoad = (s.run ?? []).reduce((rs, entry) => {
         if ('kind' in entry && entry.kind === 'repeat')
           return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
@@ -535,8 +527,47 @@ export default function AnalyticsPage() {
     }
     function sessionLiftLoad(s: SavedSession) {
       return (s.exercises ?? []).reduce((sum, ex) =>
-        sum + ex.actualSets.reduce((ss, set) =>
-          ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0) / 1000
+        sum + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0) / 1000
+    }
+    function buildRmTimeline(hist: SavedSession[]): Record<string, { date: string; rm: number }[]> {
+      const timeline: Record<string, { date: string; rm: number }[]> = {}
+      for (const s of hist) {
+        for (const ex of s.exercises ?? []) {
+          for (const set of ex.actualSets) {
+            const w = parseFloat(set.weight), r = parseInt(set.reps)
+            if (isNaN(w) || isNaN(r) || r <= 0) continue
+            const rm = r === 1 ? w : Math.round(w * (1 + r / 30))
+            ;(timeline[ex.exerciseName] ??= []).push({ date: s.date, rm })
+          }
+        }
+      }
+      for (const key in timeline) timeline[key].sort((a, b) => a.date.localeCompare(b.date))
+      return timeline
+    }
+    function priorBestRM(timeline: { date: string; rm: number }[] | undefined, beforeDate: string): number {
+      if (!timeline) return 0
+      let best = 0
+      for (const entry of timeline) {
+        if (entry.date >= beforeDate) break
+        if (entry.rm > best) best = entry.rm
+      }
+      return best
+    }
+    function weekIntensityPct(sessions: SavedSession[], rmTimeline: Record<string, { date: string; rm: number }[]>): number | null {
+      let repWeightedSum = 0, repTotal = 0
+      for (const s of sessions) {
+        for (const ex of s.exercises ?? []) {
+          const best = priorBestRM(rmTimeline[ex.exerciseName], s.date)
+          if (best <= 0) continue
+          for (const set of ex.actualSets) {
+            const w = parseFloat(set.weight), r = parseInt(set.reps)
+            if (isNaN(w) || isNaN(r) || r <= 0) continue
+            repWeightedSum += (w / best) * r
+            repTotal += r
+          }
+        }
+      }
+      return repTotal > 0 ? (repWeightedSum / repTotal) * 100 : null
     }
     function wkStart(dateStr: string) {
       const d = new Date(dateStr + 'T00:00:00'); const day = d.getDay()
@@ -588,18 +619,38 @@ export default function AnalyticsPage() {
     score += restBonus
     if (restBonus > 0) tsbFactors.push({ name: `${daysSinceLast}d rest`, points: restBonus })
 
-    // 4. Ramp rate — spike in volume signals injury risk
+    // 4. Ramp rate — tonnage AND intensity (%1RM), since they're independent deload
+    // axes: cutting load relative to 1RM while holding/raising reps spikes raw
+    // tonnage without adding real training stress.
+    const rmTimeline = buildRmTimeline(history)
+    const lastWeekSessionsForIntensity = history.filter(s => wkStart(s.date) === lastWk)
+    const intensityThisWeek = weekIntensityPct(thisWeek, rmTimeline)
+    const intensityLastWeek = weekIntensityPct(lastWeekSessionsForIntensity, rmTimeline)
+
+    let intensityDeload = false
+    if (intensityThisWeek !== null && intensityLastWeek !== null && intensityLastWeek > 0) {
+      const intensityRamp = (intensityThisWeek - intensityLastWeek) / intensityLastWeek
+      intensityDeload = intensityRamp < -0.1
+    }
+
     let overtrained = false
+    let volumeDeload = false
     if (lastWeekLoad > 0) {
       const ramp = (thisWeekLoad - lastWeekLoad) / lastWeekLoad
-      if (ramp > 0.1) {
+      volumeDeload = ramp < -0.1
+
+      if (ramp > 0.1 && !intensityDeload) {
         const rampPenalty = -Math.round(Math.min(15, ramp * 30))
         score += rampPenalty
         tsbFactors.push({ name: 'Volume spike', points: rampPenalty })
         if (ramp > 0.3) overtrained = true
-      } else if (ramp < -0.1) {
-        score += 5
-        tsbFactors.push({ name: 'Deload week', points: 5 })
+      } else if (volumeDeload || intensityDeload) {
+        const bonus = volumeDeload && intensityDeload ? 8 : 5
+        const label = volumeDeload && intensityDeload
+          ? 'Full deload week (volume + intensity)'
+          : intensityDeload ? 'Intensity deload week' : 'Volume deload week'
+        score += bonus
+        tsbFactors.push({ name: label, points: bonus })
       }
     }
 
@@ -637,8 +688,12 @@ export default function AnalyticsPage() {
       overtrained,
       readinessLabel,
       readinessTrend,
+      intensityThisWeek: intensityThisWeek !== null ? Math.round(intensityThisWeek) : null,
+      intensityLastWeek: intensityLastWeek !== null ? Math.round(intensityLastWeek) : null,
+      volumeDeload,
+      intensityDeload,
     }
-  }, [history])
+  }, [history, volMults])
 
   // ── Progress: last 4 weeks vs previous 4, from actual training history ──────
   const progressStats = useMemo(() => {
@@ -660,8 +715,7 @@ export default function AnalyticsPage() {
     }
     function sessionVolume(s: SavedSession): number {
       return (s.exercises ?? []).reduce((es, ex) =>
-        es + ex.actualSets.reduce((ss, set) =>
-          ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0)
+        es + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0)
     }
 
     const now = new Date(); now.setHours(0, 0, 0, 0)
@@ -719,7 +773,7 @@ export default function AnalyticsPage() {
       km: { from: Math.round(prevKm * 10) / 10, to: Math.round(recentKm * 10) / 10, pct: pct(recentKm, prevKm) },
       lifts,
     }
-  }, [history])
+  }, [history, volMults])
 
   const runningData = useMemo(() => {
     function segKm(seg: LoggedRunSegment): number {
@@ -889,8 +943,7 @@ export default function AnalyticsPage() {
       }, 0), 0))
       const volume = Math.round(sessions.reduce((sum, s) =>
         sum + (s.exercises ?? []).reduce((es, ex) =>
-          es + ex.actualSets.reduce((ss, set) =>
-            ss + (parseFloat(set.weight) || 0) * (parseInt(set.reps) || 0), 0), 0), 0) / 100) // scale to hundreds
+          es + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0), 0) / 100) // scale to hundreds
       return { week: fmtWeek(wk), km, volume }
     })
 
@@ -902,7 +955,7 @@ export default function AnalyticsPage() {
     const runPct = 100 - liftPct
 
     return { weeklyChart, liftPct, runPct }
-  }, [history])
+  }, [history, volMults])
 
   const tabs: { id: TabId; label: string }[] = [
     { id: 'overview', label: 'Overview' },

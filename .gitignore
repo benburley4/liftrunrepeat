@@ -46,3 +46,5 @@ Data/
 
 # Local data backups from maintenance scripts
 scripts/backup-*.json
+/backups/
+/logs/

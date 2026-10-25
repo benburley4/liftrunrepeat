@@ -98,6 +98,25 @@ describe('computeStats', () => {
     expect(stats.overview.overtrained).toBe(true)
   })
 
+  it('recognises an intensity deload even when raw tonnage rises', () => {
+    // Prior week establishes a 1RM baseline: 5x3 @ 180kg (heavy, low reps)
+    // Reference week: 5x12 @ 100kg — same lift, far lower %1RM, but tonnage more than doubles
+    const heavySet = { id: 'e1', exerciseName: 'Back Squat', plannedSets: [{ reps: '3', weight: '180' }], actualSets: Array.from({ length: 5 }, () => ({ reps: '3', weight: '180', rpe: '9' })) }
+    const deloadSet = { id: 'e1', exerciseName: 'Back Squat', plannedSets: [{ reps: '12', weight: '100' }], actualSets: Array.from({ length: 5 }, () => ({ reps: '12', weight: '100', rpe: '6' })) }
+    const history: SessionData[] = [
+      { type: 'lift', name: 'Lift', date: '2026-06-02', savedAt: '2026-06-02T10:00:00Z', exercises: [heavySet] }, // establishes the 1RM baseline
+      { type: 'lift', name: 'Lift', date: '2026-06-16', savedAt: '2026-06-16T10:00:00Z', exercises: [heavySet] }, // previous week
+      { type: 'lift', name: 'Lift', date: '2026-06-23', savedAt: '2026-06-23T10:00:00Z', exercises: [deloadSet] }, // reference week
+    ]
+    const stats = computeStats(history, REF)
+    expect(stats.overview.volumeThisWeek).toBeGreaterThan(2700) // tonnage rose vs the 2,700kg heavy week
+    expect(stats.overview.intensityDeload).toBe(true)
+    expect(stats.overview.volumeDeload).toBe(false)
+    expect(stats.overview.overtrained).toBe(false)
+    expect(stats.overview.tsbFactors.some(f => f.name === 'Volume spike')).toBe(false)
+    expect(stats.overview.tsbFactors.some(f => f.name === 'Intensity deload week')).toBe(true)
+  })
+
   it('keeps readiness inside 0-100', () => {
     const heavy = Array.from({ length: 6 }, (_, i) => liftSession(`2026-06-2${2 + (i % 6)}`, 200, 10))
     const stats = computeStats(heavy, REF)
