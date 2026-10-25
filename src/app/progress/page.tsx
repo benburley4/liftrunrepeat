@@ -6,7 +6,8 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend, ReferenceLine,
 } from 'recharts'
 import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronRight, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
-import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, getSetting, upsertSetting, CoachReport } from '@/lib/db'
+import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, getSetting, upsertSetting, getZeppDaily, CoachReport } from '@/lib/db'
+import { freshWatchReadiness, readinessDrivers, localToday, READINESS_CALL, type WatchReadiness } from '@/lib/recovery'
 import { epleyRM, classifyPPL, classifyBody } from '@/lib/computeStats'
 import { exerciseVolume } from '@/lib/exerciseLoad'
 import { useVolumeMultipliers } from '@/lib/useExerciseLoad'
@@ -14,6 +15,8 @@ import { isBodyweightExercise, resolveBodyweightPct, getBwOverrides, type BwOver
 import type { SessionData as SavedSession, ActualSet, LoggedExercise, LoggedRunSegment, LoggedRepeat, LoggedRunEntry } from '@/lib/computeStats'
 import ConsistencyHeatmap from '@/components/ui/ConsistencyHeatmap'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
+import WatchWorkoutPanel from '@/components/history/WatchWorkoutPanel'
+import Link from 'next/link'
 
 type TabId = 'overview' | 'ai-coach' | 'prs' | 'history' | 'strength' | 'running' | 'hybrid'
 
@@ -83,6 +86,7 @@ export default function AnalyticsPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [history, setHistory] = useState<SavedSession[]>([])
   const [selected, setSelected] = useState<SavedSession | null>(null)
+  const [watchReadiness, setWatchReadiness] = useState<WatchReadiness | null>(null)
   const [editing, setEditing] = useState(false)
   const [editSession, setEditSession] = useState<SavedSession | null>(null)
   const [aiCoachText, setAiCoachText] = useState('')
@@ -120,6 +124,10 @@ export default function AnalyticsPage() {
       // getSessions() already collapses duplicate saves (see lib/sessionDedupe)
       setHistory(raw as unknown as SavedSession[])
     }).catch(console.error)
+    // Watch readiness replaces the training-log estimate while it's fresh.
+    getZeppDaily()
+      .then(rows => setWatchReadiness(freshWatchReadiness(rows, localToday())))
+      .catch(() => { /* no watch data — keep the log-based estimate */ })
   }, [])
 
   const strengthData = useMemo(() => {
@@ -1003,12 +1011,19 @@ export default function AnalyticsPage() {
               sub: 'kg lifted all time',
               accent: '#00BFA5', icon: Zap,
             },
-            {
-              label: 'Readiness Score',
-              value: `${overviewStats.tsb}% ${overviewStats.readinessTrend}`,
-              sub: overviewStats.readinessLabel,
-              accent: overviewStats.tsb >= 65 ? '#00BFA5' : overviewStats.tsb >= 45 ? '#F59E0B' : '#C8102E', icon: Trophy,
-            },
+            watchReadiness
+              ? {
+                  label: 'Readiness · Watch',
+                  value: `${watchReadiness.score} ${watchReadiness.trend}`,
+                  sub: READINESS_CALL[watchReadiness.level].label,
+                  accent: READINESS_CALL[watchReadiness.level].color, icon: Trophy,
+                }
+              : {
+                  label: 'Readiness Score',
+                  value: `${overviewStats.tsb}% ${overviewStats.readinessTrend}`,
+                  sub: overviewStats.readinessLabel,
+                  accent: overviewStats.tsb >= 65 ? '#00BFA5' : overviewStats.tsb >= 45 ? '#F59E0B' : '#C8102E', icon: Trophy,
+                },
           ].map(({ label, value, sub, accent, icon: Icon }) => (
             <div
               key={label}
@@ -1151,8 +1166,37 @@ export default function AnalyticsPage() {
               )
             })()}
 
-            {/* Readiness factor breakdown */}
-            {overviewStats.tsbFactors.length > 0 && (
+            {/* Readiness breakdown — watch drivers while the watch score is fresh */}
+            {watchReadiness && (() => {
+              const drivers = readinessDrivers(watchReadiness.day, [])
+              const tone = { good: '#00BFA5', neutral: '#A0A0A0', poor: '#F59E0B' } as const
+              return (
+                <div className="rounded-xl p-4" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                    <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>
+                      Readiness Breakdown — {watchReadiness.score} from your watch
+                    </p>
+                    <Link href="/recovery" className="text-xs" style={{ color: '#00BFA5', fontFamily: 'var(--font-sans)' }}>Recovery details →</Link>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {drivers.map(d => (
+                      <div key={d.key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                        style={{ background: '#242424', border: `1px solid ${tone[d.status]}40` }}>
+                        <span className="text-xs font-semibold" style={{ color: tone[d.status], fontFamily: 'var(--font-mono)' }}>{d.value}</span>
+                        <span className="text-xs" style={{ color: '#A0A0A0', fontFamily: 'var(--font-sans)' }}>{d.label} · {d.detail}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg" style={{ background: '#242424', border: '1px solid #2E2E2E' }}>
+                      <span className="text-xs font-semibold" style={{ color: '#A0A0A0', fontFamily: 'var(--font-mono)' }}>{overviewStats.tsb}%</span>
+                      <span className="text-xs" style={{ color: 'var(--color-text-subtle)', fontFamily: 'var(--font-sans)' }}>training-log estimate</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
+            {/* Readiness factor breakdown (training-log estimate, when no fresh watch score) */}
+            {!watchReadiness && overviewStats.tsbFactors.length > 0 && (
               <div className="rounded-xl p-4" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                 <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#606060', fontFamily: 'var(--font-heading)' }}>
                   Readiness Breakdown — {overviewStats.tsb}%
@@ -1971,6 +2015,7 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               )}
+              {sess.zepp && <WatchWorkoutPanel zepp={sess.zepp} manualOriginal={sess.manualOriginal} />}
             </div>
           )
         })()}

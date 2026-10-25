@@ -112,6 +112,21 @@ alter table zepp_daily enable row level security;
 drop policy if exists "own rows select" on zepp_daily;
 create policy "own rows select" on zepp_daily for select using (auth.uid() = user_id);
 
+-- ─── zepp_workout_series (per-minute workout traces) ─────────────────────────
+-- MIGRATION (2026-10-25 b, run before deploying the History watch panel):
+-- points = [[minute, avg HR, altitude m, pace min/km], …], one per minute.
+-- Written only by scripts/zepp-sync.mjs (service role); users read their own.
+create table if not exists zepp_workout_series (
+  user_id    uuid references auth.users not null,
+  workout_id text not null,
+  points     jsonb not null,
+  updated_at timestamptz not null default now(),
+  primary key (user_id, workout_id)
+);
+alter table zepp_workout_series enable row level security;
+drop policy if exists "own rows select" on zepp_workout_series;
+create policy "own rows select" on zepp_workout_series for select using (auth.uid() = user_id);
+
 -- ─── Row Level Security ──────────────────────────────────────────────────────
 -- Every table must scope rows to auth.uid(). The app's client queries do NOT
 -- filter by user_id — they rely entirely on these policies.

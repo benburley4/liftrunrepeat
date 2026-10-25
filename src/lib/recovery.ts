@@ -43,6 +43,29 @@ export function latestReadiness(rows: ZeppDay[]): ZeppDay | null {
   return null
 }
 
+/** Watch readiness older than this many days is stale — fall back to the log-based estimate. */
+export const WATCH_READINESS_MAX_AGE_DAYS = 1
+
+export interface WatchReadiness {
+  day: ZeppDay
+  score: number
+  level: ReadinessLevel
+  trend: '↑' | '↓' | '→'   // vs the previous 7 scored days
+}
+
+/**
+ * The watch readiness to show in place of the training-log estimate, or null
+ * when the latest score is older than yesterday (watch not worn / not synced).
+ */
+export function freshWatchReadiness(rows: ZeppDay[], today: string, maxAgeDays = WATCH_READINESS_MAX_AGE_DAYS): WatchReadiness | null {
+  const day = latestReadiness(rows)
+  if (!day || day.readiness == null || day.date < shiftDate(today, -maxAgeDays)) return null
+  const prev = mean(rows.filter(r => r.date < day.date && r.date >= shiftDate(day.date, -7)).map(r => r.readiness))
+  const score = Math.round(day.readiness)
+  const trend = prev == null ? '→' : score > prev + 3 ? '↑' : score < prev - 3 ? '↓' : '→'
+  return { day, score, level: readinessLevel(score), trend }
+}
+
 export type DriverStatus = 'good' | 'neutral' | 'poor'
 
 export interface Driver {

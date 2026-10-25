@@ -1,6 +1,7 @@
 // Shared server-side stats computation — mirrors the useMemo logic in analytics/page.tsx
 
 import { exerciseVolume, type VolumeMultipliers } from './exerciseLoad'
+import type { ZeppStats } from './zeppImport'
 
 export interface ActualSet { reps: string; weight: string; rpe: string }
 export interface PlannedSet { reps: string; weight: string }
@@ -15,6 +16,12 @@ export interface SessionData {
   run?: LoggedRunEntry[]
   hikeKm?: number
   hikeElevationM?: number
+  // Watch (Zepp) import — see zeppImport.ts
+  source?: string
+  zepp?: ZeppStats
+  manualOriginal?: { hikeKm: number | null; hikeElevationM: number | null; distanceKm: number | null }
+  needsSets?: boolean
+  distanceKm?: number
 }
 
 export function segKm(seg: LoggedRunSegment): number {

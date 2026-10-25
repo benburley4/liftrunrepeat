@@ -26,6 +26,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { createClient } from '@supabase/supabase-js'
 import { planZeppImport } from '../src/lib/zeppImport.ts'
 import { buildZeppDaily, scaleBodyweight } from '../src/lib/zeppDaily.ts'
+import { downsampleSeries } from '../src/lib/zeppSeries.ts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const ZEPP_DB = process.env.ZEPP_DB
@@ -68,9 +69,38 @@ const workouts = db.prepare(`
          COALESCE(workout_type_override, workout_type) AS workoutType,
          start_time AS startTime, end_time AS endTime,
          distance_meters AS distanceM, elevation_gain_m AS elevationGainM,
-         avg_hr AS avgHr, max_hr AS maxHr, calories
+         avg_hr AS avgHr, max_hr AS maxHr, calories,
+         min_hr AS minHr, total_steps AS totalSteps, moving_seconds AS movingSeconds,
+         elevation_loss_m AS elevationLossM, max_altitude_m AS maxAltitudeM, min_altitude_m AS minAltitudeM,
+         training_effect AS trainingEffect, anaerobic_training_effect AS anaerobicTrainingEffect,
+         training_load AS trainingLoad, avg_cadence_spm AS avgCadenceSpm, avg_stride_cm AS avgStrideCm,
+         sample_count AS sampleCount
   FROM workouts WHERE start_time >= ? ORDER BY start_time`).all(since)
   .map(w => ({ ...w, workoutId: String(w.workoutId) }))
+
+// HR zones and km splits are small — attach them to each workout's stats.
+const zonesStmt = db.prepare(`
+  SELECT upper_bound_bpm AS upperBpm, seconds FROM workout_hr_zones WHERE workout_id = ? ORDER BY zone_index`)
+const splitsStmt = db.prepare(`
+  SELECT split_index AS km, distance_m AS distanceM, duration_seconds AS seconds,
+         avg_hr AS avgHr, elevation_gain_m AS elevationGainM
+  FROM workout_splits WHERE workout_id = ? ORDER BY split_index`)
+for (const w of workouts) {
+  w.hrZones = zonesStmt.all(w.workoutId).map(z => ({ upperBpm: z.upperBpm, seconds: z.seconds }))
+  w.splits = splitsStmt.all(w.workoutId).map(s => ({
+    km: s.km, distanceM: Math.round(s.distanceM), seconds: s.seconds,
+    avgHr: s.avgHr, elevationGainM: s.elevationGainM == null ? null : Math.round(s.elevationGainM),
+  }))
+}
+
+// Per-minute HR / altitude / pace traces (zepp_workout_series), recorded workouts only.
+const samplesStmt = db.prepare(`
+  SELECT timestamp, heart_rate AS heartRate, altitude, speed
+  FROM workout_samples WHERE workout_id = ? ORDER BY timestamp`)
+const series = workouts
+  .filter(w => w.sampleCount > 0)
+  .map(w => ({ workoutId: w.workoutId, points: downsampleSeries(samplesStmt.all(w.workoutId), w.startTime) }))
+  .filter(s => s.points.length > 1)
 
 // Daily recovery data for zepp_daily (same window).
 const dailyMetrics = db.prepare(`
@@ -170,4 +200,25 @@ if (DRY_RUN) {
   } else {
     console.log(`Wrote ${upserts.length} sessions`)
   }
+}
+
+// ── Per-minute traces for the sessions just written ──────────────────────────
+const linkedIds = new Set(plan.map(p => p.data.zepp?.workoutId).filter(Boolean))
+const traceRows = series
+  .filter(s => linkedIds.has(s.workoutId))
+  .map(s => ({ user_id: USER_ID, workout_id: s.workoutId, points: s.points, updated_at: new Date().toISOString() }))
+if (DRY_RUN) {
+  console.log(`${traceRows.length} workout traces`)
+} else {
+  let written = 0
+  for (let i = 0; i < traceRows.length; i += 50) {
+    const { error } = await supabase.from('zepp_workout_series')
+      .upsert(traceRows.slice(i, i + 50), { onConflict: 'user_id,workout_id' })
+    if (!error) { written += Math.min(50, traceRows.length - i); continue }
+    if (/zepp_workout_series/.test(error.message) && /not find|does not exist/i.test(error.message))
+      console.log('zepp_workout_series table missing — run the 2026-10-25 (b) migration in supabase/schema.sql')
+    else { console.error('Trace upsert failed:', error.message); process.exitCode = 1 }
+    break
+  }
+  if (written) console.log(`Wrote ${written} workout traces`)
 }

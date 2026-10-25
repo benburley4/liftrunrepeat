@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readinessLevel, latestReadiness, readinessDrivers, lastDays, withRollingMean, periodChange, recoveryToPrompt, ZeppDay } from '../recovery'
+import { readinessLevel, latestReadiness, readinessDrivers, lastDays, withRollingMean, periodChange, recoveryToPrompt, freshWatchReadiness, ZeppDay } from '../recovery'
 
 function day(date: string, fields: Partial<ZeppDay> = {}): ZeppDay {
   return {
@@ -109,5 +109,18 @@ describe('recoveryToPrompt', () => {
 
   it('returns nothing without watch data for the week', () => {
     expect(recoveryToPrompt(prior, '2026-11-15')).toBe('')
+  })
+})
+
+describe('freshWatchReadiness', () => {
+  const rows = [
+    day('2026-10-20', { readiness: 80 }), day('2026-10-21', { readiness: 78 }), day('2026-10-22', { readiness: 79 }),
+    day('2026-10-24', { readiness: 67 }), day('2026-10-25'),
+  ]
+  it("uses yesterday's score when today's isn't in yet, with a trend vs the prior week", () => {
+    expect(freshWatchReadiness(rows, '2026-10-25')).toMatchObject({ score: 67, level: 'planned', trend: '↓', day: { date: '2026-10-24' } })
+  })
+  it('is null when the latest score is older than yesterday', () => {
+    expect(freshWatchReadiness(rows, '2026-10-26')).toBeNull()
   })
 })

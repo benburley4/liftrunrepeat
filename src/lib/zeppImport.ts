@@ -21,7 +21,27 @@ export interface ZeppWorkout {
   avgHr?: number | null
   maxHr?: number | null
   calories?: number | null
+  // Detail extras (all optional — older/indoor recordings lack most of them).
+  minHr?: number | null
+  totalSteps?: number | null
+  movingSeconds?: number | null
+  elevationLossM?: number | null
+  maxAltitudeM?: number | null
+  minAltitudeM?: number | null
+  trainingEffect?: number | null
+  anaerobicTrainingEffect?: number | null
+  trainingLoad?: number | null
+  avgCadenceSpm?: number | null
+  avgStrideCm?: number | null
+  hrZones?: ZeppHrZone[]
+  splits?: ZeppSplit[]
 }
+
+/** Time in one HR zone; zones are bounded above by `upperBpm`. */
+export interface ZeppHrZone { upperBpm: number; seconds: number }
+
+/** One km split (the last one may be partial). */
+export interface ZeppSplit { km: number; distanceM: number; seconds: number; avgHr: number | null; elevationGainM: number | null }
 
 export interface ExistingSession {
   savedAt: string            // the row's saved_at, exactly as Supabase returned it
@@ -95,8 +115,11 @@ export function zeppKm(w: ZeppWorkout): number | null {
   return w.distanceM && w.distanceM > 0 ? round(w.distanceM / 1000, 2) : null
 }
 
+const roundOrNull = (n: number | null | undefined, dp = 0) => (n == null ? null : round(n, dp))
+
 export function zeppStats(w: ZeppWorkout) {
   const minutes = (new Date(w.endTime).getTime() - new Date(w.startTime).getTime()) / 60000
+  const zones = (w.hrZones ?? []).filter(z => z.upperBpm > 0)
   return {
     workoutId:      w.workoutId,
     workoutType:    w.workoutType,
@@ -108,8 +131,23 @@ export function zeppStats(w: ZeppWorkout) {
     avgHr:          w.avgHr ?? null,
     maxHr:          w.maxHr ?? null,
     calories:       w.calories ?? null,
+    minHr:          w.minHr ?? null,
+    steps:          w.totalSteps || null,
+    movingMin:      w.movingSeconds ? Math.round(w.movingSeconds / 60) : null,
+    elevationLossM: roundOrNull(w.elevationLossM),
+    maxAltitudeM:   roundOrNull(w.maxAltitudeM),
+    minAltitudeM:   roundOrNull(w.minAltitudeM),
+    trainingEffect: roundOrNull(w.trainingEffect, 1),
+    anaerobicTrainingEffect: roundOrNull(w.anaerobicTrainingEffect, 1),
+    trainingLoad:   roundOrNull(w.trainingLoad),
+    avgCadenceSpm:  roundOrNull(w.avgCadenceSpm),
+    avgStrideCm:    roundOrNull(w.avgStrideCm),
+    hrZones:        zones.some(z => z.seconds > 0) ? zones : null,
+    splits:         w.splits?.length ? w.splits : null,
   }
 }
+
+export type ZeppStats = ReturnType<typeof zeppStats> & { distanceMismatch?: boolean }
 
 // A watch distance within this fraction of the logged km replaces it; further
 // off (watch stopped early, part of the outing missed) the logged figures are

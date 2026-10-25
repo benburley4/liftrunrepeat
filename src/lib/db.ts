@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { dedupeSessions } from './sessionDedupe'
 import type { ZeppDailyRow } from './zeppDaily'
+import type { SeriesPoint } from './zeppSeries'
 
 export interface StoredSession {
   type: string
@@ -124,6 +125,17 @@ export async function getZeppDaily(): Promise<ZeppDailyRow[]> {
     .order('date', { ascending: true })
   throwIfError(error)
   return (data ?? []) as ZeppDailyRow[]
+}
+
+/** Per-minute trace for one watch workout, or null when none was synced. */
+export async function getZeppWorkoutSeries(workoutId: string): Promise<SeriesPoint[] | null> {
+  const { data, error } = await supabase
+    .from('zepp_workout_series')
+    .select('points')
+    .eq('workout_id', workoutId)
+    .maybeSingle()
+  if (error) return null  // table not migrated yet / no access — the panel just omits the charts
+  return (data?.points as SeriesPoint[] | undefined) ?? null
 }
 
 // ─── User Settings ────────────────────────────────────────────────────────────
