@@ -178,7 +178,8 @@ const plan = planZeppImport(workouts, rows.map(r => ({ savedAt: r.saved_at, data
 })
 const count = a => plan.filter(p => p.action === a).length
 console.log(`${workouts.length} Zepp workouts (${fromDate} to ${toDate}): `
-  + `${count('new')} new, ${count('enrich')} enriched manual, ${count('update')} already linked`)
+  + `${count('new')} new, ${count('enrich')} enriched manual, ${count('update')} already linked`
+  + (count('delete') ? `, ${count('delete')} watch-only placeholder(s) merged into logged sessions` : ''))
 
 // No process.exit() past this point: exiting with fetch sockets still open
 // trips a libuv assertion on Windows.
@@ -190,7 +191,12 @@ if (DRY_RUN) {
   }
 } else if (plan.length) {
   // ── Write ──────────────────────────────────────────────────────────────────
-  const upserts = plan.map(p => ({ user_id: USER_ID, saved_at: p.savedAt, data: p.data }))
+  const upserts = plan.filter(p => p.action !== 'delete')
+    .map(p => ({ user_id: USER_ID, saved_at: p.savedAt, data: p.data }))
+  for (const p of plan.filter(p => p.action === 'delete')) {
+    const { error } = await supabase.from('sessions').delete().eq('user_id', USER_ID).eq('saved_at', p.savedAt)
+    if (error) { console.error('Delete failed:', error.message); process.exitCode = 1 }
+  }
   const { error: writeError } = await supabase
     .from('sessions')
     .upsert(upserts, { onConflict: 'user_id,saved_at' })

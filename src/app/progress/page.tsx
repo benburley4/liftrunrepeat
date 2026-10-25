@@ -7,7 +7,13 @@ import {
 } from 'recharts'
 import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronRight, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
 import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, getSetting, upsertSetting, getZeppDaily, CoachReport } from '@/lib/db'
-import { freshWatchReadiness, readinessDrivers, localToday, READINESS_CALL, type WatchReadiness } from '@/lib/recovery'
+import { freshWatchReadiness, readinessDrivers, localToday, READINESS_CALL, type WatchReadiness, type ZeppDay } from '@/lib/recovery'
+import { assessLoad, footKind, weeklyHybridLoad } from '@/lib/activity'
+import StepsTab from '@/components/progress/StepsTab'
+import OnFootTab from '@/components/progress/OnFootTab'
+import FootRecords from '@/components/progress/FootRecords'
+import HybridLoadChart from '@/components/progress/HybridLoadChart'
+import LiftingEffort from '@/components/progress/LiftingEffort'
 import { epleyRM, classifyPPL, classifyBody } from '@/lib/computeStats'
 import { exerciseVolume } from '@/lib/exerciseLoad'
 import { useVolumeMultipliers } from '@/lib/useExerciseLoad'
@@ -18,7 +24,9 @@ import QuickLogFAB from '@/components/log/QuickLogFAB'
 import WatchWorkoutPanel from '@/components/history/WatchWorkoutPanel'
 import Link from 'next/link'
 
-type TabId = 'overview' | 'ai-coach' | 'prs' | 'history' | 'strength' | 'running' | 'hybrid'
+const SHORT_WALK_KM = 2
+
+type TabId = 'overview' | 'ai-coach' | 'prs' | 'history' | 'strength' | 'running' | 'steps' | 'hybrid'
 
 const chartTooltipStyle = {
   contentStyle: { background: '#242424', border: '1px solid #2E2E2E', borderRadius: '8px', fontFamily: 'var(--font-sans)' },
@@ -87,6 +95,12 @@ export default function AnalyticsPage() {
   const [history, setHistory] = useState<SavedSession[]>([])
   const [selected, setSelected] = useState<SavedSession | null>(null)
   const [watchReadiness, setWatchReadiness] = useState<WatchReadiness | null>(null)
+  const [zeppRows, setZeppRows] = useState<ZeppDay[]>([])
+  const [showShortWalks, setShowShortWalks] = useState(false)
+  // Short watch walks still count in every stat — they're only hidden from the History list.
+  const isShortWalk = (s: SavedSession) => s.source === 'zepp' && footKind(s) === 'walk' && (s.hikeKm ?? 0) < SHORT_WALK_KM
+  const shortWalkCount = history.filter(isShortWalk).length
+  const visibleHistory = showShortWalks ? history : history.filter(s => !isShortWalk(s))
   const [editing, setEditing] = useState(false)
   const [editSession, setEditSession] = useState<SavedSession | null>(null)
   const [aiCoachText, setAiCoachText] = useState('')
@@ -126,7 +140,7 @@ export default function AnalyticsPage() {
     }).catch(console.error)
     // Watch readiness replaces the training-log estimate while it's fresh.
     getZeppDaily()
-      .then(rows => setWatchReadiness(freshWatchReadiness(rows, localToday())))
+      .then(rows => { setZeppRows(rows); setWatchReadiness(freshWatchReadiness(rows, localToday())) })
       .catch(() => { /* no watch data — keep the log-based estimate */ })
   }, [])
 
@@ -971,7 +985,8 @@ export default function AnalyticsPage() {
     { id: 'prs', label: 'Personal Records' },
     { id: 'history', label: 'History' },
     { id: 'strength', label: 'Strength' },
-    { id: 'running', label: 'Running' },
+    { id: 'running', label: 'On Foot' },
+    { id: 'steps', label: 'Steps' },
     { id: 'hybrid', label: 'Hybrid' },
   ]
 
@@ -1101,8 +1116,27 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* Overtraining warning */}
-        {overviewStats.overtrained && (
+        {/* Load warning — with watch data, only a load rise WITH falling recovery is a warning */}
+        {(() => {
+          const status = assessLoad(zeppRows, localToday(), overviewStats.overtrained)
+          if (!status || status.kind === 'none') return null
+          const look = {
+            warn: { color: '#EF4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.3)', title: 'HIGH LOAD WARNING', icon: '⚠', tail: ' Consider dropping 1–2 sessions or swapping intensity for Zone 2 until readiness recovers.' },
+            coping: { color: '#00BFA5', bg: 'rgba(0,191,165,0.06)', border: 'rgba(0,191,165,0.25)', title: 'LOAD UP — RECOVERING WELL', icon: '✓', tail: ' Keep an eye on readiness over the next few days.' },
+            'recovery-low': { color: '#F59E0B', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.3)', title: 'RECOVERY DOWN', icon: '!', tail: '' },
+          }[status.kind]
+          return (
+            <div className="rounded-xl px-5 py-3 flex items-center gap-3 mb-2" style={{ background: look.bg, border: `1px solid ${look.border}` }}>
+              <span style={{ fontSize: 18, color: look.color }} aria-hidden="true">{look.icon}</span>
+              <div>
+                <span className="text-sm font-bold" style={{ color: look.color, fontFamily: 'var(--font-heading)' }}>{look.title}</span>
+                <span className="text-xs ml-2" style={{ color: '#A0A0A0' }}>{status.reason.charAt(0).toUpperCase() + status.reason.slice(1)}.{look.tail}</span>
+              </div>
+            </div>
+          )
+        })()}
+        {/* Training-log rule when there's no recent watch data */}
+        {overviewStats.overtrained && !assessLoad(zeppRows, localToday(), true) && (
           <div className="rounded-xl px-5 py-3 flex items-center gap-3 mb-2"
             style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)' }}>
             <span style={{ fontSize: 18 }}>⚠</span>
@@ -1458,6 +1492,9 @@ export default function AnalyticsPage() {
                 )
               })()}
             </div>
+            <div className="md:col-span-2">
+              <FootRecords sessions={history} />
+            </div>
           </div>
         )}
 
@@ -1475,6 +1512,13 @@ export default function AnalyticsPage() {
                   cursor: 'pointer', fontFamily: 'var(--font-sans)',
                 }}>{v}</button>
             ))}
+            {historySubTab === 'sessions' && shortWalkCount > 0 && (
+              <button onClick={() => setShowShortWalks(v => !v)} aria-pressed={showShortWalks}
+                className="ml-auto px-3 py-1.5 rounded-lg text-xs"
+                style={{ background: '#1A1A1A', color: showShortWalks ? '#00BFA5' : '#A0A0A0', border: '1px solid #2E2E2E', cursor: 'pointer', fontFamily: 'var(--font-sans)' }}>
+                {showShortWalks ? 'Hide' : 'Show'} {shortWalkCount} short watch walks (&lt; {SHORT_WALK_KM} km)
+              </button>
+            )}
           </div>
         )}
 
@@ -1517,10 +1561,16 @@ export default function AnalyticsPage() {
                         <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{s.name}</p>
                         <p className="text-xs mt-0.5" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{dateLabel}</p>
                       </div>
-                      {totalKm > 0 && (
-                        <span className="text-sm font-bold flex-shrink-0" style={{ color: '#C8102E', fontFamily: 'var(--font-mono)' }}>
-                          {totalKm % 1 === 0 ? totalKm : totalKm.toFixed(1)} km
+                      {totalKm + (s.hikeKm ?? 0) > 0 && (
+                        <span className="text-sm font-bold flex-shrink-0" style={{ color: totalKm > 0 ? '#C8102E' : '#84CC16', fontFamily: 'var(--font-mono)' }}>
+                          {Math.round((totalKm + (s.hikeKm ?? 0)) * 10) / 10} km
                         </span>
+                      )}
+                      {s.needsSets && (
+                        <Link href={`/log/session?date=${s.date}`} onClick={e => e.stopPropagation()}
+                          className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
+                          style={{ background: 'rgba(245,158,11,0.12)', color: '#F59E0B', border: '1px solid rgba(245,158,11,0.3)', fontFamily: 'var(--font-sans)' }}
+                          title="Recorded on your watch — log the sets you did">Add sets</Link>
                       )}
                       <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0"
                         style={{ background: `${col}22`, color: col, fontFamily: 'var(--font-sans)' }}>{s.type}</span>
@@ -1586,7 +1636,7 @@ export default function AnalyticsPage() {
               const monthMap: Record<string, SavedSession[]> = {}
               const yearMap: Record<string, SavedSession[]> = {}
 
-              for (const s of history) {
+              for (const s of visibleHistory) {
                 const d = new Date(s.date + 'T00:00:00')
                 if (d.getFullYear() === currentYear) {
                   const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`
@@ -2166,6 +2216,9 @@ export default function AnalyticsPage() {
               </div>
             ) : (
               <>
+                <LiftingEffort sessions={history} volumeOf={s =>
+                  (s.exercises ?? []).reduce((es, ex) => es + exerciseVolume(ex.exerciseName, ex.actualSets, volMults), 0)} />
+
                 {/* 1RM Trend */}
                 {strengthData.topExercises.length > 0 && (
                   <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
@@ -2250,29 +2303,9 @@ export default function AnalyticsPage() {
 
         {/* RUNNING TAB */}
         {activeTab === 'running' && (
-          !runningData ? (
-            <div className="rounded-xl p-12 text-center" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-              <p className="text-sm font-semibold" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No run sessions logged yet.</p>
-              <p className="text-xs mt-1" style={{ color: '#3E3E3E' }}>Log a running session to see your trends here.</p>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
-                <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
-                  Weekly Mileage — 12 Weeks
-                </h3>
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={runningData.weeklyKm}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
-                    <XAxis dataKey="week" stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
-                    <YAxis stroke="#606060" tick={{ fill: '#606060', fontSize: 11, fontFamily: 'var(--font-mono)' }} />
-                    <Tooltip {...chartTooltipStyle} formatter={(v: unknown) => [`${v} km`, 'Distance']} />
-                    <Bar dataKey="km" name="Km" fill="#C8102E" opacity={0.75} radius={[3, 3, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {runningData.runTypeMix.length > 0 && (
+          <div className="space-y-6">
+            <OnFootTab sessions={history} today={localToday()} />
+              {runningData && runningData.runTypeMix.length > 0 && (
                 <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
                   <h3 className="text-xl font-black uppercase mb-6" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                     Run Type Mix
@@ -2320,8 +2353,12 @@ export default function AnalyticsPage() {
                   </div>
                 </div>
               )}
-            </>
-          )
+          </div>
+        )}
+
+        {/* STEPS TAB */}
+        {activeTab === 'steps' && (
+          <StepsTab rows={zeppRows} sessions={history} today={localToday()} />
         )}
 
         {/* HYBRID TAB */}
@@ -2333,7 +2370,11 @@ export default function AnalyticsPage() {
             </div>
           ) : (
           <>
-            {/* Dual-axis chart */}
+            {/* Watch HR load (one scale for lifting and cardio) */}
+            <HybridLoadChart sessions={history} today={localToday()} />
+
+            {/* Training-log fallback without watch data: km vs tonnage (dual axis) */}
+            {!weeklyHybridLoad(history, localToday(), 12).some(w => w.strength + w.cardio > 0) && (
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
               <h3 className="text-xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
                 Strength vs Mileage — 12 Weeks
@@ -2351,6 +2392,7 @@ export default function AnalyticsPage() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            )}
 
             {/* Balance */}
             <div className="rounded-xl p-5" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>

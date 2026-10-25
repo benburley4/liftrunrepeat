@@ -270,6 +270,12 @@ export default function LogSessionPage() {
     const d = new Date()
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
+  // ?date=YYYY-MM-DD opens the logger on that day (e.g. "Add sets" for a
+  // watch-recorded strength session). Read after mount: the page is prerendered.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('date')
+    if (q && /^\d{4}-\d{2}-\d{2}$/.test(q)) setSelectedIso(q)
+  }, [])
   const [loggedExercises, setLoggedExercises] = useState<LoggedExercise[]>([])
   const [bwOverrides, setBwOverrides] = useState<BwOverrides>({})
   const [loggedRun, setLoggedRun] = useState<LoggedRunEntry[]>([])

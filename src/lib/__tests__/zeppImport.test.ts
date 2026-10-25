@@ -130,6 +130,18 @@ describe('planZeppImport', () => {
     expect(again.data.needsSets).toBe(false)
   })
 
+  it('merges a watch-only strength placeholder into sets logged later the same day', () => {
+    const strength: ZeppWorkout = { ...walk, workoutType: 'strength', distanceM: null, elevationGainM: null }
+    const [placeholder] = planZeppImport([strength], [])
+    const logged: ExistingSession = { savedAt: 'logged', data: {
+      type: 'lift', name: 'Upper A', date: '2026-10-25',
+      exercises: [{ id: 'ex-1', exerciseName: 'Bench Press', plannedSets: [], actualSets: [{ reps: '5', weight: '80', rpe: '' }] }],
+    } }
+    const rows = planZeppImport([strength], [{ savedAt: placeholder.savedAt, data: placeholder.data }, logged])
+    expect(rows.map(r => [r.action, r.savedAt])).toEqual([['delete', placeholder.savedAt], ['enrich', 'logged']])
+    expect(rows[1].data).toMatchObject({ name: 'Upper A', zepp: { workoutId: '100' } })
+  })
+
   it('only prompts for sets on recent watch-only strength workouts', () => {
     const strength: ZeppWorkout = { ...walk, workoutType: 'strength', distanceM: null, elevationGainM: null }
     const [old] = planZeppImport([strength], [], { needsSetsSince: '2026-11-01T00:00:00Z' })

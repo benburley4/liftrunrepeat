@@ -51,7 +51,8 @@ export interface ExistingSession {
 export interface PlannedRow {
   savedAt: string
   data: Record<string, unknown>
-  action: 'new' | 'enrich' | 'update'
+  // 'delete': a watch-only placeholder whose workout moved onto a logged session.
+  action: 'new' | 'enrich' | 'update' | 'delete'
 }
 
 export const DEFAULT_TIME_ZONE = 'Asia/Hong_Kong'
@@ -272,6 +273,18 @@ export function planZeppImport(
     if (durationMin(w) < MIN_WORKOUT_MINUTES) continue
     const s = byWorkoutId.get(String(w.workoutId))
     if (!s) { unlinked.push(w); continue }
+    // A watch-only "add your sets" session whose sets were since logged as a
+    // separate manual session: hand the workout over to that session (step 2
+    // matches it) and remove the placeholder.
+    if (s.data.source === 'zepp' && s.data.needsSets) {
+      const date = String(s.data.date ?? '')
+      const matchable = MATCHABLE_TYPES[String(s.data.type)] ?? [String(s.data.type)]
+      if ((manualByDate.get(date) ?? []).some(m => matchable.includes(String(m.data.type)) && ((m.data.exercises as unknown[] | undefined)?.length ?? 0) > 0)) {
+        planned.push({ savedAt: s.savedAt, data: s.data, action: 'delete' })
+        unlinked.push(w)
+        continue
+      }
+    }
     const data = { ...s.data }
     const prev = s.data.zepp as { distanceMismatch?: boolean } | undefined
     applyMeasurements(data, w, prev?.distanceMismatch === true)
