@@ -10,9 +10,11 @@ import { READINESS_THRESHOLDS, lastDays, withRollingMean, periodChange, ZeppDay 
 import { chartTooltipStyle, axisProps, BASELINE_GREY, SLEEP_STAGE_COLORS, fmtDay } from './chartStyle'
 
 const RANGES = [
+  { label: '7 days', days: 7 },
   { label: '30 days', days: 30 },
   { label: '90 days', days: 90 },
   { label: '180 days', days: 180 },
+  { label: '1 year', days: 365 },
   { label: 'All', days: null },
 ] as const
 
@@ -52,6 +54,9 @@ export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today
       awakeH: r.awake_min != null ? r.awake_min / 60 : null,
     }))
   }, [rows, range, today])
+
+  // Few points (e.g. 7 days) read better with each day marked.
+  const showDots = data.length <= 31
 
   const cmp = {
     readiness: periodChange(rows, 'readiness', period, today),
@@ -126,7 +131,7 @@ export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today
               {[READINESS_THRESHOLDS.easy, READINESS_THRESHOLDS.planned, READINESS_THRESHOLDS.go].map(y => (
                 <ReferenceLine key={y} y={y} stroke="#3E3E3E" strokeDasharray="2 4" />
               ))}
-              <Line isAnimationActive={false} name="Readiness" type="monotone" dataKey="readiness" stroke="#00BFA5" strokeWidth={2} dot={false} connectNulls activeDot={{ r: 5 }} />
+              <Line isAnimationActive={false} name="Readiness" type="monotone" dataKey="readiness" stroke="#00BFA5" strokeWidth={2} dot={showDots ? { r: 3 } : false} connectNulls activeDot={{ r: 5 }} />
               <Line isAnimationActive={false} name="7-day avg" type="monotone" dataKey="readiness7" stroke={BASELINE_GREY} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
             </LineChart>
           </ResponsiveContainer>
@@ -140,7 +145,7 @@ export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today
               <YAxis {...axisProps} domain={['dataMin - 5', 'dataMax + 5']} unit=" ms" width={60} />
               <Tooltip {...chartTooltipStyle} labelFormatter={tooltipLabel} formatter={(v: unknown) => `${Math.round(Number(v))} ms`} />
               <Legend itemSorter={null} wrapperStyle={{ fontSize: 11, color: '#A0A0A0' }} />
-              <Line isAnimationActive={false} name="HRV" type="monotone" dataKey="sleep_hrv_ms" stroke="#00BFA5" strokeWidth={2} dot={false} connectNulls activeDot={{ r: 5 }} />
+              <Line isAnimationActive={false} name="HRV" type="monotone" dataKey="sleep_hrv_ms" stroke="#00BFA5" strokeWidth={2} dot={showDots ? { r: 3 } : false} connectNulls activeDot={{ r: 5 }} />
               <Line isAnimationActive={false} name="Baseline" type="monotone" dataKey="hrv_baseline_ms" stroke={BASELINE_GREY} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
             </LineChart>
           </ResponsiveContainer>
@@ -154,7 +159,7 @@ export default function RecoveryTrends({ rows, today }: { rows: ZeppDay[]; today
               <YAxis {...axisProps} domain={['dataMin - 3', 'dataMax + 3']} unit=" bpm" width={64} />
               <Tooltip {...chartTooltipStyle} labelFormatter={tooltipLabel} formatter={(v: unknown) => `${Math.round(Number(v))} bpm`} />
               <Legend itemSorter={null} wrapperStyle={{ fontSize: 11, color: '#A0A0A0' }} />
-              <Line isAnimationActive={false} name="Sleeping HR" type="monotone" dataKey="rhr" stroke="#00BFA5" strokeWidth={2} dot={false} connectNulls activeDot={{ r: 5 }} />
+              <Line isAnimationActive={false} name="Sleeping HR" type="monotone" dataKey="rhr" stroke="#00BFA5" strokeWidth={2} dot={showDots ? { r: 3 } : false} connectNulls activeDot={{ r: 5 }} />
               <Line isAnimationActive={false} name="Baseline" type="monotone" dataKey="rhr_baseline" stroke={BASELINE_GREY} strokeWidth={2} strokeDasharray="5 4" dot={false} connectNulls />
             </LineChart>
           </ResponsiveContainer>
