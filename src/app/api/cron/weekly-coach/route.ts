@@ -32,6 +32,7 @@ import { dedupeSessions } from '@/lib/sessionDedupe'
 import { COACH_SYSTEM_PROMPT } from '@/lib/coachPrompt'
 import { completeChat, deepseekConfigured } from '@/lib/server/deepseek'
 import { profileToPrompt, AthleteProfile } from '@/lib/athleteProfile'
+import { recoveryToPrompt, CoachSession, ZeppDay } from '@/lib/recovery'
 
 const CRON_SECRET = process.env.CRON_SECRET ?? ''
 
@@ -48,6 +49,7 @@ async function generateReport(
   stats: ReturnType<typeof computeStats>,
   profileText: string,
   previousRecommendations: string,
+  recoveryText: string,
 ): Promise<string> {
   const { overview, totalSessions, strengthSummary, runSummary, breakdown, balance } = stats
 
@@ -90,6 +92,7 @@ async function generateReport(
          `- Body parts: ${breakdown.bodySlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / bodyTotal) * 100)}%`).join(', ')}`].join('\n')
       : '',
     balance ? `SESSION BALANCE: ${balance.liftPct}% strength, ${balance.runPct}% running` : '',
+    recoveryText ? `\n${recoveryText}` : '',
     profileText ? `\n${profileText}` : '',
     previousRecommendations
       ? `\nLAST WEEK'S COACH RECOMMENDATIONS (follow up on these — acknowledge what the athlete acted on and what they ignored):\n${previousRecommendations}`
@@ -193,8 +196,21 @@ export async function GET(req: NextRequest) {
       let mults: VolumeMultipliers | undefined
       try { mults = multRow?.value ? JSON.parse(multRow.value) as VolumeMultipliers : undefined } catch { /* malformed — use defaults */ }
 
+      // Watch recovery data (Zepp) — this week plus 4 weeks of comparison and
+      // 2 more for the bodyweight trend. Optional: no rows → no RECOVERY block.
+      const since = new Date(`${weekEnding}T00:00:00Z`)
+      since.setUTCDate(since.getUTCDate() - 42)
+      const { data: zeppRows } = await supabaseAdmin
+        .from('zepp_daily')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('date', since.toISOString().slice(0, 10))
+        .lte('date', weekEnding)
+        .order('date', { ascending: true })
+      const recoveryText = recoveryToPrompt((zeppRows ?? []) as ZeppDay[], weekEnding, history as CoachSession[])
+
       const stats = computeStats(history, weekEnding, mults)
-      const reportText = await generateReport(stats, profileText, previousRecommendations)
+      const reportText = await generateReport(stats, profileText, previousRecommendations, recoveryText)
 
       const { error: saveErr } = await supabaseAdmin
         .from('coach_reports')

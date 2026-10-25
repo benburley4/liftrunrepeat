@@ -174,4 +174,11 @@ shows nothing fake — per IMPROVEMENT_PLAN B6).
   Today (readiness, call, drivers, physical/mental) and Trends (30-day vs
   previous, readiness / HRV / sleeping HR / sleep-stage charts, 30/90/180/All).
   Logic in `src/lib/recovery.ts` (tested); sleep-stage palette validated for
-  CVD on the dark surface. Previewed at desktop and 500px. Not yet deployed.
+  CVD on the dark surface. Previewed at desktop and 500px. Deployed.
+- 2026-10-25: Phase 3.1 done — weekly coach gets a RECOVERY block
+  (`recoveryToPrompt` in `src/lib/recovery.ts`, tested): readiness vs
+  previous 4 weeks with day counts per call, HRV / sleeping HR vs baseline,
+  sleep, watch load, stress, scale weight trend, watch-recorded session
+  effort, and RECOVERY FLAGS. Coach prompt adds a "## RECOVERY" section and
+  trusts watch readiness over the log-based estimate. Deployed; first report
+  with recovery: week ending 2026-10-25.

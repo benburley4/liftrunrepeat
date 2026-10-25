@@ -118,6 +118,106 @@ export function withRollingMean<K extends keyof ZeppDay>(rows: ZeppDay[], key: K
   })
 }
 
+// ─── Weekly AI coach ─────────────────────────────────────────────────────────
+
+/** The bits of a saved session the coach summary needs. */
+export interface CoachSession {
+  date: string
+  type: string
+  zepp?: { durationMin?: number | null; avgHr?: number | null } | null
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10
+const pctChange = (cur: number, prev: number) => Math.round(((cur - prev) / prev) * 100)
+
+/**
+ * RECOVERY block for the weekly coach prompt: the week ending `weekEnding`
+ * (7 days) against the 4 weeks before it, plus watch-measured session effort.
+ * Returns '' when the week has no watch data.
+ */
+export function recoveryToPrompt(rows: ZeppDay[], weekEnding: string, sessions: CoachSession[] = []): string {
+  const weekStart = shiftDate(weekEnding, -6)
+  const week = rows.filter(r => r.date >= weekStart && r.date <= weekEnding)
+  const prior = rows.filter(r => r.date >= shiftDate(weekStart, -28) && r.date < weekStart)
+  if (!week.some(r => r.readiness != null || r.sleep_min != null)) return ''
+
+  const avg = (list: ZeppDay[], key: keyof ZeppDay) => mean(list.map(r => r[key] as number | null))
+  const lines: string[] = ['RECOVERY (measured by the athlete\'s Zepp watch — this week vs the previous 4 weeks):']
+
+  const rWeek = avg(week, 'readiness'), rPrior = avg(prior, 'readiness')
+  if (rWeek != null) {
+    const scored = week.filter(r => r.readiness != null)
+    const counts = { go: 0, planned: 0, easy: 0, rest: 0 }
+    for (const r of scored) counts[readinessLevel(r.readiness!)]++
+    const low = scored.reduce((a, b) => (b.readiness! < a.readiness! ? b : a))
+    lines.push(`- Watch readiness (0–100): avg **${Math.round(rWeek)}**${rPrior != null ? ` (previous 4 weeks ${Math.round(rPrior)})` : ''}; `
+      + `days: ${counts.go} go-hard (≥${READINESS_THRESHOLDS.go}), ${counts.planned} as-planned, ${counts.easy} keep-easy, ${counts.rest} rest (<${READINESS_THRESHOLDS.easy}); `
+      + `lowest ${Math.round(low.readiness!)} on ${low.date}`)
+  }
+
+  const hrv = avg(week, 'sleep_hrv_ms'), hrvBase = avg(week, 'hrv_baseline_ms')
+  if (hrv != null && hrvBase) {
+    const below = week.filter(r => r.sleep_hrv_ms != null && r.hrv_baseline_ms && r.sleep_hrv_ms < r.hrv_baseline_ms * 0.9).length
+    lines.push(`- Overnight HRV: avg **${Math.round(hrv)} ms** vs personal baseline ${Math.round(hrvBase)} ms (${pctChange(hrv, hrvBase) >= 0 ? '+' : ''}${pctChange(hrv, hrvBase)}%); ${below} night(s) more than 10% below baseline`)
+  }
+
+  const rhr = avg(week, 'sleep_rhr'), rhrBase = avg(week, 'rhr_baseline')
+  if (rhr != null && rhrBase) {
+    const diff = round1(rhr - rhrBase)
+    lines.push(`- Sleeping heart rate: avg **${Math.round(rhr)} bpm** vs baseline ${Math.round(rhrBase)} bpm (${diff >= 0 ? '+' : ''}${diff})`)
+  }
+
+  const sleep = avg(week, 'sleep_min'), sleepPrior = avg(prior, 'sleep_min')
+  if (sleep != null) {
+    const short = week.filter(r => r.sleep_min != null && r.sleep_min < 360).length
+    const score = avg(week, 'sleep_score')
+    lines.push(`- Sleep: avg **${round1(sleep / 60)} h/night**${sleepPrior != null ? ` (previous 4 weeks ${round1(sleepPrior / 60)} h)` : ''}; `
+      + `${short} night(s) under 6 h${score != null ? `; avg sleep score ${Math.round(score)}` : ''}`)
+  }
+
+  const load = avg(week, 'training_load'), loadPrior = avg(prior, 'training_load')
+  if (load != null && loadPrior) {
+    lines.push(`- Watch training load: avg ${Math.round(load)} vs ${Math.round(loadPrior)} previous 4 weeks (${pctChange(load, loadPrior) >= 0 ? '+' : ''}${pctChange(load, loadPrior)}%)`)
+  }
+
+  const stress = avg(week, 'stress_avg')
+  if (stress != null) lines.push(`- Daytime stress (0–100): avg ${Math.round(stress)}`)
+
+  const weights = rows.filter(r => r.weight_kg != null && r.date <= weekEnding)
+  const lastW = weights.at(-1)
+  const monthAgo = [...weights].reverse().find(r => r.date <= shiftDate(weekEnding, -28))
+  if (lastW && lastW.date >= shiftDate(weekEnding, -13)) {
+    lines.push(`- Bodyweight (scale): ${lastW.weight_kg} kg${monthAgo ? ` (${round1(lastW.weight_kg! - monthAgo.weight_kg!) >= 0 ? '+' : ''}${round1(lastW.weight_kg! - monthAgo.weight_kg!)} kg over 4 weeks)` : ''}`)
+  }
+
+  // Watch-measured effort of this week's logged sessions.
+  const groups: Record<string, { n: number; min: number; hrMin: number }> = {}
+  for (const s of sessions) {
+    if (s.date < weekStart || s.date > weekEnding || !s.zepp?.durationMin) continue
+    const g = s.type === 'lift' || s.type === 'hybrid' ? 'Strength/hybrid' : s.type === 'hike' ? 'Hikes/walks' : 'Other cardio'
+    groups[g] ??= { n: 0, min: 0, hrMin: 0 }
+    groups[g].n++
+    groups[g].min += s.zepp.durationMin
+    if (s.zepp.avgHr) groups[g].hrMin += s.zepp.avgHr * s.zepp.durationMin
+  }
+  const parts = Object.entries(groups).map(([g, v]) =>
+    `${g} ${v.n} session(s), ${round1(v.min / 60)} h${v.hrMin ? `, avg HR ${Math.round(v.hrMin / v.min)}` : ''}`)
+  if (parts.length) lines.push(`- Watch-recorded sessions: ${parts.join('; ')}`)
+
+  // Warning signs the coach should act on.
+  const flags: string[] = []
+  if (rWeek != null && rPrior != null && load != null && loadPrior && rWeek <= rPrior - 5 && load >= loadPrior * 1.1)
+    flags.push('readiness falling while training load rises — classic overreaching pattern')
+  const hrvLow = week.filter(r => r.sleep_hrv_ms != null && r.hrv_baseline_ms && r.sleep_hrv_ms < r.hrv_baseline_ms * 0.9).length
+  if (hrvLow >= 4) flags.push(`HRV suppressed on ${hrvLow} of 7 nights`)
+  const shortNights = week.filter(r => r.sleep_min != null && r.sleep_min < 360).length
+  if (shortNights >= 2) flags.push(`${shortNights} short nights (<6 h)`)
+  if (rhr != null && rhrBase && rhr - rhrBase >= 3) flags.push(`sleeping HR ${Math.round(rhr - rhrBase)} bpm above baseline`)
+  if (flags.length) lines.push(`- ⚠ RECOVERY FLAGS: ${flags.join('; ')}`)
+
+  return lines.join('\n')
+}
+
 export interface PeriodChange { current: number | null; previous: number | null; change: number | null }
 
 /** Average of `key` over the last `days` vs the `days` before that. */
