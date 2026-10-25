@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import { exercises } from '@/lib/exerciseLibrary'
 import { formatTimeInput } from '@/lib/utils'
+import { getZeppDaily } from '@/lib/db'
+import { watchDefaults, type WatchDefaults } from '@/lib/activity'
+import { localToday } from '@/lib/recovery'
 
 type TabId = '1rm' | 'wilks' | 'vo2' | 'macro' | '531'
 
@@ -137,6 +140,21 @@ export default function ToolsPage() {
       if (saved.tm531Pct !== undefined) setTm531Pct(saved.tm531Pct)
       if (saved.lift531Names) setLift531Names(saved.lift531Names)
     } catch { /* ignore */ }
+  }, [])
+
+  // Prefill empty fields from the watch (resting HR, scale weight, activity
+  // from daily steps). Never overwrites values the user entered.
+  const [watch, setWatch] = useState<WatchDefaults | null>(null)
+  useEffect(() => {
+    getZeppDaily().then(rows => {
+      const d = watchDefaults(rows, localToday())
+      setWatch(d)
+      if (d.restingHr) setRestingHR(v => v || String(d.restingHr))
+      if (d.bodyweightKg) {
+        setWilksBodyweight(v => v || String(d.bodyweightKg))
+        setMacroWeight(v => v || String(d.bodyweightKg))
+      }
+    }).catch(() => { /* signed out or no watch data */ })
   }, [])
 
   // Persist state on every change
@@ -517,6 +535,7 @@ export default function ToolsPage() {
               <div>
                 <label className="text-xs uppercase tracking-wider mb-1 block" style={{ color: '#606060' }}>Resting Heart Rate (bpm)</label>
                 <input type="number" value={restingHR} onChange={e => setRestingHR(e.target.value)} placeholder="52" className="w-full max-w-xs px-4 py-3 rounded-xl outline-none" style={inputStyle} />
+                {watch?.restingHr && <p className="text-xs mt-1" style={{ color: 'var(--color-text-subtle)' }}>Your watch: {watch.restingHr} bpm (7-day average)</p>}
               </div>
             )}
 
@@ -628,6 +647,11 @@ export default function ToolsPage() {
 
             <div>
               <label className="text-xs uppercase tracking-wider mb-2 block" style={{ color: '#606060' }}>Activity Level</label>
+              {watch?.activity && watch.avgSteps && (
+                <p className="text-xs mb-2" style={{ color: 'var(--color-text-subtle)' }}>
+                  Your watch: {watch.avgSteps.toLocaleString()} steps/day over 30 days — suggests <strong style={{ color: '#F5F5F5' }}>{watch.activity}</strong>.
+                </p>
+              )}
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { v: 'light' as const, label: 'Light', desc: '1-3 sessions/wk' },

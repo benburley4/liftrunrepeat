@@ -134,7 +134,7 @@ Ordered by value for a hybrid lifter/hiker. ✅ = done.
 | R11 | **Running page › Connect your wearable** | Greyed-out Garmin/Strava. | Show Zepp as connected with last sync time; HR zones from the watch's max HR. |
 | R12 | **Profile** | Manual. | Prefill weight, height, resting/max HR from the watch (editable). |
 | R13 | **Recovery page** | Today + trends ✅ | Load vs recovery, cardio efficiency, weight, illness early-warning (resp. rate + skin temp + RHR up together), SpO₂ / stress. |
-| R14 | **Morning Telegram** | — | 07:00 message: readiness, call, today's programmed session (Telegram, per notification preference). |
+| R14 | **Morning Telegram** | — | 07:00 message: readiness, call, today's programmed session (Telegram, per notification preference). **Deferred — user is setting up a new bot first.** |
 | R15 | **History** | Watch panel ✅, readiness tile ✅ | Hide watch walks < 2 km in lists (decided); "add sets" prompt. |
 | R16 | **Privacy page** | No mention of watch data. | Add HR/HRV/sleep/SpO₂ (sensitive health data): where stored, how to delete. |
 
@@ -205,3 +205,16 @@ Ordered by value for a hybrid lifter/hiker. ✅ = done.
   effort, and RECOVERY FLAGS. Coach prompt adds a "## RECOVERY" section and
   trusts watch readiness over the log-based estimate. Deployed; first report
   with recovery: week ending 2026-10-25.
+- 2026-10-25: Site review R1–R13, R15, R16 built and deployed in batches:
+  History watch panel + per-minute traces (`zepp_workout_series`), watch-first
+  readiness tile; Steps tab; Running → On Foot (hikes/walks/runs, records,
+  aerobic efficiency); load warning = load up AND recovery down; Hybrid HR-zone
+  load; Lifting Effort; on-foot PRs; short-walk hiding + "Add sets" (sync
+  merges placeholder into logged sets); Today watch card; Home strip;
+  Recovery: illness warning, load vs recovery, night vitals, weight; AI
+  generator/review/revamp get WATCH DATA + programme response
+  (`src/lib/athleteContext.ts`); Tools/Profile prefill from the watch;
+  Running page shows the connected watch + HR zones; Privacy page covers
+  health data. Implausible recordings (left running, GPS jumps) excluded from
+  time/pace/HR stats. R14 (Telegram) deferred.
+

@@ -1,5 +1,6 @@
 import { requireUser, checkAndRecordAIUse } from '@/lib/server/requireUser'
 import { streamChat, deepseekConfigured } from '@/lib/server/deepseek'
+import { WATCH_DATA_GUIDANCE } from '@/lib/coachPrompt'
 
 export const maxDuration = 60
 
@@ -150,7 +151,7 @@ export async function POST(req: Request) {
   const userMessage = `Here is my current training programme:\n\n${programmeText}${profile ? `\n\n${profile}` : ''}${context ? `\n\nAdditional context:\n${context}` : ''}`
 
   try {
-    return await streamChat({ system: SYSTEM_PROMPT, user: userMessage, maxTokens: 4000 })
+    return await streamChat({ system: SYSTEM_PROMPT + WATCH_DATA_GUIDANCE, user: userMessage, maxTokens: 4000 })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('DeepSeek API error:', message)

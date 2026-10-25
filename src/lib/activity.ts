@@ -253,6 +253,65 @@ export function weeklyHybridLoad(sessions: SessionData[], today: string, weeks =
   return [...out.values()]
 }
 
+// ─── Prefill values for Tools / Profile (R10, R12) ───────────────────────────
+
+export interface WatchDefaults {
+  restingHr: number | null          // 7-day average
+  bodyweightKg: number | null       // latest scale reading
+  activity: 'light' | 'moderate' | 'heavy' | null  // from 30-day average steps
+  avgSteps: number | null
+}
+
+export function watchDefaults(rows: ZeppDay[], today: string): WatchDefaults {
+  const last = (days: number) => rows.filter(r => r.date > shiftDate(today, -days) && r.date <= today)
+  const rhr = mean(last(7).map(r => r.resting_hr ?? r.sleep_rhr).filter((v): v is number => v != null))
+  const steps = mean(last(30).map(r => r.steps).filter((v): v is number => v != null && v > 0))
+  const weight = [...rows].reverse().find(r => r.weight_kg != null && r.date <= today)
+  return {
+    restingHr: r0(rhr),
+    bodyweightKg: weight?.weight_kg ?? null,
+    activity: steps == null ? null : steps < 8000 ? 'light' : steps <= 14000 ? 'moderate' : 'heavy',
+    avgSteps: r0(steps),
+  }
+}
+
+// ─── AI prompts: watch context (R7) ──────────────────────────────────────────
+
+/**
+ * WATCH DATA block for the AI programme generator / review / revamp: the last
+ * 4 weeks of recovery, typical on-foot volume, steps and scale weight, so
+ * plans start from the athlete's real recovery and everyday activity.
+ * Returns '' without watch data.
+ */
+export function watchContextToPrompt(rows: ZeppDay[], sessions: SessionData[], today: string): string {
+  const from = shiftDate(today, -27)
+  const recent = rows.filter(r => r.date >= from && r.date <= today)
+  if (!recent.some(r => r.readiness != null || r.steps != null)) return ''
+  const avg = (k: keyof ZeppDay) => mean(recent.map(r => r[k] as number | null).filter((v): v is number => v != null))
+  const lines: string[] = ['WATCH DATA (Zepp, last 4 weeks — use it to set realistic starting load):']
+
+  const readiness = avg('readiness')
+  const latest = [...recent].reverse().find(r => r.readiness != null)
+  if (readiness != null) lines.push(`- Readiness avg ${Math.round(readiness)}/100${latest ? `; latest ${Math.round(latest.readiness!)} (${latest.date})` : ''}`)
+  const hrv = avg('sleep_hrv_ms'), hrvBase = avg('hrv_baseline_ms')
+  if (hrv != null && hrvBase) lines.push(`- Overnight HRV avg ${Math.round(hrv)} ms vs baseline ${Math.round(hrvBase)} ms`)
+  const rhr = avg('sleep_rhr'), rhrBase = avg('rhr_baseline')
+  if (rhr != null && rhrBase) lines.push(`- Sleeping HR avg ${Math.round(rhr)} bpm vs baseline ${Math.round(rhrBase)}`)
+  const sleep = avg('sleep_min')
+  if (sleep != null) lines.push(`- Sleep avg ${r1(sleep / 60)} h/night`)
+  const steps = avg('steps')
+  if (steps != null) lines.push(`- Daily steps avg ${Math.round(steps).toLocaleString('en-US')}`)
+
+  const weeks = weeklyOnFoot(sessions, today, 4)
+  const km = mean(weeks.map(w => w.run + w.hike + w.walk)), hours = mean(weeks.map(w => w.hours))
+  const climb = mean(weeks.map(w => w.climb))
+  if (km) lines.push(`- On foot (hikes/walks/runs): avg ${r1(km)} km, ${r1(hours)} h and ${Math.round(climb ?? 0)} m climb per week — count this as existing aerobic/leg load`)
+
+  const weight = [...rows].reverse().find(r => r.weight_kg != null && r.date <= today)
+  if (weight) lines.push(`- Bodyweight (smart scale): ${weight.weight_kg} kg on ${weight.date}`)
+  return lines.join('\n')
+}
+
 // ─── Load warning (R3) ───────────────────────────────────────────────────────
 
 export type LoadStatus =

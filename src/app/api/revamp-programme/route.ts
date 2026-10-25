@@ -1,5 +1,6 @@
 import { requireUser, checkAndRecordAIUse } from '@/lib/server/requireUser'
 import { streamChat, deepseekConfigured } from '@/lib/server/deepseek'
+import { WATCH_DATA_GUIDANCE } from '@/lib/coachPrompt'
 
 export const maxDuration = 60
 
@@ -148,7 +149,7 @@ The revamped programme name should start with "AI Coach Updated — ".
 Output ONLY the JSON object now.`
 
   try {
-    return await streamChat({ system: SYSTEM_PROMPT, user: userMessage, maxTokens: 8000, jsonMode: true })
+    return await streamChat({ system: SYSTEM_PROMPT + WATCH_DATA_GUIDANCE, user: userMessage, maxTokens: 8000, jsonMode: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     console.error('Revamp programme error:', message)

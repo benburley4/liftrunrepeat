@@ -138,6 +138,18 @@ export async function getSessionsNeedingSets(): Promise<StoredSession[]> {
   return (data ?? []).map(row => row.data as StoredSession)
 }
 
+/** HR-zone upper bounds from the most recent watch workout that has them. */
+export async function getLatestWatchHrZones(): Promise<{ upperBpm: number; seconds: number }[] | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('data->zepp->hrZones')
+    .not('data->zepp->hrZones', 'is', null)
+    .order('saved_at', { ascending: false })
+    .limit(1)
+  if (error) return null
+  return ((data?.[0] as { hrZones?: unknown } | undefined)?.hrZones as { upperBpm: number; seconds: number }[]) ?? null
+}
+
 /** Per-minute trace for one watch workout, or null when none was synced. */
 export async function getZeppWorkoutSeries(workoutId: string): Promise<SeriesPoint[] | null> {
   const { data, error } = await supabase

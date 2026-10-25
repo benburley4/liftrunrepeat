@@ -10,7 +10,7 @@ import { getProgrammes, upsertProgramme, deleteProgramme, getTemplates, upsertTe
 import { usePremium } from '@/hooks/usePremium'
 import { FEATURES } from '@/lib/features'
 import { authHeaders } from '@/lib/auth'
-import { loadProfile, profileToPrompt } from '@/lib/athleteProfile'
+import { loadAthleteContext } from '@/lib/athleteContext'
 import { validateAIProgramme } from '@/lib/programmeSchema'
 
 import type { TemplateKind, StoredTemplate, CellData, Programme } from '@/lib/programmeTypes'
@@ -1454,7 +1454,7 @@ export default function ProgrammesPage() {
           : `Training split: ${100 - genBalance}% Lifting / ${genBalance}% Running (endurance focused)`
       const goal = [goalLines, balanceDesc].filter(Boolean).join('\n')
 
-      const profile = profileToPrompt(await loadProfile().catch(() => null))
+      const profile = await loadAthleteContext()
       const res = await fetch('/api/generate-programme', {
         method: 'POST',
         headers: await authHeaders(),

@@ -10,7 +10,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p style={{ color: '#606060', fontSize: '13px', fontFamily: 'var(--font-sans)', marginBottom: '48px' }}>
-          Last updated: 22 March 2026
+          Last updated: 25 October 2026
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -30,7 +30,11 @@ export default function PrivacyPage() {
             <SubHeading>2.3 Usage Data</SubHeading>
             <P>We may collect information about how you access and use the Service, including browser type, pages visited, time and date of visits, and device identifiers. This is used solely to improve the Service.</P>
 
-            <SubHeading>2.4 Locally Stored Data</SubHeading>
+            <SubHeading>2.4 Health and Wearable Data</SubHeading>
+            <P>If you connect a smartwatch (currently Amazfit / Zepp), we import data from your account with that provider: workouts (time, distance, elevation, heart rate, heart-rate zones, splits, steps and cadence, plus a per-minute heart-rate, altitude and pace trace), and daily recovery data (readiness scores, heart-rate variability, resting and sleeping heart rate, sleep duration and stages, breathing rate, blood-oxygen (SpO₂) score, stress, steps, walking distance, active calories, training load) and smart-scale bodyweight. We do not store GPS routes or location.</P>
+            <P>This is health data, which is sensitive. It is stored against your account with the same row-level security as your training data, so only you can read it. It is used only to show you your recovery and progress, to adjust your training advice, and — as summaries, never raw traces — in the AI features described in section 5. You can ask us to delete all imported watch data at any time using the contact details below; disconnecting the watch stops further imports.</P>
+
+            <SubHeading>2.5 Locally Stored Data</SubHeading>
             <P>Some features (such as calculator state and saved programmes) store data in your browser&apos;s localStorage. This data remains on your device and is not transmitted to our servers unless you explicitly save a session.</P>
           </Section>
 
@@ -57,7 +61,8 @@ export default function PrivacyPage() {
             <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li><strong style={{ color: '#F5F5F5' }}>Supabase</strong> — database, authentication, and row-level security</li>
               <li><strong style={{ color: '#F5F5F5' }}>Vercel</strong> — application hosting and edge delivery</li>
-              <li><strong style={{ color: '#F5F5F5' }}>DeepSeek</strong> — AI language model provider used to generate programme reviews</li>
+              <li><strong style={{ color: '#F5F5F5' }}>Zepp Health / Amazfit</strong> — source of the watch data you choose to connect (section 2.4)</li>
+              <li><strong style={{ color: '#F5F5F5' }}>DeepSeek</strong> — AI language model provider used to generate programmes, programme reviews and the weekly coach report; it receives your training summary and, if a watch is connected, summarised recovery figures (e.g. weekly average readiness, HRV, sleep)</li>
             </ul>
             <P>Each third party operates under its own privacy policy. We encourage you to review those policies.</P>
           </Section>
@@ -67,7 +72,9 @@ export default function PrivacyPage() {
             <ul style={{ paddingLeft: '20px', color: '#A0A0A0', fontSize: '14px', fontFamily: 'var(--font-sans)', lineHeight: '2', listStyleType: 'disc' }}>
               <li>Your programme structure — training split, session names, exercises, sets, reps, run segments, and RPE values</li>
               <li>Any additional context you voluntarily provide — such as goals, age, bodyweight, injuries, 1RMs, race times, sleep, and nutrition details</li>
+              <li>If you have connected a watch: summarised recovery and activity figures — e.g. average readiness, HRV and sleeping heart rate against your baseline, average sleep and steps, weekly on-foot distance, scale bodyweight, and week-by-week averages since the programme started. Raw heart-rate traces are never sent.</li>
             </ul>
+            <P>The same summaries are used by the AI programme generator, programme revamp, and the automatic weekly coach report.</P>
             <P>This data is sent to DeepSeek solely to generate your review. We do not include your name, email address, or account identifiers in the data sent to DeepSeek. By using the AI Coach feature you explicitly consent to this data being transmitted to and processed by DeepSeek in accordance with <strong style={{ color: '#F5F5F5' }}>DeepSeek&apos;s Privacy Policy</strong>.</P>
             <P>You are not required to use the AI Coach feature. If you do not wish your programme data to be shared with a third-party AI provider, do not use the Programme Review function.</P>
             <SubHeading>AI Output Disclaimer</SubHeading>

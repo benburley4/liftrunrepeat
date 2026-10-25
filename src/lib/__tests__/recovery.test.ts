@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readinessLevel, latestReadiness, readinessDrivers, lastDays, withRollingMean, periodChange, recoveryToPrompt, freshWatchReadiness, illnessSigns, currentIllnessSigns, weeklyLoadRecovery, ZeppDay } from '../recovery'
+import { readinessLevel, latestReadiness, readinessDrivers, lastDays, withRollingMean, periodChange, recoveryToPrompt, freshWatchReadiness, illnessSigns, currentIllnessSigns, weeklyLoadRecovery, programmeResponseToPrompt, ZeppDay } from '../recovery'
 
 function day(date: string, fields: Partial<ZeppDay> = {}): ZeppDay {
   return {
@@ -156,5 +156,24 @@ describe('currentIllnessSigns', () => {
   })
   it('ignores older nights', () => {
     expect(currentIllnessSigns([...base, sick], '2026-10-27')).toBeNull()
+  })
+})
+
+describe('programmeResponseToPrompt', () => {
+  const rows = [
+    day('2026-10-01', { readiness: 80, sleep_hrv_ms: 38, sleep_rhr: 56, training_load: 500, sleep_min: 450 }),
+    day('2026-10-13', { readiness: 75, sleep_hrv_ms: 36, sleep_rhr: 57, training_load: 600, sleep_min: 430 }),
+    day('2026-10-21', { readiness: 62, sleep_hrv_ms: 30, sleep_rhr: 60, training_load: 700, sleep_min: 400 }),
+  ]
+  it('lists a pre-start baseline and each programme week', () => {
+    expect(programmeResponseToPrompt(rows, '2026-10-12', '2026-10-25')).toBe([
+      "ATHLETE'S RESPONSE TO THIS PROGRAMME (watch data, weekly averages since 2026-10-12):",
+      '- 2 weeks before start (baseline): readiness 80, HRV 38 ms, sleeping HR 56 bpm, load 500, sleep 7.5 h',
+      '- Week 1: readiness 75, HRV 36 ms, sleeping HR 57 bpm, load 600, sleep 7.2 h',
+      '- Week 2: readiness 62, HRV 30 ms, sleeping HR 60 bpm, load 700, sleep 6.7 h',
+    ].join('\n'))
+  })
+  it('is empty before the programme starts', () => {
+    expect(programmeResponseToPrompt(rows, '2026-11-02', '2026-10-25')).toBe('')
   })
 })

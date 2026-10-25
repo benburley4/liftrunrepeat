@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react'
 import { User, Save, Sparkles } from 'lucide-react'
 import { AthleteProfile, loadProfile, saveProfile, daysToRace, derivedAge, derivedTrainingYears } from '@/lib/athleteProfile'
+import { getZeppDaily } from '@/lib/db'
+import { watchDefaults, type WatchDefaults } from '@/lib/activity'
+import { localToday } from '@/lib/recovery'
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -203,9 +206,22 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [watch, setWatch] = useState<WatchDefaults | null>(null)
 
   useEffect(() => {
-    loadProfile().then(p => { setProfile(p); setLoading(false) }).catch(() => setLoading(false))
+    // Profile first, then the watch: an empty bodyweight is filled from the
+    // smart scale (saved with the profile); a typed value is never replaced.
+    loadProfile()
+      .then(p => { setProfile(p); setLoading(false) })
+      .catch(() => setLoading(false))
+      .then(() => getZeppDaily())
+      .then(rows => {
+        if (!rows) return
+        const w = watchDefaults(rows, localToday())
+        setWatch(w)
+        if (w.bodyweightKg) setProfile(p => (p.bodyweightKg ? p : { ...p, bodyweightKg: String(w.bodyweightKg) }))
+      })
+      .catch(() => { /* no watch data */ })
   }, [])
 
   function set(key: keyof AthleteProfile) {
@@ -255,7 +271,8 @@ export default function ProfilePage() {
                   hint={age ? `Age: ${age}` : undefined}
                 />
                 <Field label="Sex" value={profile.sex ?? ''} onChange={set('sex')} placeholder="e.g. Male" />
-                <Field label="Bodyweight (kg)" value={profile.bodyweightKg ?? ''} onChange={set('bodyweightKg')} placeholder="e.g. 78" />
+                <Field label="Bodyweight (kg)" value={profile.bodyweightKg ?? ''} onChange={set('bodyweightKg')} placeholder="e.g. 78"
+                  hint={watch?.bodyweightKg ? `Smart scale: ${watch.bodyweightKg} kg${watch.restingHr ? ` · resting HR ${watch.restingHr} bpm` : ''}` : undefined} />
                 <DatePartsField
                   label="Training start date"
                   value={profile.trainingStartDate ?? ''} onChange={set('trainingStartDate')}

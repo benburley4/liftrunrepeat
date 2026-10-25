@@ -7,7 +7,7 @@ import { getProgrammes, getAIReports, upsertAIReport, deleteAIReport, getSetting
 import { usePremium } from '@/hooks/usePremium'
 import { FEATURES } from '@/lib/features'
 import { authHeaders } from '@/lib/auth'
-import { loadProfile, profileToPrompt } from '@/lib/athleteProfile'
+import { loadAthleteContext } from '@/lib/athleteContext'
 import { validateAIProgramme } from '@/lib/programmeSchema'
 
 // ─── Types (mirrored from programmes page) ────────────────────────────────────
@@ -521,7 +521,7 @@ export default function ProgrammeReviewPage() {
     let fullReview = ''
 
     try {
-      const profile = profileToPrompt(await loadProfile().catch(() => null))
+      const profile = await loadAthleteContext({ programmeStart: selectedProg.startDate })
       const res = await fetch('/api/programme-review', {
         method: 'POST',
         headers: await authHeaders(),
@@ -605,7 +605,7 @@ export default function ProgrammeReviewPage() {
     }
 
     try {
-      const profile = profileToPrompt(await loadProfile().catch(() => null))
+      const profile = await loadAthleteContext({ programmeStart: selectedProg.startDate })
       const res = await fetch('/api/revamp-programme', {
         method: 'POST',
         headers: await authHeaders(),

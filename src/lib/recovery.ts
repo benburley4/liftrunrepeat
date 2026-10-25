@@ -293,6 +293,34 @@ export function weeklyLoadRecovery(rows: ZeppDay[], today: string, weeks = 16): 
   return out
 }
 
+// ─── Programme review: how the body responded (R8) ───────────────────────────
+
+/**
+ * Week-by-week readiness, HRV, sleeping HR and watch load since the programme
+ * started (up to 16 weeks), plus the 2 weeks before as a baseline — so the AI
+ * review can judge how the athlete actually tolerated the programme.
+ * Returns '' when the programme hasn't started or there's no watch data.
+ */
+export function programmeResponseToPrompt(rows: ZeppDay[], startDate: string, today: string): string {
+  if (!startDate || startDate > today) return ''
+  const r = (list: ZeppDay[], k: keyof ZeppDay) => {
+    const m = mean(list.map(x => x[k] as number | null))
+    return m == null ? '–' : String(Math.round(m))
+  }
+  const line = (label: string, list: ZeppDay[]) =>
+    `- ${label}: readiness ${r(list, 'readiness')}, HRV ${r(list, 'sleep_hrv_ms')} ms, sleeping HR ${r(list, 'sleep_rhr')} bpm, load ${r(list, 'training_load')}, sleep ${list.some(x => x.sleep_min != null) ? round1(Number(r(list, 'sleep_min')) / 60) : '–'} h`
+
+  const before = rows.filter(x => x.date >= shiftDate(startDate, -14) && x.date < startDate)
+  const lines = [`ATHLETE'S RESPONSE TO THIS PROGRAMME (watch data, weekly averages since ${startDate}):`]
+  if (before.length) lines.push(line('2 weeks before start (baseline)', before))
+  let weeks = 0
+  for (let wk = startDate; wk <= today && weeks < 16; wk = shiftDate(wk, 7), weeks++) {
+    const list = rows.filter(x => x.date >= wk && x.date < shiftDate(wk, 7) && x.date <= today)
+    if (list.length) lines.push(line(`Week ${weeks + 1}`, list))
+  }
+  return lines.length > (before.length ? 2 : 1) ? lines.join('\n') : ''
+}
+
 export interface PeriodChange { current: number | null; previous: number | null; change: number | null }
 
 /** Average of `key` over the last `days` vs the `days` before that. */

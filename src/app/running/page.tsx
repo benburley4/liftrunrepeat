@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Watch } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
+import WatchConnection from '@/components/watch/WatchConnection'
 
 function parseTimeToSeconds(t: string): number | null {
   const parts = t.split(':').map(Number)
@@ -572,35 +573,8 @@ export default function RunningPage() {
           </div>
         </div>
 
-        {/* WEARABLE SYNC */}
-        <div>
-          <h2 className="text-3xl font-black uppercase mb-4" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
-            Connect Your Wearable
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {['Garmin Connect', 'Strava'].map(service => (
-              <div
-                key={service}
-                className="rounded-xl p-5 flex items-center justify-between"
-                style={{ background: '#1A1A1A', border: '1px solid #2E2E2E', opacity: 0.6 }}
-              >
-                <div className="flex items-center gap-3">
-                  <Watch size={24} style={{ color: '#606060' }} />
-                  <div>
-                    <h4 className="text-sm font-semibold" style={{ color: '#A0A0A0' }}>{service}</h4>
-                    <p className="text-xs" style={{ color: '#606060' }}>Auto-sync workouts and metrics</p>
-                  </div>
-                </div>
-                <span
-                  className="px-2 py-1 rounded text-xs font-semibold"
-                  style={{ background: '#242424', color: '#606060', border: '1px solid #2E2E2E' }}
-                >
-                  Coming Soon
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+        {/* WEARABLE — connected watch + your HR zones */}
+        <WatchConnection />
       </div>
     </div>
   )

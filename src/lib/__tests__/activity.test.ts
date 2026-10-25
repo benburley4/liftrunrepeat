@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   weekStartOf, stepsSummary, weeklySteps, monthlySteps, footKind, footKm, weeklyOnFoot, footRecords,
-  footEfficiencyByMonth, hrLoad, weeklyHybridLoad, assessLoad, plausibleRecording,
+  footEfficiencyByMonth, hrLoad, weeklyHybridLoad, assessLoad, plausibleRecording, watchContextToPrompt, watchDefaults,
 } from '../activity'
 import type { SessionData } from '../computeStats'
 import type { ZeppDay } from '../recovery'
@@ -121,5 +121,40 @@ describe('assessLoad', () => {
   })
   it('returns null without recent watch data', () => {
     expect(assessLoad(prior, '2026-10-25', true)).toBeNull()
+  })
+})
+
+describe('watchContextToPrompt', () => {
+  it('summarises 4 weeks of recovery, steps, on-foot volume and weight', () => {
+    const rows = [
+      day('2026-10-20', { readiness: 70, sleep_hrv_ms: 36, hrv_baseline_ms: 37, sleep_rhr: 58, rhr_baseline: 57, sleep_min: 420, steps: 15000 }),
+      day('2026-10-24', { readiness: 66, sleep_hrv_ms: 32, hrv_baseline_ms: 37, sleep_rhr: 60, rhr_baseline: 57, sleep_min: 390, steps: 13000, weight_kg: 95.9 }),
+    ]
+    const hike = sess({ name: 'Outdoor Hike', date: '2026-10-25', hikeKm: 10.5, hikeElevationM: 296, zepp: zepp({ distanceKm: 10.5, durationMin: 159, avgCadenceSpm: 100 }) })
+    const text = watchContextToPrompt(rows, [hike], '2026-10-25')
+    expect(text).toContain('- Readiness avg 68/100; latest 66 (2026-10-24)')
+    expect(text).toContain('- Overnight HRV avg 34 ms vs baseline 37 ms')
+    expect(text).toContain('- Sleeping HR avg 59 bpm vs baseline 57')
+    expect(text).toContain('- Sleep avg 6.8 h/night')
+    expect(text).toContain('- Daily steps avg 14,000')
+    expect(text).toContain('- On foot (hikes/walks/runs): avg 2.6 km, 0.7 h and 74 m climb per week')
+    expect(text).toContain('- Bodyweight (smart scale): 95.9 kg on 2026-10-24')
+  })
+  it('is empty without watch data', () => {
+    expect(watchContextToPrompt([], [], '2026-10-25')).toBe('')
+  })
+})
+
+describe('watchDefaults', () => {
+  it('derives resting HR, scale weight and activity level', () => {
+    const rows = [
+      day('2026-10-10', { steps: 9000, weight_kg: 96.4 }),
+      day('2026-10-22', { resting_hr: 54, steps: 16000 }),
+      day('2026-10-24', { sleep_rhr: 58, steps: 17000, weight_kg: 95.9 }),
+    ]
+    expect(watchDefaults(rows, '2026-10-25')).toEqual({ restingHr: 56, bodyweightKg: 95.9, activity: 'moderate', avgSteps: 14000 })
+  })
+  it('returns nulls without data', () => {
+    expect(watchDefaults([], '2026-10-25')).toEqual({ restingHr: null, bodyweightKg: null, activity: null, avgSteps: null })
   })
 })
