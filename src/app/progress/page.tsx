@@ -176,17 +176,17 @@ export default function AnalyticsPage() {
     }
 
     // Build per-exercise stats (used for both chart and PRs)
-    const exStats: Record<string, { totalSets: number; rm: number; weight: number; reps: number; date: string }> = {}
+    const exStats: Record<string, { totalSets: number; rm: number; weight: number; reps: number; date: string; savedAt: string }> = {}
     for (const s of liftSessions)
       for (const ex of s.exercises ?? [])
         for (const set of ex.actualSets) {
           const w = parseFloat(set.weight), r = parseInt(set.reps)
           const key = ex.exerciseName
-          if (!exStats[key]) exStats[key] = { totalSets: 0, rm: 0, weight: 0, reps: 0, date: s.date }
+          if (!exStats[key]) exStats[key] = { totalSets: 0, rm: 0, weight: 0, reps: 0, date: s.date, savedAt: s.savedAt }
           exStats[key].totalSets++
           if (!isNaN(w) && !isNaN(r) && r > 0) {
             const rm = epleyRM(w, r)
-            if (rm > exStats[key].rm) exStats[key] = { ...exStats[key], rm, weight: w, reps: r, date: s.date }
+            if (rm > exStats[key].rm) exStats[key] = { ...exStats[key], rm, weight: w, reps: r, date: s.date, savedAt: s.savedAt }
           }
         }
 
@@ -218,8 +218,9 @@ export default function AnalyticsPage() {
     const prs = Object.entries(exStats)
       .filter(([, v]) => v.rm > 0)
       .sort((a, b) => b[1].date.localeCompare(a[1].date))
-      .map(([exercise, { totalSets, rm, weight, reps, date }]) => ({
+      .map(([exercise, { totalSets, rm, weight, reps, date, savedAt }]) => ({
         exercise,
+        savedAt,
         totalSets,
         pr: `${weight} kg`,
         rm: `${rm} kg est. 1RM`,
@@ -387,6 +388,15 @@ export default function AnalyticsPage() {
 
   function openSession(s: SavedSession) {
     setSelected(s); setEditing(false); setEditSession(null)
+  }
+
+  // Personal Records → that session's detail in History; Back returns to PRs.
+  const [returnTab, setReturnTab] = useState<TabId | null>(null)
+  function openFromRecords(savedAt: string) {
+    const s = history.find(h => h.savedAt === savedAt)
+    if (!s) return
+    setReturnTab('prs'); setActiveTab('history'); setHistorySubTab('sessions'); openSession(s)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function startEdit() {
@@ -1373,8 +1383,11 @@ export default function AnalyticsPage() {
               ) : (
                 <div>
                   {strengthData.prs.map((row, i, arr) => (
-                    <div key={row.exercise} className="px-5 py-4"
-                      style={{ borderBottom: i < arr.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
+                    <div key={row.exercise} className="px-5 py-4 pr-row" role="button" tabIndex={0}
+                      onClick={() => openFromRecords(row.savedAt)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFromRecords(row.savedAt) } }}
+                      title="Open this session"
+                      style={{ borderBottom: i < arr.length - 1 ? '1px solid #2E2E2E' : 'none', cursor: 'pointer' }}>
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{row.exercise}</p>
                         <div className="flex items-center gap-2">
@@ -1424,9 +1437,9 @@ export default function AnalyticsPage() {
                 }
 
                 // Collect all distance segments with pace
-                type SegRecord = { km: number; paceSecs: number; pace: string; date: string }
+                type SegRecord = { km: number; paceSecs: number; pace: string; date: string; savedAt: string }
                 const allSegs: SegRecord[] = []
-                let longestKm = 0, longestPace = '', longestDate = ''
+                let longestKm = 0, longestPace = '', longestDate = '', longestSavedAt = ''
 
                 for (const s of history) {
                   const dateStr = new Date(s.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -1441,8 +1454,8 @@ export default function AnalyticsPage() {
                       const [pm, ps] = seg.actualPace.split(':').map(Number)
                       const paceSecs = (pm || 0) * 60 + (ps || 0)
                       if (!paceSecs) continue
-                      allSegs.push({ km, paceSecs, pace: seg.actualPace, date: dateStr })
-                      if (km > longestKm) { longestKm = km; longestPace = seg.actualPace; longestDate = dateStr }
+                      allSegs.push({ km, paceSecs, pace: seg.actualPace, date: dateStr, savedAt: s.savedAt })
+                      if (km > longestKm) { longestKm = km; longestPace = seg.actualPace; longestDate = dateStr; longestSavedAt = s.savedAt }
                     }
                   }
                 }
@@ -1453,25 +1466,28 @@ export default function AnalyticsPage() {
                   </div>
                 )
 
-                const rows: { label: string; pace: string; time: string; date: string }[] = []
+                const rows: { label: string; pace: string; time: string; date: string; savedAt: string }[] = []
                 for (const kd of KEY_DISTANCES) {
                   const matches = allSegs.filter(r => Math.abs(r.km - kd.km) <= kd.tol)
                   if (matches.length === 0) continue
                   const best = matches.reduce((a, b) => a.paceSecs < b.paceSecs ? a : b)
                   const timeSecs = best.paceSecs * kd.km
-                  rows.push({ label: kd.label, pace: `${best.pace}/km`, time: fmtTime(timeSecs), date: best.date })
+                  rows.push({ label: kd.label, pace: `${best.pace}/km`, time: fmtTime(timeSecs), date: best.date, savedAt: best.savedAt })
                 }
                 if (longestKm > 0) {
                   const [pm, ps] = longestPace.split(':').map(Number)
                   const pSecs = (pm || 0) * 60 + (ps || 0)
-                  rows.push({ label: `Longest (${longestKm % 1 === 0 ? longestKm : longestKm.toFixed(1)} km)`, pace: longestPace ? `${longestPace}/km` : '—', time: longestPace ? fmtTime(pSecs * longestKm) : '—', date: longestDate })
+                  rows.push({ label: `Longest (${longestKm % 1 === 0 ? longestKm : longestKm.toFixed(1)} km)`, pace: longestPace ? `${longestPace}/km` : '—', time: longestPace ? fmtTime(pSecs * longestKm) : '—', date: longestDate, savedAt: longestSavedAt })
                 }
 
                 return (
                   <div>
                     {rows.map((row, i, arr) => (
-                      <div key={row.label} className="px-5 py-4"
-                        style={{ borderBottom: i < arr.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
+                      <div key={row.label} className="px-5 py-4 pr-row" role="button" tabIndex={0}
+                        onClick={() => openFromRecords(row.savedAt)}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFromRecords(row.savedAt) } }}
+                        title="Open this session"
+                        style={{ borderBottom: i < arr.length - 1 ? '1px solid #2E2E2E' : 'none', cursor: 'pointer' }}>
                         <div className="flex items-center justify-between mb-2">
                           <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{row.label}</p>
                           <p className="text-xs" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{row.date}</p>
@@ -1493,7 +1509,7 @@ export default function AnalyticsPage() {
               })()}
             </div>
             {/* Hike PRs (watch + logged hikes and walks) */}
-            <HikeRecords sessions={history} />
+            <HikeRecords sessions={history} onOpen={openFromRecords} />
           </div>
         )}
 
@@ -1919,7 +1935,10 @@ export default function AnalyticsPage() {
             <div className="space-y-5">
               {/* Back + Edit bar */}
               <div className="flex items-center justify-between">
-                <button onClick={() => { setSelected(null); setEditing(false); setEditSession(null) }}
+                <button onClick={() => {
+                  setSelected(null); setEditing(false); setEditSession(null)
+                  if (returnTab) { setActiveTab(returnTab); setReturnTab(null) }
+                }}
                   className="flex items-center gap-1 text-sm"
                   style={{ color: '#606060', fontFamily: 'var(--font-sans)', cursor: 'pointer' }}>
                   <ChevronLeft size={16} /> Back

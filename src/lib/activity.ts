@@ -211,6 +211,7 @@ export interface HikeRecord {
   label: string
   date: string
   name: string
+  savedAt: string
   stats: [{ label: string; value: string }, { label: string; value: string }]
 }
 
@@ -241,7 +242,7 @@ export function hikeRecords(sessions: SessionData[]): HikeRecord[] {
   const climb = (s: SessionData) => (s.hikeElevationM ? `${s.hikeElevationM} m` : '–')
   const time = (s: SessionData) => (s.zepp?.durationMin ? fmtDuration(s.zepp.durationMin) : '–')
   const rec = (label: string, s: SessionData, a: [string, string], b: [string, string]): HikeRecord =>
-    ({ label, date: s.date, name: s.name, stats: [{ label: a[0], value: a[1] }, { label: b[0], value: b[1] }] })
+    ({ label, date: s.date, name: s.name, savedAt: s.savedAt, stats: [{ label: a[0], value: a[1] }, { label: b[0], value: b[1] }] })
 
   const out: HikeRecord[] = []
   const longest = top(hikes, s => footKm(s) || null, (a, b) => a > b)

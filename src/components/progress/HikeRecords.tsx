@@ -8,7 +8,7 @@ const ACCENT = '#84CC16'   // matches the History hike card
 const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
 /** Hike PR card for the Personal Records tab — same layout as the Run card. */
-export default function HikeRecords({ sessions }: { sessions: SessionData[] }) {
+export default function HikeRecords({ sessions, onOpen }: { sessions: SessionData[]; onOpen?: (savedAt: string) => void }) {
   const records = hikeRecords(sessions)
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
@@ -21,7 +21,12 @@ export default function HikeRecords({ sessions }: { sessions: SessionData[] }) {
           <p className="text-sm" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>No hike data yet.</p>
         </div>
       ) : records.map((r, i) => (
-        <div key={r.label} className="px-5 py-4" style={{ borderBottom: i < records.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
+        <div key={r.label} className={`px-5 py-4${onOpen ? ' pr-row' : ''}`}
+          role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined}
+          onClick={onOpen ? () => onOpen(r.savedAt) : undefined}
+          onKeyDown={onOpen ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(r.savedAt) } } : undefined}
+          title={onOpen ? `Open ${r.name}` : undefined}
+          style={{ borderBottom: i < records.length - 1 ? '1px solid #2E2E2E' : 'none', cursor: onOpen ? 'pointer' : undefined }}>
           <div className="flex items-center justify-between gap-3 mb-2">
             <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{r.label}</p>
             <p className="text-xs shrink-0" style={{ color: '#606060', fontFamily: 'var(--font-sans)' }}>{fmtDate(r.date)}</p>
