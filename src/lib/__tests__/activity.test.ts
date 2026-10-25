@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   weekStartOf, stepsSummary, stepsTotals, weeklySteps, monthlySteps, footKind, footKm, weeklyOnFoot, footRecords,
-  footEfficiencyByMonth, hrLoad, weeklyHybridLoad, assessLoad, plausibleRecording, watchContextToPrompt, watchDefaults,
+  footEfficiencyByMonth, hrLoad, weeklyHybridLoad, assessLoad, plausibleRecording, watchContextToPrompt, watchDefaults, hikeRecords,
 } from '../activity'
 import type { SessionData } from '../computeStats'
 import type { ZeppDay } from '../recovery'
@@ -162,5 +162,25 @@ describe('watchDefaults', () => {
   })
   it('returns nulls without data', () => {
     expect(watchDefaults([], '2026-10-25')).toEqual({ restingHr: null, bodyweightKg: null, activity: null, avgSteps: null })
+  })
+})
+
+describe('hikeRecords', () => {
+  const z = (km: number, min: number, extra: Partial<ZeppStats> = {}) => zepp({ distanceKm: km, durationMin: min, movingMin: min, avgCadenceSpm: 100, ...extra })
+  const long = sess({ name: 'Outdoor Hike', date: '2026-10-21', hikeKm: 10.7, hikeElevationM: 541, zepp: z(10.7, 254, { elevationGainM: 541 }) })
+  const treadmill = sess({ name: 'Treadmill Hike', date: '2026-04-28', hikeKm: 3.6, hikeElevationM: 340, zepp: z(3.6, 45) })
+  const quick = sess({ name: 'Outdoor Hike', date: '2026-10-25', hikeKm: 10.5, hikeElevationM: 296, zepp: z(10.5, 150) })
+  const stuck = sess({ source: 'zepp', name: 'Walk', date: '2026-10-13', hikeKm: 4.4, zepp: z(4.4, 639, { avgCadenceSpm: 6 }) })
+  const run = sess({ type: 'run', name: 'Run', date: '2026-10-20', run: [{ id: 'r', segmentType: 'run', metric: 'distance', plannedValue: '12', plannedPace: '', actualValue: '12', actualPace: '5:00' }] })
+
+  it('builds two-figure hike records, ignoring runs and implausible recordings', () => {
+    expect(hikeRecords([long, quick, stuck, run, treadmill]).map(r => [r.label, r.date, r.stats.map(s => s.value).join(' | ')])).toEqual([
+      ['Longest (10.7 km)', '2026-10-21', '4:14 | 541 m'],
+      ['Most climbing (541 m)', '2026-10-21', '10.7 km | 4:14'],
+      ['Longest time (4:14)', '2026-10-21', '10.7 km | 541 m'],
+      ['Fastest 5 km+', '2026-10-25', '14:17/km | 2:30'],
+      ['Fastest 10 km+', '2026-10-25', '14:17/km | 2:30'],
+      ['Best climb rate (128 m/h)', '2026-10-21', '541 m | 4:14'],
+    ])
   })
 })

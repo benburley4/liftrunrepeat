@@ -11,7 +11,7 @@ import { freshWatchReadiness, readinessDrivers, localToday, READINESS_CALL, type
 import { assessLoad, footKind, weeklyHybridLoad } from '@/lib/activity'
 import StepsTab from '@/components/progress/StepsTab'
 import OnFootTab from '@/components/progress/OnFootTab'
-import FootRecords from '@/components/progress/FootRecords'
+import HikeRecords from '@/components/progress/HikeRecords'
 import HybridLoadChart from '@/components/progress/HybridLoadChart'
 import LiftingEffort from '@/components/progress/LiftingEffort'
 import { epleyRM, classifyPPL, classifyBody } from '@/lib/computeStats'
@@ -1359,7 +1359,7 @@ export default function AnalyticsPage() {
 
         {/* PRs TAB */}
         {activeTab === 'prs' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
             {/* Lift PRs */}
             <div className="rounded-xl overflow-hidden" style={{ background: '#1A1A1A', border: '1px solid #2E2E2E' }}>
               <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: '1px solid #2E2E2E', background: '#242424' }}>
@@ -1492,9 +1492,8 @@ export default function AnalyticsPage() {
                 )
               })()}
             </div>
-            <div className="md:col-span-2">
-              <FootRecords sessions={history} />
-            </div>
+            {/* Hike PRs (watch + logged hikes and walks) */}
+            <HikeRecords sessions={history} />
           </div>
         )}
 

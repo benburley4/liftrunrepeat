@@ -207,6 +207,62 @@ export function footRecords(sessions: SessionData[]): FootRecord[] {
   return out
 }
 
+export interface HikeRecord {
+  label: string
+  date: string
+  name: string
+  stats: [{ label: string; value: string }, { label: string; value: string }]
+}
+
+const fmtDuration = (min: number) => `${Math.floor(min / 60)}:${String(Math.round(min % 60)).padStart(2, '0')}`
+const fmtPace = (minPerKm: number) => {
+  const s = Math.round(minPerKm * 60)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}/km`
+}
+
+/**
+ * Personal records for hikes and walks (runs have their own PR card), in the
+ * same two-figure layout as the run PRs. Time / pace / climb-rate records use
+ * only plausible watch recordings; distance and climb records use any session.
+ */
+export function hikeRecords(sessions: SessionData[]): HikeRecord[] {
+  const hikes = sessions.filter(s => { const k = footKind(s); return k === 'hike' || k === 'walk' })
+  const timed = hikes.filter(plausibleRecording)
+  const top = <T,>(list: SessionData[], pick: (s: SessionData) => T | null, better: (a: T, b: T) => boolean) => {
+    let best: { s: SessionData; v: T } | null = null
+    for (const s of list) {
+      const v = pick(s)
+      if (v != null && (!best || better(v, best.v))) best = { s, v }
+    }
+    return best
+  }
+  const km = (s: SessionData) => r1(footKm(s))!
+  const min = (s: SessionData) => s.zepp?.movingMin ?? s.zepp?.durationMin ?? null
+  const climb = (s: SessionData) => (s.hikeElevationM ? `${s.hikeElevationM} m` : '–')
+  const time = (s: SessionData) => (s.zepp?.durationMin ? fmtDuration(s.zepp.durationMin) : '–')
+  const rec = (label: string, s: SessionData, a: [string, string], b: [string, string]): HikeRecord =>
+    ({ label, date: s.date, name: s.name, stats: [{ label: a[0], value: a[1] }, { label: b[0], value: b[1] }] })
+
+  const out: HikeRecord[] = []
+  const longest = top(hikes, s => footKm(s) || null, (a, b) => a > b)
+  if (longest) out.push(rec(`Longest (${km(longest.s)} km)`, longest.s, ['Time', time(longest.s)], ['Climb', climb(longest.s)]))
+  const most = top(hikes, s => s.hikeElevationM || null, (a, b) => a > b)
+  if (most) out.push(rec(`Most climbing (${most.v} m)`, most.s, ['Distance', `${km(most.s)} km`], ['Time', time(most.s)]))
+  const longTime = top(timed, s => s.zepp?.durationMin || null, (a, b) => a > b)
+  if (longTime) out.push(rec(`Longest time (${fmtDuration(longTime.v)})`, longTime.s, ['Distance', `${km(longTime.s)} km`], ['Climb', climb(longTime.s)]))
+  for (const dist of [5, 10]) {
+    const fast = top(timed, s => { const d = s.zepp?.distanceKm ?? 0, m = min(s); return d >= dist && m ? m / d : null }, (a, b) => a < b)
+    if (fast) out.push(rec(`Fastest ${dist} km+`, fast.s, ['Best Pace', fmtPace(fast.v)], ['Finish Time', time(fast.s)]))
+  }
+  // Climb rate only from climbing the watch measured (not a typed-in treadmill incline).
+  const rate = top(timed, s => {
+    const m = min(s), up = s.zepp?.elevationGainM ?? 0
+    return up >= 300 && !s.zepp?.distanceMismatch && m ? up / (m / 60) : null
+  }, (a, b) => a > b)
+  if (rate) out.push(rec(`Best climb rate (${Math.round(rate.v)} m/h)`, rate.s, ['Climb', `${rate.s.zepp!.elevationGainM} m`], ['Time', time(rate.s)]))
+  return out
+}
+
 export interface FootMonth { month: string; avgHr: number | null; paceMinKm: number | null; cadence: number | null; strideCm: number | null; sessions: number }
 
 /**
