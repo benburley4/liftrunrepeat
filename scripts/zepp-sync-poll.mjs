@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Answers the site's "Sync now" button (navbar watch box).
+ * Answers the site's "Sync now" button (navbar watch box) and "Send to watch"
+ * requests (zepp-watch-push.mjs).
  *
  * Runs every minute (task TheHybridLife_ZeppSyncPoll). If
  * user_settings.zepp_sync_request is newer than zepp_sync_status, runs
@@ -15,6 +16,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { createClient } from '@supabase/supabase-js'
+import { handleWatchPush } from './zepp-watch-push.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const MAX_REQUEST_AGE_MS = 15 * 60_000
@@ -51,4 +53,12 @@ if (error) {
     const run = spawnSync(process.execPath, ['--no-warnings', join(__dirname, 'zepp-sync.mjs')], { stdio: 'inherit' })
     process.exitCode = run.status ?? 1
   }
+}
+
+// "Send to watch" requests (run builder / programme → Amazfit watch).
+try {
+  await handleWatchPush(supabase, env.HEALTH_IMPORT_USER_ID)
+} catch (e) {
+  console.error(`[${new Date().toISOString()}] ${e.message}`)
+  process.exitCode = 1
 }

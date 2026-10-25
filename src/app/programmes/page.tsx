@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, type CSSProperties } from 'react'
-import { Check, X, Pencil, Sparkles, Loader2, Copy as CopyIcon, TrendingUp } from 'lucide-react'
+import { Check, X, Pencil, Sparkles, Loader2, Copy as CopyIcon, TrendingUp, Watch } from 'lucide-react'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -17,6 +17,9 @@ import type { TemplateKind, StoredTemplate, CellData, Programme } from '@/lib/pr
 import { exerciseVolume, type VolumeMultipliers } from '@/lib/exerciseLoad'
 import { useVolumeMultipliers } from '@/lib/useExerciseLoad'
 import ProgrammeDetailView from '@/components/programmes/ProgrammeDetailView'
+import WatchSendDialog from '@/components/watch/WatchSendDialog'
+import { programmeRunsBetween, type PlanTemplate } from '@/lib/watchPlan'
+import { localToday } from '@/lib/recovery'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -578,11 +581,12 @@ interface PopulatedCellProps {
   onEdit: () => void
   onDelete: () => void
   onCopyAcross: () => void
+  onSendToWatch?: () => void
   isSecond?: boolean
   compact?: boolean
 }
 
-function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = false, compact = false }: PopulatedCellProps) {
+function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, onSendToWatch, isSecond = false, compact = false }: PopulatedCellProps) {
   const { template } = data
   const volMults = useVolumeMultipliers()
   const vol = calcVolume(template, volMults)
@@ -603,6 +607,14 @@ function PopulatedCell({ date, data, onEdit, onDelete, onCopyAcross, isSecond = 
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {!compact && <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '100px', background: `${col}20`, color: col, fontWeight: 600 }}>{typeLabel(template.type)}</span>}
+          {onSendToWatch && (
+            <button
+              onClick={e => { e.stopPropagation(); onSendToWatch() }}
+              title="Send this run to your watch"
+              aria-label="Send this run to your watch"
+              style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.3)', color: '#A78BFA', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            ><Watch size={10} /></button>
+          )}
           <button
             onClick={e => { e.stopPropagation(); onCopyAcross() }}
             title="Copy across all weeks"
@@ -666,6 +678,20 @@ interface CalendarGridProps {
 
 function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename }: CalendarGridProps) {
   const [modal, setModal] = useState<ModalState>(null)
+  // Send to watch: one run (cell icon) or every programmed run in the next 7 days.
+  const [watchSend, setWatchSend] = useState<{ title: string; items: { date: string; template: PlanTemplate }[] } | null>(null)
+  const today = localToday()
+  const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const watchSendFor = (cell: CellData, date: Date) => {
+    const t = cell.template
+    const iso = isoOf(date)
+    if (!(t.type === 'run' || t.type === 'hybrid') || !(t.runRows ?? []).length || iso < today) return undefined
+    return () => setWatchSend({ title: t.name, items: [{ date: iso, template: t as PlanTemplate }] })
+  }
+  function sendWeekToWatch() {
+    const end = new Date(`${today}T00:00:00`); end.setDate(end.getDate() + 6)
+    setWatchSend({ title: `${programme.name} — next 7 days`, items: programmeRunsBetween(programme as unknown as Parameters<typeof programmeRunsBetween>[0], today, isoOf(end)) })
+  }
   const [saved, setSaved] = useState(false)
   const volMults = useVolumeMultipliers()
   const [editingName, setEditingName] = useState(false)
@@ -837,6 +863,11 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
               </button>
             ))}
           </div>
+          <button onClick={sendWeekToWatch}
+            title="Send every programmed run in the next 7 days to your Amazfit watch"
+            style={{ padding: '8px 14px', borderRadius: '10px', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.35)', color: '#A78BFA', fontSize: '13px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Watch size={14} /> Send week to watch
+          </button>
           <button onClick={handleSave}
             style={{ padding: '8px 16px', borderRadius: '10px', background: saved ? '#00BFA520' : '#00BFA5', border: saved ? '1px solid #00BFA5' : 'none', color: saved ? '#00BFA5' : '#0D0D0D', fontSize: '13px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}>
             {saved ? '✓ Saved' : 'Save Programme'}
@@ -909,7 +940,8 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
                       ? <PopulatedCell compact date={date} data={cell}
                           onEdit={() => setModal({ type: 'create', key, initial: cell.template })}
                           onDelete={() => clearCell(key)}
-                          onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '' })} />
+                          onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '' })}
+                          onSendToWatch={watchSendFor(cell, date)} />
                       : <EmptyCell compact date={date}
                           onCreateNew={() => setModal({ type: 'create', key })}
                           onSelectExisting={() => setModal({ type: 'select', key })} />}
@@ -918,7 +950,8 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
                         ? <PopulatedCell compact date={date} data={cell2} isSecond
                             onEdit={() => setModal({ type: 'create', key: key2, initial: cell2.template })}
                             onDelete={() => clearCell(key2)}
-                            onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '_2' })} />
+                            onCopyAcross={() => setModal({ type: 'copy', week: w, day: d, sfx: '_2' })}
+                            onSendToWatch={watchSendFor(cell2, date)} />
                         : <EmptyCell compact date={date} isSecond
                             onCreateNew={() => setModal({ type: 'create', key: key2 })}
                             onSelectExisting={() => setModal({ type: 'select', key: key2 })} />
@@ -961,6 +994,7 @@ function CalendarGrid({ programme, onUpdate, onPatch, onSave, onReset, onRename 
       </div>}
 
       {/* Modals */}
+      {watchSend && <WatchSendDialog title={watchSend.title} items={watchSend.items} onClose={() => setWatchSend(null)} />}
       {modal?.type === 'create' && (
         <CreateTemplateModal
           initial={modal.initial}
