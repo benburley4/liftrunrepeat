@@ -51,7 +51,8 @@ create table if not exists ai_reports (
 
 -- ─── user_settings ───────────────────────────────────────────────────────────
 -- Key/value per user. Known keys: current_programme_id, gen_form_state,
--- ai_usage, is_premium, athlete_profile, onboarding_done.
+-- ai_usage, is_premium, athlete_profile, onboarding_done, bodyweight_kg
+-- (also written by zepp-sync from the smart scale), bodyweight_source.
 create table if not exists user_settings (
   key     text not null,
   user_id uuid references auth.users not null,
@@ -69,6 +70,47 @@ create table if not exists coach_reports (
   created_at  timestamptz default now(),
   unique(user_id, week_ending)
 );
+
+-- ─── zepp_daily (Zepp watch recovery data) ───────────────────────────────────
+-- MIGRATION (2026-10-25, run before deploying the Recovery page):
+-- One row per user per local date, written only by scripts/zepp-sync.mjs
+-- (service role). Users can read their own rows; no client writes.
+create table if not exists zepp_daily (
+  user_id            uuid references auth.users not null,
+  date               date not null,
+  readiness          real,
+  hrv_readiness      real,
+  rhr_readiness      real,
+  physical_readiness real,
+  mental_readiness   real,
+  sleep_hrv_ms       real,
+  hrv_baseline_ms    real,
+  sleep_rhr          real,
+  rhr_baseline       real,
+  resting_hr         real,
+  sleep_min          integer,
+  sleep_score        integer,
+  deep_min           integer,
+  light_min          integer,
+  rem_min            integer,
+  awake_min          integer,
+  wake_count         integer,
+  nap_min            integer,
+  training_load      real,
+  pai_daily          real,
+  pai_total          real,
+  steps              integer,
+  active_min         real,
+  stress_avg         real,
+  spo2_score         real,
+  resp_rate          real,
+  weight_kg          real,
+  updated_at         timestamptz not null default now(),
+  primary key (user_id, date)
+);
+alter table zepp_daily enable row level security;
+drop policy if exists "own rows select" on zepp_daily;
+create policy "own rows select" on zepp_daily for select using (auth.uid() = user_id);
 
 -- ─── Row Level Security ──────────────────────────────────────────────────────
 -- Every table must scope rows to auth.uid(). The app's client queries do NOT

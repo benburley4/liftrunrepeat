@@ -151,6 +151,8 @@ export function zeppWorkoutToSession(w: ZeppWorkout, name: string, timeZone = DE
     run: [],
   }
   applyMeasurements(session, w)
+  // Watch-only lifting session: the UI prompts to add the sets.
+  if (type === 'lift') session.needsSets = true
   return session
 }
 
@@ -211,6 +213,7 @@ export function planZeppImport(
     const data = { ...s.data }
     const prev = s.data.zepp as { distanceMismatch?: boolean } | undefined
     applyMeasurements(data, w, prev?.distanceMismatch === true)
+    if (data.needsSets) data.needsSets = !((data.exercises as unknown[] | undefined)?.length)
     planned.push({ savedAt: s.savedAt, data, action: 'update' })
   }
 

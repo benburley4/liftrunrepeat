@@ -146,11 +146,20 @@ shows nothing fake — per IMPROVEMENT_PLAN B6).
 - Run `npm test`, `npm run build`; migration SQL before code that reads
   `zepp_daily`.
 
-## Decisions needed
+## Decisions (agreed 2026-10-25)
 
-1. Readiness thresholds for the daily call (default proposal: ≥75 go hard,
-   55–74 as planned, 40–54 easy, < 40 rest — tune after 4 weeks).
-2. Unmatched watch strength sessions: create with "add sets" prompt (1.3,
-   recommended) or ignore.
-3. Weight from the scale overrides manual bodyweight (1.5) — yes/no.
-4. Hide short watch walks in session lists by default (1.6) — threshold.
+1. Readiness thresholds for the daily call: ≥75 go hard, 55–74 as planned,
+   40–54 easy, < 40 rest — tune after 4 weeks.
+2. Unmatched watch strength sessions: created with an "add your sets"
+   prompt (`needsSets: true`, cleared once exercises exist).
+3. Scale weight overrides manual bodyweight: yes (`bodyweight_kg`,
+   provenance in `bodyweight_source`).
+4. Hide watch walks < 2 km in session lists by default; they still count in
+   all stats.
+
+## Progress log
+
+- 2026-10-25: Phase 0 done. Phase 1.1 (schema in `supabase/schema.sql`,
+  **migration not yet run**), 1.2 (`src/lib/zeppDaily.ts` + sync), 1.3
+  (`needsSets`), 1.5 (scale bodyweight, 95 → 97.6 kg) done. Existing work
+  committed and production redeployed from the commit.

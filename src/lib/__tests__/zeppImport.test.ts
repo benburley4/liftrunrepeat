@@ -121,6 +121,15 @@ describe('planZeppImport', () => {
     expect(row.action).toBe('new')
   })
 
+  it('flags a watch-only strength workout for sets, and clears it once sets exist', () => {
+    const strength: ZeppWorkout = { ...walk, workoutType: 'strength', distanceM: null, elevationGainM: null }
+    const [row] = planZeppImport([strength], [])
+    expect(row.data).toMatchObject({ type: 'lift', name: 'Strength', needsSets: true, exercises: [] })
+    const logged = { ...row.data, exercises: [{ id: 'ex-1', exerciseName: 'Bench Press', plannedSets: [], actualSets: [] }] }
+    const [again] = planZeppImport([strength], [{ savedAt: row.savedAt, data: logged }])
+    expect(again.data.needsSets).toBe(false)
+  })
+
   it('skips auto-detected activity blocks', () => {
     const blip: ZeppWorkout = { ...walk, workoutType: 'activity', distanceM: 0 }
     expect(planZeppImport([blip], [])).toEqual([])
