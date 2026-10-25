@@ -56,6 +56,9 @@ describe('buildZeppDaily', () => {
     })
     expect(rows[1]).toMatchObject({ readiness: 64, sleep_min: null, weight_kg: null })
   })
+  it('drops placeholder days with no non-zero values', () => {
+    expect(buildZeppDaily([{ date: '2024-01-01', metric: 'training_load', value: 0 }], [], [])).toEqual([])
+  })
   it('prefers resting_hr over the device fallback when both exist', () => {
     const [row] = buildZeppDaily(
       [{ date: '2026-10-24', metric: 'device_resting_hr', value: 59 }, { date: '2026-10-24', metric: 'resting_hr', value: 55 }],

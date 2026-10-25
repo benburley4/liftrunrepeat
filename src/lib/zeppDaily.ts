@@ -172,5 +172,9 @@ export function buildZeppDaily(
   }
   for (const [date, w] of lastWeight) row(date).weight_kg = Math.round(w.kg * 10) / 10
 
-  return [...rows.values()].sort((a, b) => a.date.localeCompare(b.date))
+  // Old empty months can come back as a lone zero (e.g. training_load 0) — drop
+  // days without a single non-zero value.
+  const hasData = (r: ZeppDailyRow) =>
+    Object.entries(r).some(([k, v]) => k !== 'date' && typeof v === 'number' && v !== 0)
+  return [...rows.values()].filter(hasData).sort((a, b) => a.date.localeCompare(b.date))
 }
