@@ -64,6 +64,14 @@ Setup in the app: REST API export, header `x-api-key: <HEALTH_IMPORT_SECRET>`,
 data type Workouts, format JSON. Parsing logic is unit-tested in
 `src/lib/healthImport.ts`.
 
+## History backfill (Garmin + Strong)
+
+`node scripts/backfill-history.mjs [--dry-run]` imports a Garmin Connect data
+export and a Strong CSV from `Data/` (gitignored). Strong sessions keep their
+sets/weights (`importedFrom: 'strong'`); a Garmin strength activity on the same
+day only attaches watch stats. Other Garmin activities become `source: 'garmin'`
+sessions. Parsing is in `src/lib/historyImport.ts`; re-running is idempotent.
+
 ## Project map
 
 ```

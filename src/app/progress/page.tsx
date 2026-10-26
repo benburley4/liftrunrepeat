@@ -8,7 +8,7 @@ import {
 import { Trophy, TrendingUp, Zap, Activity, ChevronLeft, ChevronRight, ChevronDown, Pencil, Check, X, Trash2, Sparkles } from 'lucide-react'
 import { getSessions, upsertSession, deleteSession as dbDeleteSession, getCoachReports, saveCoachReport, deleteCoachReport, getSetting, upsertSetting, getZeppDaily, CoachReport } from '@/lib/db'
 import { freshWatchReadiness, readinessDrivers, localToday, READINESS_CALL, type WatchReadiness, type ZeppDay } from '@/lib/recovery'
-import { assessLoad, footKind, weeklyHybridLoad } from '@/lib/activity'
+import { assessLoad, footKind, isWatchSession, weeklyHybridLoad } from '@/lib/activity'
 import StepsTab from '@/components/progress/StepsTab'
 import OnFootTab from '@/components/progress/OnFootTab'
 import HikeRecords from '@/components/progress/HikeRecords'
@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
   const [zeppRows, setZeppRows] = useState<ZeppDay[]>([])
   const [showShortWalks, setShowShortWalks] = useState(false)
   // Short watch walks still count in every stat — they're only hidden from the History list.
-  const isShortWalk = (s: SavedSession) => s.source === 'zepp' && footKind(s) === 'walk' && (s.hikeKm ?? 0) < SHORT_WALK_KM
+  const isShortWalk = (s: SavedSession) => isWatchSession(s) && footKind(s) === 'walk' && (s.hikeKm ?? 0) < SHORT_WALK_KM
   const shortWalkCount = history.filter(isShortWalk).length
   const visibleHistory = showShortWalks ? history : history.filter(s => !isShortWalk(s))
   const [editing, setEditing] = useState(false)

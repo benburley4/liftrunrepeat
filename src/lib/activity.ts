@@ -131,10 +131,15 @@ export function footKm(s: SessionData): number {
  * Runs: run sessions or anything with run segments. Hikes: hike sessions of
  * 5 km+ or 150 m+ climb, or logged by hand. Walks: shorter watch walks.
  */
+/** Created from a watch recording (Zepp sync, or the Garmin history backfill). */
+export function isWatchSession(s: { source?: string }): boolean {
+  return s.source === 'zepp' || s.source === 'garmin'
+}
+
 export function footKind(s: SessionData): FootKind | null {
   if (s.type === 'run' || (s.run ?? []).length > 0) return 'run'
   if (s.type !== 'hike') return null
-  if (s.source !== 'zepp') return 'hike'
+  if (!isWatchSession(s)) return 'hike'
   return (s.hikeKm ?? 0) >= 5 || (s.hikeElevationM ?? 0) >= 150 ? 'hike' : 'walk'
 }
 
