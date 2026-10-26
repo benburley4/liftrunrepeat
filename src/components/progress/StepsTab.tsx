@@ -7,8 +7,13 @@ import { stepsSummary, stepsTotals, weeklySteps, monthlySteps, footEfficiencyByM
 import type { ZeppDay } from '@/lib/recovery'
 import type { SessionData } from '@/lib/computeStats'
 import { chartTooltipStyle, axisProps, fmtDay, fmtMonth, cardStyle, STEPS_COLOR } from './progressStyle'
+import { shiftDays } from '@/lib/progressRange'
+import GoalCalendar from './GoalCalendar'
+import { useChartAnimation } from './kit'
+import type { RangeCtx } from './types'
 
-const RANGES = [{ label: '30 days', days: 30 }, { label: '90 days', days: 90 }, { label: '1 year', days: 365 }] as const
+/** The daily chart shows at most a year of bars; longer ranges use the weekly and monthly charts. */
+const MAX_DAILY = 365
 
 type Mode = 'avg' | 'total' | 'km'
 const MODES: { id: Mode; label: string }[] = [
@@ -49,21 +54,22 @@ const fmtBig = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n.toLocal
 const fmtKm = (n: number) => (n >= 1000 ? Math.round(n).toLocaleString() : n.toLocaleString())
 const kAxis = (v: number) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))
 
-export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; sessions: SessionData[]; today: string }) {
+export default function StepsTab({ rows, sessions, ctx }: { rows: ZeppDay[]; sessions: SessionData[]; ctx: RangeCtx }) {
+  const today = ctx.today
+  const anim = useChartAnimation()
   const [mode, setMode] = useState<Mode>('avg')
-  const [range, setRange] = useState<number>(90)
   const summary = useMemo(() => stepsSummary(rows, today), [rows, today])
   const totals = useMemo(() => stepsTotals(rows, today), [rows, today])
   const goal = rows.findLast(r => r.step_goal)?.step_goal || DEFAULT_STEP_GOAL
 
   const daily = useMemo(() => {
-    const from = new Date(`${today}T00:00:00Z`)
-    from.setUTCDate(from.getUTCDate() - (range - 1))
-    const f = from.toISOString().slice(0, 10)
+    const cap = shiftDays(today, -(MAX_DAILY - 1))
+    const f = ctx.span.start > cap ? ctx.span.start : cap
     return rows.filter(r => r.date >= f && r.date <= today && r.steps)
       .map(r => ({ date: r.date, label: fmtDay(r.date), steps: r.steps, km: r.distance_m != null ? Math.round(r.distance_m / 100) / 10 : null }))
-  }, [rows, range, today])
-  const weekly = useMemo(() => weeklySteps(rows, today, 26).map(w => ({ ...w, label: fmtDay(w.key) })), [rows, today])
+  }, [rows, ctx.span.start, today])
+  const weekCount = Math.max(8, Math.min(104, ctx.buckets[0]?.key.length === 7 ? 104 : ctx.buckets.length))
+  const weekly = useMemo(() => weeklySteps(rows, today, weekCount).map(w => ({ ...w, label: fmtDay(w.key) })), [rows, today, weekCount])
   const monthly = useMemo(() => monthlySteps(rows, today).map(m => ({ ...m, label: fmtMonth(m.key) })), [rows, today])
   const gait = useMemo(() => footEfficiencyByMonth(sessions).filter(m => m.cadence || m.strideCm).map(m => ({ ...m, label: fmtMonth(m.month) })), [sessions])
 
@@ -125,11 +131,16 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
       )}
 
       <div className="rounded-xl p-5" style={cardStyle}>
+        <Heading sub="Days at your step goal over the last 6 months">Goal Calendar</Heading>
+        <GoalCalendar rows={rows} today={today} />
+      </div>
+
+      <div className="rounded-xl p-5" style={cardStyle}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <Heading sub={mode === 'km' ? 'Walking distance per day' : `Dashed line = your goal of ${goal.toLocaleString()} steps`}>
             {mode === 'km' ? 'Daily Distance' : 'Daily Steps'}
           </Heading>
-          <Pills options={RANGES.map(r => ({ id: r.days as number, label: r.label }))} value={range} onChange={setRange} label="Time range" />
+          <span className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>{ctx.range === 'all' || ctx.range === '1y' ? 'Last 12 months' : ctx.label}</span>
         </div>
         <div className="h-56">
           <ResponsiveContainer width="100%" height="100%">
@@ -140,7 +151,7 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
               <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                 formatter={(v: unknown) => mode === 'km' ? [`${v} km`, 'Distance'] : [Number(v).toLocaleString(), 'Steps']} />
               {mode !== 'km' && <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />}
-              <Bar dataKey={mode === 'km' ? 'km' : 'steps'} fill={STEPS_COLOR} radius={[2, 2, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey={mode === 'km' ? 'km' : 'steps'} fill={STEPS_COLOR} radius={[2, 2, 0, 0]} {...anim} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -148,7 +159,7 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-xl p-5" style={cardStyle}>
-          <Heading sub={mode === 'avg' ? 'Average steps per day, by week (last 26 weeks)' : mode === 'total' ? 'Total steps per week (last 26 weeks)' : 'Walking km per week (last 26 weeks)'}>
+          <Heading sub={mode === 'avg' ? `Average steps per day, by week (last ${weekCount} weeks)` : mode === 'total' ? `Total steps per week (last ${weekCount} weeks)` : `Walking km per week (last ${weekCount} weeks)`}>
             {mode === 'avg' ? 'Weekly Average' : mode === 'total' ? 'Weekly Total' : 'Weekly Distance'}
           </Heading>
           <div className="h-48">
@@ -160,7 +171,7 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
                 <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} labelFormatter={l => `Week of ${l}`}
                   formatter={(v: unknown) => [periodFmt(v), periodName]} />
                 {mode === 'avg' && <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />}
-                <Bar dataKey={periodKey} fill={STEPS_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey={periodKey} fill={STEPS_COLOR} radius={[3, 3, 0, 0]} {...anim} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -178,7 +189,7 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
                 <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }}
                   formatter={(v: unknown) => [periodFmt(v), periodName]} />
                 {mode === 'avg' && <ReferenceLine y={goal} stroke="#8A8A8A" strokeDasharray="5 4" />}
-                <Bar dataKey={periodKey} fill={STEPS_COLOR} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+                <Bar dataKey={periodKey} fill={STEPS_COLOR} radius={[3, 3, 0, 0]} {...anim} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -194,9 +205,9 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
                 <LineChart data={gait} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
                   <XAxis dataKey="label" {...axisProps} />
-                  <YAxis {...axisProps} width={44} domain={['dataMin - 5', 'dataMax + 5']} unit=" spm" />
+                  <YAxis {...axisProps} width={60} domain={['dataMin - 5', 'dataMax + 5']} unit=" spm" />
                   <Tooltip {...chartTooltipStyle} formatter={(v: unknown) => [`${v} steps/min`, 'Cadence']} />
-                  <Line dataKey="cadence" stroke={STEPS_COLOR} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+                  <Line dataKey="cadence" stroke={STEPS_COLOR} strokeWidth={2} dot={{ r: 3 }} connectNulls {...anim} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -208,9 +219,9 @@ export default function StepsTab({ rows, sessions, today }: { rows: ZeppDay[]; s
                 <LineChart data={gait} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
                   <XAxis dataKey="label" {...axisProps} />
-                  <YAxis {...axisProps} width={44} domain={['dataMin - 5', 'dataMax + 5']} unit=" cm" />
+                  <YAxis {...axisProps} width={56} domain={['dataMin - 5', 'dataMax + 5']} unit=" cm" />
                   <Tooltip {...chartTooltipStyle} formatter={(v: unknown) => [`${v} cm`, 'Stride']} />
-                  <Line dataKey="strideCm" stroke={STEPS_COLOR} strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+                  <Line dataKey="strideCm" stroke={STEPS_COLOR} strokeWidth={2} dot={{ r: 3 }} connectNulls {...anim} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

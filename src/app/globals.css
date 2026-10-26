@@ -247,3 +247,45 @@ h1, h2, h3, h4, h5, h6 {
 .pr-row { transition: background-color 0.15s ease; }
 .pr-row:hover { background: #1E1E1E; }
 .pr-row:focus-visible { outline: 2px solid #00BFA5; outline-offset: -2px; }
+
+/* ─── Progress page motion (all of it skipped for reduced motion) ──────── */
+.lrr-tile { transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease; }
+.lrr-tile:hover { border-color: #3E3E3E !important; background: #1E1E1E !important; }
+.lrr-tile:focus-visible, .lrr-cell:focus-visible { outline: 2px solid #00BFA5; outline-offset: 2px; }
+.lrr-tile-action { transition: color 0.15s ease; }
+.lrr-tile:hover .lrr-tile-action { color: #00BFA5 !important; }
+.lrr-cell { transition: transform 0.1s ease; }
+.lrr-cell:hover { transform: scale(1.35); }
+.lrr-danger:hover { color: #C8102E !important; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lrr-panel > * { animation: lrr-fade-up 0.35s ease-out both; }
+  .lrr-reveal { animation: lrr-fade-up 0.45s ease-out both; }
+  .lrr-grow { animation: lrr-grow 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; transform-origin: left center; }
+  .lrr-ring { animation: lrr-ring 1s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .lrr-pop { animation: lrr-pop 0.4s cubic-bezier(0.3, 1.4, 0.5, 1) both; }
+  .lrr-slide { animation: lrr-slide 0.25s ease-out both; }
+  .lrr-fade { animation: lrr-fade 0.2s ease-out both; }
+  .lrr-toast { animation: lrr-toast 0.4s cubic-bezier(0.3, 1.3, 0.5, 1) both; }
+  .lrr-underline { animation: lrr-grow 0.25s ease-out both; transform-origin: center; }
+  .lrr-nudge { animation: lrr-nudge 1.6s ease-in-out infinite; }
+  .lrr-tile:hover { transform: translateY(-2px); }
+}
+
+.lrr-confetti {
+  position: absolute; top: -20px; border-radius: 2px; opacity: 0;
+  animation-name: lrr-confetti; animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1); animation-fill-mode: forwards;
+}
+
+@keyframes lrr-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes lrr-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lrr-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes lrr-ring { from { stroke-dasharray: var(--lrr-ring-from); } }
+@keyframes lrr-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
+@keyframes lrr-slide { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes lrr-toast { from { opacity: 0; transform: translate(-50%, 24px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@keyframes lrr-nudge { 0%, 100% { transform: none; } 50% { transform: translateX(3px); } }
+@keyframes lrr-confetti {
+  0% { opacity: 1; transform: translateY(0) rotate(0deg); }
+  100% { opacity: 0; transform: translateY(105vh) rotate(720deg); }
+}

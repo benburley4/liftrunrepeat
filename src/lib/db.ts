@@ -170,6 +170,23 @@ export async function getZeppWorkoutSeries(workoutId: string): Promise<{ points:
   return { points: row.points ?? null, route: row.route ?? null }
 }
 
+/** Every synced GPS route, keyed by watch workout id (empty when the route column or table is missing). */
+export async function getZeppRoutes(): Promise<Record<string, LatLon[]>> {
+  const out: Record<string, LatLon[]> = {}
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('zepp_workout_series')
+      .select('workout_id, route')
+      .not('route', 'is', null)
+      .range(from, from + PAGE - 1)
+    if (error) return out
+    for (const row of (data ?? []) as { workout_id: string; route: LatLon[] | null }[])
+      if (Array.isArray(row.route) && row.route.length > 1) out[row.workout_id] = row.route
+    if ((data ?? []).length < PAGE) break
+  }
+  return out
+}
+
 // ─── User Settings ────────────────────────────────────────────────────────────
 
 export async function getSetting(key: string): Promise<string | null> {

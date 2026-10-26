@@ -36,7 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!AUTH_ENABLED || loading) return
-    const publicRoutes = ['/', '/login', '/reset-password']
+    // /progress is public: signed-out visitors see a demo athlete (see lib/demoData.ts).
+    const publicRoutes = ['/', '/login', '/reset-password', '/progress']
     if (!user && !publicRoutes.includes(pathname)) {
       router.replace('/login')
     } else if (user && pathname === '/login') {
