@@ -18,13 +18,22 @@ function throwIfError(error: unknown) {
   throw new Error(`Supabase error: ${e.message ?? JSON.stringify(error)} (code: ${e.code}, details: ${e.details})`)
 }
 
+// PostgREST returns at most 1000 rows per request, so long histories are paged.
+const PAGE = 1000
+
 export async function getSessions(): Promise<StoredSession[]> {
-  const { data, error } = await supabase
-    .from('sessions')
-    .select('data')
-    .order('saved_at', { ascending: false })
-  throwIfError(error)
-  return dedupeSessions((data ?? []).map(row => row.data as StoredSession))
+  const rows: { data: unknown }[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('sessions')
+      .select('data')
+      .order('saved_at', { ascending: false })
+      .range(from, from + PAGE - 1)
+    throwIfError(error)
+    rows.push(...(data ?? []))
+    if ((data ?? []).length < PAGE) break
+  }
+  return dedupeSessions(rows.map(row => row.data as StoredSession))
 }
 
 /** Every saved session on one date, duplicates included (for the save-time check). */

@@ -91,7 +91,8 @@ export default function AnalyticsPage() {
   const volMults = useVolumeMultipliers()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
   const [hoveredLine, setHoveredLine] = useState<string | null>(null)
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  // History groups: years ("y-2026") hold months ("2026-10"); this year starts open.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(() => new Set([`y-${new Date().getFullYear()}`]))
   const [history, setHistory] = useState<SavedSession[]>([])
   const [selected, setSelected] = useState<SavedSession | null>(null)
   const [watchReadiness, setWatchReadiness] = useState<WatchReadiness | null>(null)
@@ -1650,60 +1651,56 @@ export default function AnalyticsPage() {
                 )
               }
 
-              // Current calendar year → group by month; previous year and older → group by year
-              const currentYear = new Date().getFullYear()
-              const groups: { key: string; label: string; sessions: SavedSession[] }[] = []
-              const monthMap: Record<string, SavedSession[]> = {}
-              const yearMap: Record<string, SavedSession[]> = {}
-
+              // Year dropdowns, each holding month dropdowns (newest first).
+              const years: Record<string, Record<string, SavedSession[]>> = {}
               for (const s of visibleHistory) {
-                const d = new Date(s.date + 'T00:00:00')
-                if (d.getFullYear() === currentYear) {
-                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`
-                  ;(monthMap[key] ??= []).push(s)
-                } else {
-                  const key = String(d.getFullYear())
-                  ;(yearMap[key] ??= []).push(s)
-                }
+                const [y, m] = s.date.split('-')
+                ;((years[y] ??= {})[`${y}-${m}`] ??= []).push(s)
               }
-
-              // Month groups (newest first)
-              Object.keys(monthMap).sort((a, b) => b.localeCompare(a)).forEach(key => {
-                const d = new Date(key + '-01T00:00:00')
-                groups.push({ key, label: d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), sessions: monthMap[key] })
-              })
-              // Year groups (newest first)
-              Object.keys(yearMap).sort((a, b) => b.localeCompare(a)).forEach(key => {
-                groups.push({ key, label: key, sessions: yearMap[key] })
-              })
 
               const getExpanded = (key: string) => expandedGroups.has(key)
               const toggle = (key: string) => setExpandedGroups(prev => {
                 const next = new Set(prev)
-                next.has(key) ? next.delete(key) : next.add(key)
+                if (next.has(key)) next.delete(key)
+                else next.add(key)
                 return next
               })
 
-              return groups.map(group => (
-                <div key={group.key} style={{ borderBottom: '1px solid #2E2E2E' }}>
-                  <button onClick={() => toggle(group.key)}
-                    className="w-full flex items-center justify-between px-5 py-3"
-                    style={{ background: '#1A1A1A', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#222222')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#1A1A1A')}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{group.label}</span>
-                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#2E2E2E', color: '#606060', fontFamily: 'var(--font-sans)' }}>{group.sessions.length}</span>
-                    </div>
-                    <ChevronDown size={16} style={{ color: '#606060', transform: getExpanded(group.key) ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                  </button>
-                  {getExpanded(group.key) && (
-                    <div>
-                      {group.sessions.map((s, i) => renderSession(s, i === group.sessions.length - 1))}
-                    </div>
-                  )}
-                </div>
-              ))
+              const groupHeader = (key: string, label: string, count: number, nested: boolean) => (
+                <button onClick={() => toggle(key)}
+                  className={`w-full flex items-center justify-between py-3 ${nested ? 'pl-9 pr-5' : 'px-5'}`}
+                  style={{ background: nested ? '#161616' : '#1A1A1A', cursor: 'pointer' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#222222')}
+                  onMouseLeave={e => (e.currentTarget.style.background = nested ? '#161616' : '#1A1A1A')}>
+                  <div className="flex items-center gap-3">
+                    <span className={`${nested ? 'text-xs' : 'text-sm'} font-bold uppercase`}
+                      style={{ color: nested ? '#C8C8C8' : '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{label}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#2E2E2E', color: '#8A8A8A', fontFamily: 'var(--font-sans)' }}>{count}</span>
+                  </div>
+                  <ChevronDown size={16} style={{ color: '#606060', transform: getExpanded(key) ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                </button>
+              )
+
+              return Object.keys(years).sort((a, b) => b.localeCompare(a)).map(y => {
+                const months = years[y]
+                const yearKey = `y-${y}`
+                const total = Object.values(months).reduce((n, list) => n + list.length, 0)
+                return (
+                  <div key={yearKey} style={{ borderBottom: '1px solid #2E2E2E' }}>
+                    {groupHeader(yearKey, y, total, false)}
+                    {getExpanded(yearKey) && Object.keys(months).sort((a, b) => b.localeCompare(a)).map(key => (
+                      <div key={key} style={{ borderTop: '1px solid #2E2E2E' }}>
+                        {groupHeader(key, new Date(key + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long' }), months[key].length, true)}
+                        {getExpanded(key) && (
+                          <div>
+                            {months[key].map((s, i) => renderSession(s, i === months[key].length - 1))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
+              })
             })()}
           </div>
         )}
