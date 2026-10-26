@@ -390,14 +390,16 @@ export default function AnalyticsPage() {
     setSelected(s); setEditing(false); setEditSession(null)
   }
 
-  // Personal Records → that session's detail in History; Back returns to PRs.
+  // Personal Records / Recent Sessions → that session's detail in History;
+  // Back returns to the tab it was opened from.
   const [returnTab, setReturnTab] = useState<TabId | null>(null)
-  function openFromRecords(savedAt: string) {
+  function openSessionFrom(savedAt: string, from: TabId) {
     const s = history.find(h => h.savedAt === savedAt)
     if (!s) return
-    setReturnTab('prs'); setActiveTab('history'); setHistorySubTab('sessions'); openSession(s)
+    setReturnTab(from); setActiveTab('history'); setHistorySubTab('sessions'); openSession(s)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
+  const openFromRecords = (savedAt: string) => openSessionFrom(savedAt, 'prs')
 
   function startEdit() {
     setEditSession(JSON.parse(JSON.stringify(selected))); setEditing(true)
@@ -1346,8 +1348,11 @@ export default function AnalyticsPage() {
                     const col = sessionTypeColor[s.type] ?? '#606060'
                     const dateLabel = new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
                     return (
-                      <div key={s.savedAt} className="px-5 py-4 flex items-center gap-4"
-                        style={{ borderBottom: i < recent.length - 1 ? '1px solid #2E2E2E' : 'none' }}>
+                      <div key={s.savedAt} className="px-5 py-4 flex items-center gap-4 pr-row" role="button" tabIndex={0}
+                        onClick={() => openSessionFrom(s.savedAt, 'overview')}
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSessionFrom(s.savedAt, 'overview') } }}
+                        title="Open this session"
+                        style={{ borderBottom: i < recent.length - 1 ? '1px solid #2E2E2E' : 'none', cursor: 'pointer' }}>
                         <div className="w-2 h-10 rounded-full flex-shrink-0" style={{ background: col }} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-bold uppercase" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{s.name}</p>
