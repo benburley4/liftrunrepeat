@@ -9,6 +9,7 @@ import { FEATURES } from '@/lib/features'
 import { authHeaders } from '@/lib/auth'
 import { loadAthleteContext } from '@/lib/athleteContext'
 import { validateAIProgramme } from '@/lib/programmeSchema'
+import { tallySets, PPL_COLORS, BODY_COLORS } from '@/lib/computeStats'
 
 // ─── Types (mirrored from programmes page) ────────────────────────────────────
 
@@ -349,39 +350,8 @@ function MarkdownBlock({ text }: { text: string }) {
 
 // ─── Programme breakdown charts ───────────────────────────────────────────────
 
-const PPL_KEYWORDS: [RegExp, string][] = [
-  [/bench|push.?up|fly|chest|pec/i,                                       'Push'],
-  [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise/i, 'Push'],
-  [/tricep|pushdown|skull|extension/i,                                    'Push'],
-  [/row|pull.?up|chin.?up|lat\b|pulldown|face.?pull|rear.?delt|shrug/i,  'Pull'],
-  [/curl|bicep/i,                                                          'Pull'],
-  [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,       'Legs'],
-  [/deadlift|rdl|romanian/i,                                               'Legs'],
-  [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,            'Core'],
-]
-
-const BODY_KEYWORDS: [RegExp, string][] = [
-  [/bench|push.?up|fly|chest|pec/i,                                        'Chest'],
-  [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise|rear.?delt|face.?pull/i, 'Shoulders'],
-  [/row|pull.?up|chin.?up|lat\b|pulldown|shrug/i,                          'Back'],
-  [/deadlift|rdl|romanian/i,                                                'Back'],
-  [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,        'Legs'],
-  [/curl|bicep/i,                                                           'Arms'],
-  [/tricep|pushdown|skull|extension/i,                                      'Arms'],
-  [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,             'Core'],
-]
-
-function classifyPPL(name: string): string {
-  for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat
-  return 'Push' // fallback for unknown pressing movements
-}
-function classifyBodyPart(name: string): string {
-  for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp
-  return 'Back' // fallback
-}
-
 function analyseProgramme(prog: Programme) {
-  const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Core: 0, Cardio: 0 }
+  const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Hinge: 0, Core: 0, Cardio: 0 }
   const body: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0, Cardio: 0 }
 
   const cellKeys = Object.keys(prog.cells)
@@ -399,10 +369,7 @@ function analyseProgramme(prog: Programme) {
     }
 
     for (const ex of (cell.template.exerciseRows ?? [])) {
-      const n    = ex.exerciseName
-      const sets = ex.sets?.length ?? 3
-      ppl[classifyPPL(n)]       = (ppl[classifyPPL(n)]       || 0) + sets
-      body[classifyBodyPart(n)] = (body[classifyBodyPart(n)] || 0) + sets
+      tallySets(ex.exerciseName, ex.sets?.length ?? 3, ppl, body)
     }
 
     if (type === 'hybrid') {
@@ -413,8 +380,6 @@ function analyseProgramme(prog: Programme) {
   return { ppl, body }
 }
 
-const PPL_COLORS:  Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Core: '#FF9500', Cardio: '#3B82F6' }
-const BODY_COLORS: Record<string, string> = { Chest: '#C8102E', Back: '#00BFA5', Shoulders: '#FF9500', Legs: '#A78BFA', Arms: '#F472B6', Core: '#6B7280', Cardio: '#3B82F6' }
 
 function DonutChart({ counts, colors, size = 96 }: { counts: Record<string, number>; colors: Record<string, string>; size?: number }) {
   const entries = Object.entries(counts).filter(([, v]) => v > 0)

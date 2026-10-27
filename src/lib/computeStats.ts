@@ -62,30 +62,63 @@ function weekStart(dateStr: string): string {
   return d.toISOString().split('T')[0]
 }
 
+// First match wins, so order matters: core before legs ("leg raise"), hinge before
+// legs/pull ("nordic curl", "hip thrust"), legs before push/pull ("leg press",
+// "leg extension", "leg curl"). Unmatched names fall to 'Other' rather than
+// silently inflating one side of the push:pull ratio.
+const CORE_RE  = /plank|crunch|sit.?up|hollow|\babs?\b|ab.?wheel|rollout|core|russian|oblique|leg.?raise|knee.?raise|dead.?bug|pallof|bird.?dog|v.?up|wood.?chop/i
+const HINGE_RE = /deadlift|\brdl\b|romanian|good.?morning|hip.?thrust|glute.?bridge|back.?extension|hyper.?extension|reverse.?hyper|nordic|swing|pull.?through|superman|clean|snatch/i
+const LEGS_RE  = /squat|lunge|leg.?press|leg.?extension|leg.?curl|hamstring.?curl|calf|step.?(up|down)|hack|split|pistol|wall.?sit|\bhops?\b|jump|bound|skip|high.?knee|adduct|abduct/i
+const PUSH_RE  = /bench|push.?up|fly|chest|pec|overhead.?press|ohp|shoulder.?press|push.?press|military|arnold|lateral.?raise|front.?raise|tricep|pushdown|skull|\bdips?\b|press\b/i
+const PULL_RE  = /\brows?\b|pull.?up|chin.?up|\blat\b|pulldown|pull.?down|face.?pull|rear.?delt|reverse.?fly|shrug|pull.?over|muscle.?up|curl|bicep/i
+
+/** Push / Pull / Legs / Hinge / Core. Hinge = posterior-chain lifts (deadlifts, RDLs) —
+ *  kept out of Pull because the push:pull check is about upper-body pulling. */
 export const PPL_KEYWORDS: [RegExp, string][] = [
-  [/bench|push.?up|fly|chest|pec/i,                                          'Push'],
-  [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise/i, 'Push'],
-  [/tricep|pushdown|skull|extension/i,                                        'Push'],
-  [/row|pull.?up|chin.?up|lat\b|pulldown|face.?pull|rear.?delt|shrug/i,    'Pull'],
-  [/curl|bicep/i,                                                              'Pull'],
-  [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,         'Legs'],
-  [/deadlift|rdl|romanian/i,                                                   'Legs'],
-  [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,              'Core'],
+  [CORE_RE,  'Core'],
+  [HINGE_RE, 'Hinge'],
+  [LEGS_RE,  'Legs'],
+  [PULL_RE,  'Pull'],   // before Push so "reverse fly" isn't caught by "fly"
+  [PUSH_RE,  'Push'],
 ]
+
+// Hip-dominant hinges (RDL, stiff-leg, good morning, hip thrust…) load hamstrings/glutes;
+// floor-pulled deadlifts (conventional, sumo, hex bar) split between back and legs.
+const LEG_HINGE_RE   = /\brdl\b|romanian|stiff.?leg|single.?leg.?deadlift|good.?morning|hip.?thrust|glute.?bridge|nordic|swing|pull.?through/i
+const BACK_HINGE_RE  = /back.?extension|hyper.?extension|reverse.?hyper|superman/i
 
 export const BODY_KEYWORDS: [RegExp, string][] = [
-  [/bench|push.?up|fly|chest|pec/i,                                                              'Chest'],
-  [/overhead.?press|ohp|shoulder.?press|military|lateral.?raise|front.?raise|face.?pull|rear.?delt/i, 'Shoulders'],
-  [/row|pull.?up|chin.?up|lat\b|pulldown|shrug/i,                                                'Back'],
-  [/deadlift|rdl|romanian/i,                                                                      'Back'],
-  [/squat|lunge|leg.?press|hip.?thrust|glute|calf|step.?up|hack/i,                              'Legs'],
-  [/curl|bicep/i,                                                                                  'Arms'],
-  [/tricep|pushdown|skull|extension/i,                                                             'Arms'],
-  [/plank|crunch|sit.?up|hollow|\bab\b|core|russian|oblique/i,                                   'Core'],
+  [CORE_RE,                                                                                        'Core'],
+  [LEG_HINGE_RE,                                                                                   'Legs'],
+  [BACK_HINGE_RE,                                                                                  'Back'],
+  [LEGS_RE,                                                                                        'Legs'],
+  [/overhead.?press|ohp|shoulder.?press|push.?press|military|arnold|lateral.?raise|front.?raise|upright.?row|face.?pull|rear.?delt|reverse.?fly/i, 'Shoulders'],
+  [/bench|push.?up|fly|chest|pec|\bdips?\b/i,                                                      'Chest'],
+  [/\brows?\b|pull.?up|chin.?up|\blat\b|pulldown|pull.?down|shrug|pull.?over/i,                    'Back'],
+  [/curl|bicep|tricep|pushdown|skull/i,                                                            'Arms'],
 ]
 
-export function classifyPPL(name: string) { for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat; return 'Push' }
-export function classifyBody(name: string) { for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return bp; return 'Back' }
+export function classifyPPL(name: string) { for (const [re, cat] of PPL_KEYWORDS) if (re.test(name)) return cat; return 'Other' }
+
+/** Body parts a set counts towards, as [part, share] pairs summing to 1. */
+export function bodyShares(name: string): [string, number][] {
+  for (const [re, bp] of BODY_KEYWORDS) if (re.test(name)) return [[bp, 1]]
+  if (/deadlift/i.test(name)) return [['Back', 0.5], ['Legs', 0.5]]
+  return [['Other', 1]]
+}
+
+/** Dominant body part (the first share). */
+export function classifyBody(name: string) { return bodyShares(name)[0][0] }
+
+export const PPL_COLORS:  Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Hinge: '#EAB308', Core: '#FF9500', Cardio: '#3B82F6', Other: '#606060' }
+export const BODY_COLORS: Record<string, string> = { Chest: '#C8102E', Back: '#00BFA5', Shoulders: '#FF9500', Legs: '#A78BFA', Arms: '#F472B6', Core: '#6B7280', Cardio: '#3B82F6', Other: '#606060' }
+
+/** Adds `sets` working sets of `name` into ppl/body tallies (body split by bodyShares). */
+export function tallySets(name: string, sets: number, ppl: Record<string, number>, body: Record<string, number>) {
+  const cat = classifyPPL(name)
+  ppl[cat] = (ppl[cat] || 0) + sets
+  for (const [bp, share] of bodyShares(name)) body[bp] = (body[bp] || 0) + sets * share
+}
 
 function sessionLiftLoad(s: SessionData, mults?: VolumeMultipliers): number {
   return sessionVolume(s, mults) / 1000
@@ -343,20 +376,17 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
     : []
 
   // PPL / body breakdown
-  const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Core: 0, Cardio: 0 }
+  const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Hinge: 0, Core: 0, Cardio: 0 }
   const body: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0, Cardio: 0 }
   for (const s of history) {
     if (s.type === 'run' || s.type === 'hike') { ppl.Cardio += 3; body.Cardio += 3; continue }
     for (const ex of s.exercises ?? []) {
       const sets = ex.actualSets?.length || ex.plannedSets?.length || 0
       if (sets === 0) continue
-      ppl[classifyPPL(ex.exerciseName)]  = (ppl[classifyPPL(ex.exerciseName)]  || 0) + sets
-      body[classifyBody(ex.exerciseName)] = (body[classifyBody(ex.exerciseName)] || 0) + sets
+      tallySets(ex.exerciseName, sets, ppl, body)
     }
     if (s.type === 'hybrid' && (s.run ?? []).length > 0) { ppl.Cardio += 2; body.Cardio += 2 }
   }
-  const PPL_COLORS:  Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Core: '#FF9500', Cardio: '#3B82F6' }
-  const BODY_COLORS: Record<string, string> = { Chest: '#C8102E', Back: '#00BFA5', Shoulders: '#FF9500', Legs: '#A78BFA', Arms: '#F472B6', Core: '#6B7280', Cardio: '#3B82F6' }
   function toSlices(counts: Record<string, number>, colors: Record<string, string>) {
     return Object.entries(counts).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a)
       .map(([label, value]) => ({ label, value, color: colors[label] ?? '#606060' }))

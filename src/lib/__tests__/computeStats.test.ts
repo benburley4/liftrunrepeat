@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeStats, epleyRM, segKm, classifyPPL, classifyBody, SessionData, LoggedRunSegment } from '../computeStats'
+import { computeStats, epleyRM, segKm, classifyPPL, classifyBody, bodyShares, SessionData, LoggedRunSegment } from '../computeStats'
 
 function liftSession(date: string, weight: number, reps: number, name = 'Back Squat'): SessionData {
   return {
@@ -50,10 +50,32 @@ describe('classification', () => {
     expect(classifyPPL('Back Squat')).toBe('Legs')
     expect(classifyPPL('Plank')).toBe('Core')
   })
+  it('keeps hinges out of Pull', () => {
+    for (const n of ['Conventional Deadlift', 'Sumo Deadlift', 'Romanian Deadlift', 'Good Morning', 'Hip Thrust', 'Nordic Curl'])
+      expect(classifyPPL(n)).toBe('Hinge')
+  })
+  it('does not let leg names leak into push/pull', () => {
+    expect(classifyPPL('Leg Extension')).toBe('Legs')
+    expect(classifyPPL('Single leg extension hold')).toBe('Legs')
+    expect(classifyPPL('Seated Leg Curl')).toBe('Legs')
+    expect(classifyPPL('Step downs')).toBe('Legs')
+    expect(classifyPPL('Hops')).toBe('Legs')
+    expect(classifyPPL('Hanging Leg Raise')).toBe('Core')
+    expect(classifyPPL('Reverse Fly')).toBe('Pull')
+  })
+  it('sends unknown exercises to Other, not Push', () => {
+    expect(classifyPPL('Farmer Carry')).toBe('Other')
+    expect(classifyBody('Farmer Carry')).toBe('Other')
+  })
   it('classifies body parts', () => {
     expect(classifyBody('Bench Press')).toBe('Chest')
-    expect(classifyBody('Conventional Deadlift')).toBe('Back')
     expect(classifyBody('Dumbbell Curl')).toBe('Arms')
+    expect(classifyBody('Romanian Deadlift')).toBe('Legs')
+    expect(classifyBody('Leg Extension')).toBe('Legs')
+  })
+  it('splits floor deadlifts between back and legs', () => {
+    expect(bodyShares('Conventional Deadlift')).toEqual([['Back', 0.5], ['Legs', 0.5]])
+    expect(bodyShares('Sumo Deadlift')).toEqual([['Back', 0.5], ['Legs', 0.5]])
   })
 })
 

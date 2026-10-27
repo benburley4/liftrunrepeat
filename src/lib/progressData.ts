@@ -2,7 +2,7 @@
 // app/progress/page.tsx so they can be tested and shared by the tab
 // components; formulas are unchanged unless a comment says otherwise.
 
-import { epleyRM, classifyPPL, classifyBody, segKm, type SessionData, type LoggedRunSegment } from './computeStats'
+import { epleyRM, classifyPPL, bodyShares, tallySets, PPL_COLORS, BODY_COLORS, segKm, type SessionData, type LoggedRunSegment } from './computeStats'
 import { exerciseVolume, type VolumeMultipliers } from './exerciseLoad'
 import { footKind, footKm, hrLoad, plausibleRecording, weekStartOf, DEFAULT_STEP_GOAL } from './activity'
 import { isBodyweightExercise, resolveBodyweightPct, type BwOverrides } from './bodyweight'
@@ -364,14 +364,15 @@ export function bodyPartSets(history: SessionData[], span?: { start: string; end
   const out: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0 }
   for (const s of history) {
     if (!inSpan(s.date, span)) continue
-    for (const ex of s.exercises ?? []) out[classifyBody(ex.exerciseName)] = (out[classifyBody(ex.exerciseName)] ?? 0) + ex.actualSets.length
+    for (const ex of s.exercises ?? [])
+      for (const [bp, share] of bodyShares(ex.exerciseName)) out[bp] = (out[bp] ?? 0) + ex.actualSets.length * share
   }
   return out
 }
 
 /** Push/Pull/Legs and body-part split for the donuts (cardio sessions weighted as before). */
 export function sessionBreakdown(history: SessionData[], span?: { start: string; end: string } | null) {
-  const ppl: Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Core: 0, Cardio: 0 }
+  const ppl: Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Hinge: 0, Core: 0, Cardio: 0 }
   const body: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0, Cardio: 0 }
   for (const s of history) {
     if (!inSpan(s.date, span)) continue
@@ -379,13 +380,10 @@ export function sessionBreakdown(history: SessionData[], span?: { start: string;
     for (const ex of s.exercises ?? []) {
       const sets = ex.actualSets?.length || ex.plannedSets?.length || 0
       if (!sets) continue
-      ppl[classifyPPL(ex.exerciseName)] = (ppl[classifyPPL(ex.exerciseName)] || 0) + sets
-      body[classifyBody(ex.exerciseName)] = (body[classifyBody(ex.exerciseName)] || 0) + sets
+      tallySets(ex.exerciseName, sets, ppl, body)
     }
     if (s.type === 'hybrid' && (s.run ?? []).length > 0) { ppl.Cardio += 2; body.Cardio += 2 }
   }
-  const PPL_COLORS: Record<string, string> = { Push: '#C8102E', Pull: '#00BFA5', Legs: '#A78BFA', Core: '#FF9500', Cardio: '#3B82F6' }
-  const BODY_COLORS: Record<string, string> = { Chest: '#C8102E', Back: '#00BFA5', Shoulders: '#FF9500', Legs: '#A78BFA', Arms: '#F472B6', Core: '#6B7280', Cardio: '#3B82F6' }
   const slices = (counts: Record<string, number>, colors: Record<string, string>) =>
     Object.entries(counts).filter(([, v]) => v > 0).sort(([, a], [, b]) => b - a).map(([label, value]) => ({ label, value, color: colors[label] ?? '#606060' }))
   return { pplSlices: slices(ppl, PPL_COLORS), bodySlices: slices(body, BODY_COLORS), hasData: Object.values(ppl).some(v => v > 0) }

@@ -88,7 +88,7 @@ async function generateReport(
     ``,
     breakdown?.hasData
       ? [`TRAINING BREAKDOWN:`,
-         `- Push/Pull/Legs: ${breakdown.pplSlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / pplTotal) * 100)}%`).join(', ')}`,
+         `- Push/Pull/Legs/Hinge (Pull = upper-body rows/pull-ups/curls only; Hinge = deadlifts, RDLs and other posterior-chain lifts — judge push:pull balance on Push vs Pull, and credit Hinge as posterior-chain work): ${breakdown.pplSlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / pplTotal) * 100)}%`).join(', ')}`,
          `- Body parts: ${breakdown.bodySlices.map((s: { label: string; value: number }) => `${s.label} ${Math.round((s.value / bodyTotal) * 100)}%`).join(', ')}`].join('\n')
       : '',
     balance ? `SESSION BALANCE: ${balance.liftPct}% strength, ${balance.runPct}% running` : '',

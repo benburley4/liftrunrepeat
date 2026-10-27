@@ -96,7 +96,7 @@ export default function BodyHeatMap({ sets }: { sets: Record<string, number> }) 
             <li key={p} onMouseEnter={() => setHover(p)} onMouseLeave={() => setHover(null)} style={{ opacity: hover && hover !== p ? 0.45 : 1 }}>
               <div className="flex justify-between text-xs mb-1">
                 <span style={{ color: '#F5F5F5' }}>{p}</span>
-                <span style={{ color: 'var(--color-text-subtle)', fontFamily: 'var(--font-mono)' }}>{v} sets{total ? ` · ${Math.round((v / total) * 100)}%` : ''}</span>
+                <span style={{ color: 'var(--color-text-subtle)', fontFamily: 'var(--font-mono)' }}>{Math.round(v)} sets{total ? ` · ${Math.round((v / total) * 100)}%` : ''}</span>
               </div>
               <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#242424' }}>
                 <div className="h-full rounded-full lrr-grow" style={{ width: `${(v / max) * 100}%`, background: ACTIVITY_COLORS.lift }} />
