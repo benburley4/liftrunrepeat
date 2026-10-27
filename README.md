@@ -72,6 +72,17 @@ sets/weights (`importedFrom: 'strong'`); a Garmin strength activity on the same
 day only attaches watch stats. Other Garmin activities become `source: 'garmin'`
 sessions. Parsing is in `src/lib/historyImport.ts`; re-running is idempotent.
 
+`node scripts/backfill-garmin-detail.mjs [--write]` (dry run without `--write`)
+then adds what the summaries lack, from the activity FIT files in
+`Data/garmin-fit/` (extracted from the export's `DI-Connect-Uploaded-Files`
+zips; the other ~70k files there are daily monitoring data): per-minute traces
+and privacy-trimmed GPS routes (`zepp_workout_series`, ids `garmin-<activityId>`),
+HR zones and km splits on each session, and pre-Amazfit daily rows in
+`zepp_daily` (steps, sleep, resting HR, stress, Garmin Training Readiness).
+It only fills empty fields and never touches dates that already have a row.
+Conversions are in `src/lib/garminDetail.ts`. Run 2026-10-27: 2,400 traces
+(1,531 with routes), zones on 2,394 sessions, splits on 1,436, 1,916 daily rows.
+
 ## Project map
 
 ```

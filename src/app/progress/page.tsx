@@ -83,11 +83,18 @@ export default function ProgressPage() {
     if (demo) return
     getSessions().then(raw => setSessions(raw as unknown as SessionData[])).catch(console.error)
     getZeppDaily().then(setZepp).catch(() => { /* no watch data: the log-based estimate is used */ })
-    getZeppRoutes().then(setRoutesReal).catch(() => {})
     getCoachReports().then(setReportsReal).catch(() => { /* table may not exist yet */ })
     getSetting('bodyweight_kg').then(v => { const n = parseFloat(v ?? ''); if (n > 0) setBodyweightReal(n) }).catch(() => {})
     getBwOverrides().then(setBwOverrides).catch(() => {})
   }, [demo])
+
+  // GPS routes are only needed on the On Foot tab (thousands of them after the Garmin backfill).
+  const routesRequested = useRef(false)
+  useEffect(() => {
+    if (demo || tab !== 'running' || routesRequested.current) return
+    routesRequested.current = true
+    getZeppRoutes().then(setRoutesReal).catch(() => {})
+  }, [demo, tab])
 
   const demoData = useMemo(() => {
     if (!demo) return null

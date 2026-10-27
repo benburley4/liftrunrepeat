@@ -123,6 +123,10 @@ for (const [off, workouts] of groups) {
   for (const p of plan) {
     if (p.action === 'delete') { pool.delete(p.savedAt); touched.delete(p.savedAt); deleted.add(p.savedAt); continue }
     const data = { ...p.data }
+    // Keep detail added later by backfill-garmin-detail.mjs (HR zones, km splits).
+    const prevZepp = pool.get(p.savedAt)?.data?.zepp
+    if (data.zepp && prevZepp && prevZepp.workoutId === data.zepp.workoutId)
+      data.zepp = { ...data.zepp, hrZones: data.zepp.hrZones ?? prevZepp.hrZones ?? null, splits: data.zepp.splits ?? prevZepp.splits ?? null }
     if (data.source === 'zepp' && String(data.zepp?.workoutId).startsWith('garmin-')) data.source = 'garmin'
     if (data.importedFrom === 'strong') delete data.manualOriginal
     pool.set(p.savedAt, { savedAt: p.savedAt, data })
