@@ -128,12 +128,19 @@ export async function deleteTemplate(id: string): Promise<void> {
 // ─── Zepp daily recovery data (written by scripts/zepp-sync.mjs) ─────────────
 
 export async function getZeppDaily(): Promise<ZeppDailyRow[]> {
-  const { data, error } = await supabase
-    .from('zepp_daily')
-    .select('*')
-    .order('date', { ascending: true })
-  throwIfError(error)
-  return (data ?? []) as ZeppDailyRow[]
+  // Garmin backfill reaches back to 2018 (>1000 days), so page it.
+  const rows: ZeppDailyRow[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('zepp_daily')
+      .select('*')
+      .order('date', { ascending: true })
+      .range(from, from + PAGE - 1)
+    throwIfError(error)
+    rows.push(...((data ?? []) as ZeppDailyRow[]))
+    if ((data ?? []).length < PAGE) break
+  }
+  return rows
 }
 
 /** Watch-recorded strength sessions still waiting for their sets to be logged. */
