@@ -182,6 +182,34 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
           </div>
         )}
 
+        {zepp.laps && zepp.laps.length > 1 && (
+          <div>
+            <SectionLabel>Laps</SectionLabel>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
+                <thead>
+                  <tr style={{ color: 'var(--color-text-subtle)' }}>
+                    {['Lap', 'Distance', 'Time', 'Pace /km', 'Avg HR'].map(h => (
+                      <th key={h} className="text-xs font-normal text-right first:text-left pb-2 px-2">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {zepp.laps.map(l => (
+                    <tr key={l.lap} style={{ color: '#F5F5F5', borderTop: '1px solid #242424' }}>
+                      <td className="py-1.5 px-2">{l.lap}</td>
+                      <td className="py-1.5 px-2 text-right">{l.distanceM >= 1000 ? `${(l.distanceM / 1000).toFixed(2)} km` : `${l.distanceM} m`}</td>
+                      <td className="py-1.5 px-2 text-right">{fmtMinSec(l.seconds)}</td>
+                      <td className="py-1.5 px-2 text-right">{fmtMinSec(l.seconds / (l.distanceM / 1000))}</td>
+                      <td className="py-1.5 px-2 text-right">{l.avgHr ?? '–'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {zepp.splits && zepp.splits.length > 0 && (
           <div>
             <SectionLabel>Splits</SectionLabel>

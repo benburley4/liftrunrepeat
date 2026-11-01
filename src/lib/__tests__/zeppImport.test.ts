@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapZeppType, localDate, zeppKm, planZeppImport, runPace, ZeppWorkout, ExistingSession } from '../zeppImport'
+import { mapZeppType, localDate, zeppKm, planZeppImport, runPace, cleanLaps, ZeppWorkout, ExistingSession } from '../zeppImport'
 
 const walk: ZeppWorkout = {
   workoutId: '100',
@@ -185,5 +185,21 @@ describe('planZeppImport', () => {
     const rows = planZeppImport([walk], [apple])
     expect(rows[0].action).toBe('new')
     expect(rows[0].data.name).toBe('Walk')
+  })
+})
+
+describe('cleanLaps', () => {
+  const lap = (lap: number, distanceM: number, seconds: number) => ({ lap, distanceM, seconds, avgHr: 130 })
+  it('keeps run/walk segments and drops the stop-button stub', () => {
+    const laps = cleanLaps([lap(1, 300, 149), lap(2, 200, 134), lap(3, 300, 144), lap(4, 10, 8)])
+    expect(laps?.map(l => l.distanceM)).toEqual([300, 200, 300])
+  })
+  it('renumbers after dropping zero-distance laps', () => {
+    expect(cleanLaps([lap(1, 0, 5), lap(2, 400, 120), lap(3, 400, 118)])?.map(l => l.lap)).toEqual([1, 2])
+  })
+  it('returns null when fewer than two real laps remain', () => {
+    expect(cleanLaps([lap(1, 460, 300), lap(2, 10, 6)])).toBeNull()
+    expect(cleanLaps([lap(1, 0, 0), lap(2, 0, 0)])).toBeNull()
+    expect(cleanLaps(undefined)).toBeNull()
   })
 })

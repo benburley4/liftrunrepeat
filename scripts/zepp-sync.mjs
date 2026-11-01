@@ -85,7 +85,14 @@ const splitsStmt = db.prepare(`
   SELECT split_index AS km, distance_m AS distanceM, duration_seconds AS seconds,
          avg_hr AS avgHr, elevation_gain_m AS elevationGainM
   FROM workout_splits WHERE workout_id = ? ORDER BY split_index`)
+// Laps = the watch's segments (manual lap presses or interval steps, e.g. 300 m run / 200 m walk).
+const lapsStmt = db.prepare(`
+  SELECT lap_index AS lap, distance_m AS distanceM, duration_seconds AS seconds, avg_hr AS avgHr
+  FROM workout_laps WHERE workout_id = ? ORDER BY lap_index`)
 for (const w of workouts) {
+  w.laps = lapsStmt.all(w.workoutId).map(l => ({
+    lap: l.lap, distanceM: Math.round(l.distanceM), seconds: l.seconds, avgHr: l.avgHr,
+  }))
   w.hrZones = zonesStmt.all(w.workoutId).map(z => ({ upperBpm: z.upperBpm, seconds: z.seconds }))
   w.splits = splitsStmt.all(w.workoutId).map(s => ({
     km: s.km, distanceM: Math.round(s.distanceM), seconds: s.seconds,

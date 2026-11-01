@@ -35,6 +35,7 @@ export interface ZeppWorkout {
   avgStrideCm?: number | null
   hrZones?: ZeppHrZone[]
   splits?: ZeppSplit[]
+  laps?: ZeppLap[]
 }
 
 /** Time in one HR zone; zones are bounded above by `upperBpm`. */
@@ -42,6 +43,22 @@ export interface ZeppHrZone { upperBpm: number; seconds: number }
 
 /** One km split (the last one may be partial). */
 export interface ZeppSplit { km: number; distanceM: number; seconds: number; avgHr: number | null; elevationGainM: number | null }
+
+/** One watch lap / interval segment (e.g. a 300 m run or 200 m walk rep). */
+export interface ZeppLap { lap: number; distanceM: number; seconds: number; avgHr: number | null }
+
+// Laps shorter than this are stop-button stubs (the watch closes a final
+// 0–10 m lap when the workout ends), not real segments.
+export const MIN_LAP_M = 20
+
+/**
+ * Real laps only: drops stubs and renumbers. Null unless at least two remain —
+ * a single lap is just the whole workout and adds nothing.
+ */
+export function cleanLaps(laps: ZeppLap[] | undefined): ZeppLap[] | null {
+  const real = (laps ?? []).filter(l => l.distanceM >= MIN_LAP_M && l.seconds > 0)
+  return real.length >= 2 ? real.map((l, i) => ({ ...l, lap: i + 1 })) : null
+}
 
 export interface ExistingSession {
   savedAt: string            // the row's saved_at, exactly as Supabase returned it
@@ -145,6 +162,7 @@ export function zeppStats(w: ZeppWorkout) {
     avgStrideCm:    roundOrNull(w.avgStrideCm),
     hrZones:        zones.some(z => z.seconds > 0) ? zones : null,
     splits:         w.splits?.length ? w.splits : null,
+    laps:           cleanLaps(w.laps),
   }
 }
 
