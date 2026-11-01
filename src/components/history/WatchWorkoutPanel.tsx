@@ -194,7 +194,7 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
                 <thead>
                   <tr style={{ color: 'var(--color-text-subtle)' }}>
                     {['Lap', ...(hasLapKinds ? ['Type'] : []), 'Distance', 'Time', 'Pace /km', 'Avg HR'].map(h => (
-                      <th key={h} className="text-xs font-normal text-right first:text-left pb-2 px-2">{h}</th>
+                      <th key={h} className={`text-xs font-normal pb-2 px-2 ${h === 'Lap' || h === 'Type' ? 'text-left' : 'text-right'}`}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -203,7 +203,7 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
                     <tr key={l.lap} style={{ color: '#F5F5F5', borderTop: '1px solid #242424' }}>
                       <td className="py-1.5 px-2">{l.lap}</td>
                       {hasLapKinds && (
-                        <td className="py-1.5 px-2 text-right" style={{ color: l.kind ? LAP_KIND_COLOR[l.kind] : 'var(--color-text-subtle)', fontFamily: 'var(--font-sans)' }}>
+                        <td className="py-1.5 px-2 text-left" style={{ color: l.kind ? LAP_KIND_COLOR[l.kind] : 'var(--color-text-subtle)', fontFamily: 'var(--font-sans)' }}>
                           {lapKindLabel(l.kind, zepp.workoutType) ?? '–'}
                         </td>
                       )}
