@@ -141,6 +141,88 @@ export function withRollingMean<K extends keyof ZeppDay>(rows: ZeppDay[], key: K
   })
 }
 
+// ─── Estimated recovery time ─────────────────────────────────────────────────
+// Zepp's own "recovery time" isn't exposed by ZeppBridge, so estimate it:
+// each workout adds hours by its peak training effect (Firstbeat-style scale),
+// unrecovered hours carry over and count down in real time, and the remainder
+// is scaled by today's readiness.
+
+export interface RecoveryWorkout {
+  name: string
+  endTime: string
+  trainingEffect: number | null
+  anaerobicTrainingEffect: number | null
+}
+
+/** Peak training effect → recovery hours (linear between anchors). */
+export const TE_RECOVERY_HOURS: [te: number, hours: number][] = [[1, 0], [2, 6], [3, 18], [4, 36], [5, 60]]
+export const MAX_RECOVERY_HOURS = 96
+const RECOVERY_LOOKBACK_DAYS = 5
+
+export const READINESS_RECOVERY_FACTOR: Record<ReadinessLevel, number> = { go: 0.8, planned: 1, easy: 1.25, rest: 1.5 }
+
+export function teRecoveryHours(te: number | null | undefined): number {
+  if (te == null || te <= TE_RECOVERY_HOURS[0][0]) return 0
+  for (let i = 1; i < TE_RECOVERY_HOURS.length; i++) {
+    const [t1, h1] = TE_RECOVERY_HOURS[i], [t0, h0] = TE_RECOVERY_HOURS[i - 1]
+    if (te <= t1) return h0 + ((te - t0) / (t1 - t0)) * (h1 - h0)
+  }
+  return TE_RECOVERY_HOURS.at(-1)![1]
+}
+
+const peakTe = (w: RecoveryWorkout) => Math.max(w.trainingEffect ?? 0, w.anaerobicTrainingEffect ?? 0)
+
+/** Watch-measured workouts from saved sessions (those carrying `zepp` stats). */
+export function recoveryWorkoutsFromSessions(sessions: { name?: string; zepp?: unknown }[]): RecoveryWorkout[] {
+  const out: RecoveryWorkout[] = []
+  for (const s of sessions) {
+    const z = s.zepp as { endTime?: string; trainingEffect?: number | null; anaerobicTrainingEffect?: number | null } | undefined
+    if (!z?.endTime) continue
+    out.push({ name: s.name ?? 'Workout', endTime: z.endTime, trainingEffect: z.trainingEffect ?? null, anaerobicTrainingEffect: z.anaerobicTrainingEffect ?? null })
+  }
+  return out
+}
+
+export interface RecoveryEstimate {
+  hours: number            // remaining, after the readiness factor; 0 = recovered
+  totalHours: number       // owed right after the last workout (same factor) — the countdown's full circle
+  readyAt: string          // ISO instant
+  factor: number
+  /** The workout that added the most recovery among those still counting down. */
+  driver: { name: string; endTime: string; te: number } | null
+}
+
+/** Null when no watch workout with a training effect in the last few days. */
+export function estimateRecovery(workouts: RecoveryWorkout[], now: Date, readiness: number | null): RecoveryEstimate | null {
+  const from = now.getTime() - RECOVERY_LOOKBACK_DAYS * 86400e3
+  const list = workouts
+    .filter(w => { const t = new Date(w.endTime).getTime(); return t >= from && t <= now.getTime() && peakTe(w) > 0 })
+    .sort((a, b) => a.endTime.localeCompare(b.endTime))
+  if (!list.length) return null
+
+  let debt = 0, last = 0
+  let driver: RecoveryEstimate['driver'] = null, driverHours = 0
+  for (const w of list) {
+    const t = new Date(w.endTime).getTime()
+    if (last) debt = Math.max(0, debt - (t - last) / 3600e3)
+    if (debt === 0) { driver = null; driverHours = 0 }
+    const add = teRecoveryHours(peakTe(w))
+    debt = Math.min(MAX_RECOVERY_HOURS, debt + add)
+    if (add > driverHours) { driverHours = add; driver = { name: w.name, endTime: w.endTime, te: Math.round(peakTe(w) * 10) / 10 } }
+    last = t
+  }
+  const factor = readiness == null ? 1 : READINESS_RECOVERY_FACTOR[readinessLevel(readiness)]
+  const remaining = Math.max(0, debt - (now.getTime() - last) / 3600e3) * factor
+  const hours = Math.round(remaining * 10) / 10
+  return {
+    hours,
+    totalHours: Math.round(debt * factor * 10) / 10,
+    readyAt: new Date(now.getTime() + hours * 3600e3).toISOString(),
+    factor,
+    driver: hours > 0 ? driver : null,
+  }
+}
+
 // ─── Weekly AI coach ─────────────────────────────────────────────────────────
 
 /** The bits of a saved session the coach summary needs. */

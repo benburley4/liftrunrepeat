@@ -7,11 +7,12 @@ import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ReadinessToday from '@/components/recovery/ReadinessToday'
 import RecoveryTrends from '@/components/recovery/RecoveryTrends'
 import RecoveryExtras from '@/components/recovery/RecoveryExtras'
-import { getZeppDaily } from '@/lib/db'
-import { localToday, currentIllnessSigns, ZeppDay } from '@/lib/recovery'
+import { getZeppDaily, getSessions } from '@/lib/db'
+import { localToday, currentIllnessSigns, recoveryWorkoutsFromSessions, ZeppDay, RecoveryWorkout } from '@/lib/recovery'
 
 export default function RecoveryPage() {
   const [rows, setRows] = useState<ZeppDay[] | null>(null)
+  const [workouts, setWorkouts] = useState<RecoveryWorkout[]>([])
   const [error, setError] = useState('')
   const today = localToday()
 
@@ -19,6 +20,10 @@ export default function RecoveryPage() {
     getZeppDaily()
       .then(setRows)
       .catch(e => { setError(e instanceof Error ? e.message : 'Failed to load recovery data'); setRows([]) })
+    // Recovery-time estimate only — the page still works without it.
+    getSessions()
+      .then(s => setWorkouts(recoveryWorkoutsFromSessions(s as { name?: string; zepp?: unknown }[])))
+      .catch(() => {})
   }, [])
 
   return (
@@ -84,7 +89,7 @@ export default function RecoveryPage() {
                 </Card>
               ) : null
             })()}
-            <ReadinessToday rows={rows} today={today} />
+            <ReadinessToday rows={rows} today={today} workouts={workouts} />
             <RecoveryTrends rows={rows} today={today} />
             <RecoveryExtras rows={rows} today={today} />
           </>

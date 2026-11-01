@@ -1,10 +1,11 @@
 'use client'
 
 import { LineChart, Line, ResponsiveContainer, Tooltip, YAxis } from 'recharts'
-import { Zap, CircleCheck, Leaf, BedDouble, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Zap, CircleCheck, Leaf, BedDouble, ArrowUpRight, ArrowDownRight, Minus, Timer } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import StatTile from '@/components/ui/StatTile'
-import { READINESS_CALL, readinessLevel, readinessDrivers, latestReadiness, lastDays, ZeppDay, DriverStatus } from '@/lib/recovery'
+import { READINESS_CALL, readinessLevel, readinessDrivers, latestReadiness, lastDays, estimateRecovery, ZeppDay, DriverStatus, RecoveryWorkout } from '@/lib/recovery'
 import { chartTooltipStyle, fmtDay } from './chartStyle'
 
 const LEVEL_ICON = { go: Zap, planned: CircleCheck, easy: Leaf, rest: BedDouble }
@@ -15,7 +16,57 @@ const STATUS: Record<DriverStatus, { color: string; icon: typeof Minus; label: s
   poor:    { color: '#F59E0B', icon: ArrowDownRight, label: 'Dragging' },
 }
 
-export default function ReadinessToday({ rows, today }: { rows: ZeppDay[]; today: string }) {
+const RING_R = 42
+const RING_C = 2 * Math.PI * RING_R
+
+const fmtReadyAt = (iso: string) =>
+  new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+
+function RecoveryTime({ workouts, readiness }: { workouts: RecoveryWorkout[]; readiness: number }) {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+  const est = estimateRecovery(workouts, now, readiness)
+  if (!est) return null
+  const hours = Math.round(est.hours)
+  const done = hours === 0
+  const color = done ? '#00BFA5' : est.hours >= 36 ? '#F59E0B' : '#A78BFA'
+  // Full circle = hours owed right after the last workout; it empties as you recover.
+  const frac = est.totalHours > 0 ? Math.min(1, est.hours / est.totalHours) : 0
+  return (
+    <div className="mt-5 flex items-center gap-4 rounded-xl px-4 py-3" style={{ background: '#1E1E1E', border: '1px solid #2E2E2E' }}>
+      <div className="relative shrink-0" style={{ width: 96, height: 96 }} role="img" aria-label={`Estimated recovery time ${hours} hours`}>
+        <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: 'rotate(-90deg)' }} aria-hidden="true">
+          <circle cx="48" cy="48" r={RING_R} fill="none" stroke="#2E2E2E" strokeWidth="7" />
+          <circle
+            cx="48" cy="48" r={RING_R} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
+            strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - frac)}
+            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
+          <span className="text-2xl font-black" style={{ fontFamily: 'var(--font-mono)', color: '#F5F5F5' }}>{hours}</span>
+          <span className="text-[10px] uppercase tracking-widest mt-1" style={{ color: 'var(--color-text-subtle)' }}>hrs</span>
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold flex items-center gap-1.5" style={{ color: '#F5F5F5' }}>
+          <Timer size={14} color={color} aria-hidden="true" />
+          Recovery time <span className="font-normal" style={{ color: 'var(--color-text-subtle)' }}>· estimate</span>
+        </p>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-text-subtle)' }}>
+          {done
+            ? 'Recovered from recent sessions — ready for the next hard workout.'
+            : `Ready for hard work ~${fmtReadyAt(est.readyAt)}${est.driver ? ` · mostly from ${est.driver.name} (TE ${est.driver.te})` : ''}`}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+export default function ReadinessToday({ rows, today, workouts = [] }: { rows: ZeppDay[]; today: string; workouts?: RecoveryWorkout[] }) {
   const day = latestReadiness(rows)
   if (!day || day.readiness == null) return null
 
@@ -61,6 +112,7 @@ export default function ReadinessToday({ rows, today }: { rows: ZeppDay[]; today
               Today&apos;s score appears once last night&apos;s sleep has synced.
             </p>
           )}
+          <RecoveryTime workouts={workouts} readiness={day.readiness} />
         </div>
 
         {/* Drivers */}

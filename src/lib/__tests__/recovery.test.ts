@@ -177,3 +177,49 @@ describe('programmeResponseToPrompt', () => {
     expect(programmeResponseToPrompt(rows, '2026-11-02', '2026-10-25')).toBe('')
   })
 })
+
+import { teRecoveryHours, estimateRecovery, recoveryWorkoutsFromSessions, RecoveryWorkout } from '../recovery'
+
+describe('estimateRecovery', () => {
+  const w = (endTime: string, te: number, ana: number | null = null, name = 'W'): RecoveryWorkout =>
+    ({ name, endTime, trainingEffect: te, anaerobicTrainingEffect: ana })
+
+  it('maps training effect to hours', () => {
+    expect(teRecoveryHours(null)).toBe(0)
+    expect(teRecoveryHours(0.8)).toBe(0)
+    expect(teRecoveryHours(2)).toBe(6)
+    expect(teRecoveryHours(3.5)).toBe(27)
+    expect(teRecoveryHours(5.5)).toBe(60)
+  })
+
+  it('counts down from the last workout and uses the peak of aerobic/anaerobic TE', () => {
+    const est = estimateRecovery([w('2026-11-01T00:00:00Z', 2.0, 3.0, 'Lift')], new Date('2026-11-01T06:00:00Z'), 60)!
+    expect(est.hours).toBe(12)                 // 18 h − 6 h elapsed, factor 1
+    expect(est.totalHours).toBe(18)
+    expect(est.readyAt).toBe('2026-11-01T18:00:00.000Z')
+    expect(est.driver).toEqual({ name: 'Lift', endTime: '2026-11-01T00:00:00Z', te: 3 })
+  })
+
+  it('carries over unrecovered hours and scales by readiness', () => {
+    const list = [w('2026-10-31T00:00:00Z', 4.0), w('2026-10-31T12:00:00Z', 2.0)]
+    // 36 h − 12 h + 6 h = 30 h at 12:00, − 6 h by 18:00 = 24 h
+    expect(estimateRecovery(list, new Date('2026-10-31T18:00:00Z'), 60)!.hours).toBe(24)
+    expect(estimateRecovery(list, new Date('2026-10-31T18:00:00Z'), 80)!.hours).toBe(19.2)
+    expect(estimateRecovery(list, new Date('2026-10-31T18:00:00Z'), 30)!.hours).toBe(36)
+  })
+
+  it('reports recovered and ignores old or future workouts', () => {
+    const est = estimateRecovery([w('2026-10-30T00:00:00Z', 2.0)], new Date('2026-11-01T00:00:00Z'), null)!
+    expect(est.hours).toBe(0)
+    expect(est.driver).toBeNull()
+    expect(estimateRecovery([w('2026-10-01T00:00:00Z', 4)], new Date('2026-11-01T00:00:00Z'), null)).toBeNull()
+    expect(estimateRecovery([w('2026-11-02T00:00:00Z', 4)], new Date('2026-11-01T00:00:00Z'), null)).toBeNull()
+  })
+
+  it('reads watch stats off saved sessions', () => {
+    expect(recoveryWorkoutsFromSessions([
+      { name: 'Run', zepp: { endTime: '2026-11-01T00:20:21Z', trainingEffect: 2, anaerobicTrainingEffect: 0.2 } },
+      { name: 'Manual lift' },
+    ])).toEqual([{ name: 'Run', endTime: '2026-11-01T00:20:21Z', trainingEffect: 2, anaerobicTrainingEffect: 0.2 }])
+  })
+})
