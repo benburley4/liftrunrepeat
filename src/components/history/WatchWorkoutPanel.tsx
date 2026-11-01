@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { Watch, Info } from 'lucide-react'
-import type { ZeppStats } from '@/lib/zeppImport'
+import type { ZeppStats, LapKind } from '@/lib/zeppImport'
+import { lapKindLabel } from '@/lib/zeppImport'
 import type { SeriesPoint, LatLon } from '@/lib/zeppSeries'
 import RouteMap from './RouteMap'
 import { getZeppWorkoutSeries } from '@/lib/db'
@@ -12,6 +13,8 @@ import { chartTooltipStyle, axisProps } from '@/components/recovery/chartStyle'
 
 const ACCENT = '#C8102E'   // heart rate
 const ELEV = '#84CC16'     // matches the History hike card
+// Interval laps: work = run red, recovery = walk blue (ACTIVITY_COLORS).
+const LAP_KIND_COLOR: Record<LapKind, string> = { work: '#C8102E', recovery: '#3A86C8' }
 
 // HR zones are ordinal → one hue, dim → bright with intensity.
 const ZONE_RAMP = ['#5A2A33', '#7A2534', '#9E1F35', '#C8102E', '#E2475C', '#F27D8D']
@@ -76,6 +79,7 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
   if (zepp.avgCadenceSpm) stats.push({ label: 'Cadence', value: zepp.avgCadenceSpm, unit: 'spm' })
 
   const zones = zepp.hrZones ?? []
+  const hasLapKinds = !!zepp.laps?.some(l => l.kind)
   const zoneTotal = zones.reduce((n, z) => n + z.seconds, 0)
   const chartData = (series ?? []).map(([min, hr, alt]) => ({ min, hr, alt }))
   const hasAlt = chartData.filter(p => p.alt != null).length > 1
@@ -189,7 +193,7 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
               <table className="w-full text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
                 <thead>
                   <tr style={{ color: 'var(--color-text-subtle)' }}>
-                    {['Lap', 'Distance', 'Time', 'Pace /km', 'Avg HR'].map(h => (
+                    {['Lap', ...(hasLapKinds ? ['Type'] : []), 'Distance', 'Time', 'Pace /km', 'Avg HR'].map(h => (
                       <th key={h} className="text-xs font-normal text-right first:text-left pb-2 px-2">{h}</th>
                     ))}
                   </tr>
@@ -198,6 +202,11 @@ export default function WatchWorkoutPanel({ zepp, manualOriginal }: {
                   {zepp.laps.map(l => (
                     <tr key={l.lap} style={{ color: '#F5F5F5', borderTop: '1px solid #242424' }}>
                       <td className="py-1.5 px-2">{l.lap}</td>
+                      {hasLapKinds && (
+                        <td className="py-1.5 px-2 text-right" style={{ color: l.kind ? LAP_KIND_COLOR[l.kind] : 'var(--color-text-subtle)', fontFamily: 'var(--font-sans)' }}>
+                          {lapKindLabel(l.kind, zepp.workoutType) ?? '–'}
+                        </td>
+                      )}
                       <td className="py-1.5 px-2 text-right">{l.distanceM >= 1000 ? `${(l.distanceM / 1000).toFixed(2)} km` : `${l.distanceM} m`}</td>
                       <td className="py-1.5 px-2 text-right">{fmtMinSec(l.seconds)}</td>
                       <td className="py-1.5 px-2 text-right">{fmtMinSec(l.seconds / (l.distanceM / 1000))}</td>

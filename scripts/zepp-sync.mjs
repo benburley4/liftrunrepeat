@@ -24,7 +24,8 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { createClient } from '@supabase/supabase-js'
-import { planZeppImport } from '../src/lib/zeppImport.ts'
+import { gunzipSync, inflateSync } from 'node:zlib'
+import { planZeppImport, parseLapKinds } from '../src/lib/zeppImport.ts'
 import { buildZeppDaily, scaleBodyweight } from '../src/lib/zeppDaily.ts'
 import { downsampleSeries, buildRoute } from '../src/lib/zeppSeries.ts'
 
@@ -89,9 +90,28 @@ const splitsStmt = db.prepare(`
 const lapsStmt = db.prepare(`
   SELECT lap_index AS lap, distance_m AS distanceM, duration_seconds AS seconds, avg_hr AS avgHr
   FROM workout_laps WHERE workout_id = ? ORDER BY lap_index`)
+// ZeppBridge doesn't copy the interval step type (work / recovery) into
+// workout_laps, so read it from the stored raw workout detail.
+const rawDetailStmt = db.prepare(`
+  SELECT payload, payload_zip AS zip FROM raw_records
+  WHERE stream = 'workout_detail' AND source_key LIKE ? ORDER BY fetched_at DESC LIMIT 1`)
+function rawLapField(workoutId) {
+  const row = rawDetailStmt.get(`workout_detail:${workoutId}:%`)
+  if (!row) return null
+  let text = row.payload
+  if (!text && row.zip) {
+    try { text = gunzipSync(row.zip).toString() } catch { try { text = inflateSync(row.zip).toString() } catch { return null } }
+  }
+  const m = (text ?? '').replace(/\\"/g, '"').match(/"lap":"([^"]*)"/)
+  return m ? m[1] : null
+}
 for (const w of workouts) {
-  w.laps = lapsStmt.all(w.workoutId).map(l => ({
+  const rows = lapsStmt.all(w.workoutId)
+  const kinds = rows.length > 1 ? parseLapKinds(rawLapField(w.workoutId)) : []
+  w.laps = rows.map((l, i) => ({
     lap: l.lap, distanceM: Math.round(l.distanceM), seconds: l.seconds, avgHr: l.avgHr,
+    // Raw records and workout_laps are both in lap order; only trust the match when counts agree.
+    kind: kinds.length === rows.length ? kinds[i] : null,
   }))
   w.hrZones = zonesStmt.all(w.workoutId).map(z => ({ upperBpm: z.upperBpm, seconds: z.seconds }))
   w.splits = splitsStmt.all(w.workoutId).map(s => ({

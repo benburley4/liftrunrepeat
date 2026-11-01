@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mapZeppType, localDate, zeppKm, planZeppImport, runPace, cleanLaps, ZeppWorkout, ExistingSession } from '../zeppImport'
+import { mapZeppType, localDate, zeppKm, planZeppImport, runPace, cleanLaps, parseLapKinds, lapKindLabel, ZeppWorkout, ExistingSession } from '../zeppImport'
 
 const walk: ZeppWorkout = {
   workoutId: '100',
@@ -201,5 +201,24 @@ describe('cleanLaps', () => {
     expect(cleanLaps([lap(1, 460, 300), lap(2, 10, 6)])).toBeNull()
     expect(cleanLaps([lap(1, 0, 0), lap(2, 0, 0)])).toBeNull()
     expect(cleanLaps(undefined)).toBeNull()
+  })
+})
+
+describe('parseLapKinds', () => {
+  // Real Zepp lap records, trimmed: column 27 is the step type.
+  const rec = (dist: number, code: number) =>
+    [0, 149, dist, 'geo', 133, 149, ...Array(21).fill(0), code, 0, 0].join(',')
+  it('reads work / recovery steps in lap order', () => {
+    expect(parseLapKinds([rec(300, 2), rec(200, 5), rec(10, 2)].join(';') + ';')).toEqual(['work', 'recovery', 'work'])
+  })
+  it('leaves plain laps and unknown codes unlabelled', () => {
+    expect(parseLapKinds([rec(460, 0), rec(500, 1)].join(';'))).toEqual([null, null])
+    expect(parseLapKinds(null)).toEqual([])
+  })
+  it('labels work as Run for runs and Work otherwise', () => {
+    expect(lapKindLabel('work', 'run')).toBe('Run')
+    expect(lapKindLabel('work', 'walking')).toBe('Work')
+    expect(lapKindLabel('recovery', 'run')).toBe('Recovery')
+    expect(lapKindLabel(null, 'run')).toBeNull()
   })
 })

@@ -45,7 +45,30 @@ export interface ZeppHrZone { upperBpm: number; seconds: number }
 export interface ZeppSplit { km: number; distanceM: number; seconds: number; avgHr: number | null; elevationGainM: number | null }
 
 /** One watch lap / interval segment (e.g. a 300 m run or 200 m walk rep). */
-export interface ZeppLap { lap: number; distanceM: number; seconds: number; avgHr: number | null }
+export interface ZeppLap { lap: number; distanceM: number; seconds: number; avgHr: number | null; kind?: LapKind | null }
+
+/** Interval step a lap belongs to (only set for structured interval workouts). */
+export type LapKind = 'work' | 'recovery'
+
+// Zepp's raw `lap` field: one ';'-separated record per lap, ','-separated
+// columns. Column 27 is the interval step type — 0 on a plain manual/auto lap,
+// 2 on a work rep, 5 on a recovery rep (verified on 300 m run / 200 m walk
+// intervals). Other codes (likely warm-up / cool-down) are left unlabelled.
+const LAP_KIND_COLUMN = 27
+const LAP_KIND_CODES: Record<string, LapKind> = { '2': 'work', '5': 'recovery' }
+
+/** Step type of each lap, in lap order, from the raw Zepp `lap` string. */
+export function parseLapKinds(rawLap: string | null | undefined): (LapKind | null)[] {
+  if (!rawLap) return []
+  return rawLap.split(';').filter(Boolean).map(rec => LAP_KIND_CODES[rec.split(',')[LAP_KIND_COLUMN]] ?? null)
+}
+
+/** "Run" / "Recovery" (or "Work" for non-running sports). */
+export function lapKindLabel(kind: LapKind | null | undefined, workoutType?: string | null): string | null {
+  if (kind === 'recovery') return 'Recovery'
+  if (kind === 'work') return /run|treadmill|trail/i.test(workoutType ?? '') ? 'Run' : 'Work'
+  return null
+}
 
 // Laps shorter than this are stop-button stubs (the watch closes a final
 // 0–10 m lap when the workout ends), not real segments.
