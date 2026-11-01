@@ -5,7 +5,7 @@ import { Watch, CheckCircle2, AlertTriangle } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import { getSetting, upsertSetting } from '@/lib/db'
-import { buildPlan, type PlanTemplate, type ZeppStep, type ZeppRepeat } from '@/lib/watchPlan'
+import { buildPlan, MAX_DAYS_AHEAD, type PlanTemplate, type ZeppStep, type ZeppRepeat } from '@/lib/watchPlan'
 import { localToday } from '@/lib/recovery'
 import { parseJson, SYNC_STATUS_KEY } from '@/lib/watchSync'
 
@@ -15,6 +15,12 @@ const POLL_MS = 4000
 const GIVE_UP_MS = 3 * 60_000
 
 interface PushStatus { at: string; requestAt: string; ok: boolean; message: string; onWatch?: { date: string; name: string }[] }
+
+function shiftDays(date: string, days: number): string {
+  const d = new Date(`${date}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
 
 const fmtDate = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 
@@ -26,12 +32,20 @@ function StepLine({ s }: { s: ZeppStep }) {
  * Preview and send runs to the Amazfit watch. The PC poller (zepp-watch-push)
  * merges them with runs sent earlier and publishes through ZeppBridge.
  */
-export default function WatchSendDialog({ items, title, onClose }: {
+export default function WatchSendDialog({ items: givenItems, title, onClose, pickDate = false }: {
   items: { date: string; template: PlanTemplate }[]
   title: string
   onClose: () => void
+  /** Let the athlete choose the day (templates have no calendar date of their own). */
+  pickDate?: boolean
 }) {
   const today = localToday()
+  const lastDay = shiftDays(today, MAX_DAYS_AHEAD)
+  const [date, setDate] = useState(today)
+  const items = useMemo(
+    () => (pickDate ? givenItems.map(i => ({ ...i, date })) : givenItems),
+    [givenItems, pickDate, date],
+  )
   const dates = items.map(i => i.date).sort()
   const { plan, issues } = useMemo(
     () => buildPlan(items, dates[0] ?? today, dates[dates.length - 1] ?? today, title, today),
@@ -105,6 +119,21 @@ export default function WatchSendDialog({ items, title, onClose }: {
         </div>
       ) : (
         <div className="space-y-4">
+          {pickDate && (
+            <label className="flex items-center justify-between gap-3 text-sm" style={{ color: '#F5F5F5' }}>
+              <span>Day to run it</span>
+              <input
+                type="date"
+                value={date}
+                min={today}
+                max={lastDay}
+                disabled={phase === 'sending'}
+                onChange={e => e.target.value && setDate(e.target.value)}
+                className="rounded-lg px-3 py-1.5 text-sm"
+                style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5', colorScheme: 'dark', fontFamily: 'var(--font-mono)' }}
+              />
+            </label>
+          )}
           {hasWatch === false && (
             <p className="text-sm" style={{ color: '#F59E0B' }}>Connect your watch first — sending needs the watch sync set up.</p>
           )}

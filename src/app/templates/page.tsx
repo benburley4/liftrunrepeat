@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronUp, Copy, Share2, Plus, Check, X, Pencil, Trash2, BookmarkPlus, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronUp, Copy, Share2, Plus, Check, X, Pencil, Trash2, BookmarkPlus, ChevronRight, Watch } from 'lucide-react'
+import WatchSendDialog from '@/components/watch/WatchSendDialog'
+import type { PlanTemplate } from '@/lib/watchPlan'
 import QuickLogFAB from '@/components/log/QuickLogFAB'
 import ExerciseBuilder, { ExRow, RunBuilder, RunEntry, RepeatBlock, RunSegment, SEGMENT_TYPES, METRIC_CONFIG } from '@/components/templates/ExerciseBuilder'
 import HikeBuilder, { HikeData } from '@/components/templates/HikeBuilder'
@@ -560,13 +562,14 @@ function TemplateModal({ onClose, onSave, initialData }: TemplateModalProps) {
 // ─── Custom Template Card ────────────────────────────────────────────────────
 
 function CustomTemplateCard({
-  template, onEdit, onDuplicate, onDelete, onToast,
+  template, onEdit, onDuplicate, onDelete, onToast, onSendToWatch,
 }: {
   template: CustomTemplate
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
   onToast: (msg: string) => void
+  onSendToWatch?: () => void
 }) {
   const typeColor = template.type === 'lift' ? '#00BFA5' : template.type === 'run' ? '#C8102E' : template.type === 'hike' ? '#84CC16' : '#A78BFA'
   const typeLabel = template.type === 'lift' ? 'Lifting' : template.type === 'run' ? 'Running' : template.type === 'hike' ? 'Hike' : 'Hybrid'
@@ -766,6 +769,15 @@ function CustomTemplateCard({
           >
             <Trash2 size={11} /> Delete
           </button>
+          {onSendToWatch && (
+            <button
+              onClick={onSendToWatch}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-90"
+              style={{ background: '#F5F5F510', color: '#F5F5F5', border: '1px solid #F5F5F533', fontFamily: 'var(--font-sans)' }}
+            >
+              <Watch size={11} /> Send to watch
+            </button>
+          )}
         </div>
       </div>
 
@@ -783,6 +795,7 @@ export default function TemplatesPage() {
   const [showModal, setShowModal]           = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null)
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([])
+  const [watchSend, setWatchSend]           = useState<PlanTemplate | null>(null)
 
   useEffect(() => {
     getTemplates()
@@ -865,6 +878,14 @@ export default function TemplatesPage() {
   return (
     <div style={{ background: '#0D0D0D', minHeight: '100vh' }}>
       <QuickLogFAB />
+      {watchSend && (
+        <WatchSendDialog
+          title={watchSend.name}
+          items={[{ date: '', template: watchSend }]}
+          pickDate
+          onClose={() => setWatchSend(null)}
+        />
+      )}
       {toast && <Toast message={toast} />}
       {(showModal || editingTemplate) && (
         <TemplateModal
@@ -1048,6 +1069,13 @@ export default function TemplatesPage() {
                       >
                         <BookmarkPlus size={12} /> Customise
                       </button>
+                      <button
+                        onClick={() => setWatchSend({ name: t.name, type: 'run', runRows: t.runRows } as PlanTemplate)}
+                        className="text-xs flex items-center gap-1"
+                        style={{ color: '#F5F5F5' }}
+                      >
+                        <Watch size={12} /> Send to watch
+                      </button>
                     </div>
                     {expanded === t.id && (
                       <div className="mt-3 space-y-1.5">
@@ -1219,6 +1247,9 @@ export default function TemplatesPage() {
                     onDuplicate={() => handleDuplicate(t)}
                     onDelete={() => handleDelete(t.id)}
                     onToast={showToast}
+                    onSendToWatch={(t.type === 'run' || t.type === 'hybrid') && t.runRows?.length
+                      ? () => setWatchSend({ name: t.name, type: t.type, runRows: t.runRows } as PlanTemplate)
+                      : undefined}
                   />
                 ))}
               </div>
