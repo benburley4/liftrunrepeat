@@ -134,6 +134,16 @@ const series = workouts
   })
   .filter(s => s.points || s.route)
 
+// Sleep is keyed on the local wake-up date, but a Hong Kong morning wake-up is
+// the previous day in UTC. Querying from `since` itself (a timestamp mid-day)
+// missed the first date's night, and the upsert then blanked that date's sleep
+// — one night wiped per nightly run. Start two days early; the extra dates are
+// dropped by the `date >= since` filter on the daily rows.
+function sleepSince(iso) {
+  if (iso === '0000') return iso
+  return new Date(new Date(iso.slice(0, 10)).getTime() - 2 * 86400e3).toISOString()
+}
+
 // Daily recovery data for zepp_daily (same window).
 const dailyMetrics = db.prepare(`
   SELECT date, metric, value FROM daily_metrics WHERE date >= ?`).all(since.slice(0, 10))
@@ -141,7 +151,7 @@ const sleeps = db.prepare(`
   SELECT start_time AS startTime, end_time AS endTime, score,
          duration_minutes AS durationMin, deep_minutes AS deepMin, light_minutes AS lightMin,
          rem_minutes AS remMin, awake_minutes AS awakeMin, wake_count AS wakeCount
-  FROM sleep_sessions WHERE end_time >= ?`).all(since)
+  FROM sleep_sessions WHERE end_time >= ?`).all(sleepSince(since))
 // Weight: the window, plus 8 days before it so the bodyweight median has data.
 const weightSince = new Date(new Date(ALL ? '2000-01-01' : since).getTime() - 8 * 86400e3).toISOString()
 const weights = db.prepare(`
