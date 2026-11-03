@@ -23,6 +23,9 @@ export const HYBRID_COLORS = { strength: '#00A88F', cardio: '#E0334F' } as const
 
 export const STEPS_COLOR = '#00BFA5'
 /** Previous-period ghost series. */
+// HR zones are ordinal → one hue, dim → bright with intensity.
+export const HR_ZONE_RAMP = ['#5A2A33', '#7A2534', '#9E1F35', '#C8102E', '#E2475C', '#F27D8D']
+
 export const GHOST = '#5A5A5A'
 export const UP = '#00BFA5'
 export const DOWN = '#C8102E'

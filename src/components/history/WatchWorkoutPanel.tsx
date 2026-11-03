@@ -10,14 +10,13 @@ import RouteMap from './RouteMap'
 import { getZeppWorkoutSeries } from '@/lib/db'
 import TrainingEffectRings from './TrainingEffectRings'
 import { chartTooltipStyle, axisProps } from '@/components/recovery/chartStyle'
+import { HR_ZONE_RAMP as ZONE_RAMP } from '@/components/progress/progressStyle'
 
 const ACCENT = '#C8102E'   // heart rate
 const ELEV = '#84CC16'     // matches the History hike card
 // Interval laps: work = run red, recovery = walk blue (ACTIVITY_COLORS).
 const LAP_KIND_COLOR: Record<LapKind, string> = { work: '#C8102E', recovery: '#3A86C8' }
 
-// HR zones are ordinal → one hue, dim → bright with intensity.
-const ZONE_RAMP = ['#5A2A33', '#7A2534', '#9E1F35', '#C8102E', '#E2475C', '#F27D8D']
 
 const fmtClock = (iso: string) =>
   new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(iso))

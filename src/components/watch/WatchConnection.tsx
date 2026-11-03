@@ -6,7 +6,7 @@ import { getZeppDaily, getLatestWatchHrZones } from '@/lib/db'
 import { fmtDay } from '@/components/recovery/chartStyle'
 
 // Same dim → bright single-hue ramp as the History watch panel.
-const ZONE_RAMP = ['#5A2A33', '#7A2534', '#9E1F35', '#C8102E', '#E2475C', '#F27D8D']
+import { HR_ZONE_RAMP as ZONE_RAMP } from '@/components/progress/progressStyle'
 const ZONE_USE = ['Recovery / warm-up', 'Zone 2 — easy aerobic', 'Steady / tempo', 'Threshold', 'VO₂ max intervals', 'Max effort']
 
 /**

@@ -9,15 +9,14 @@ import StatTile from '@/components/ui/StatTile'
 import { weeklyOnFoot, footEfficiencyByMonth, footKind, FOOT_KIND_LABEL } from '@/lib/activity'
 import type { SessionData } from '@/lib/computeStats'
 import type { LatLon } from '@/lib/zeppSeries'
-import { activityByBucket, paceHrPoints, runTypeByBucket, RUN_TYPE_COLORS } from '@/lib/progressData'
+import { activityByBucket, paceHrPoints, runHrZonesByBucket } from '@/lib/progressData'
 import FootRecords from './FootRecords'
 import { ChartCard, ClickHint, EmptyState, LegendDot, useChartAnimation } from './kit'
-import { ACTIVITY_COLORS, FOOT_COLORS, GHOST, axisProps, chartTooltipStyle, fmtLongDay, fmtMonth } from './progressStyle'
+import { ACTIVITY_COLORS, FOOT_COLORS, GHOST, HR_ZONE_RAMP, axisProps, chartTooltipStyle, fmtLongDay, fmtMonth } from './progressStyle'
 import { onBucketClick, type RangeCtx } from './types'
 
 const RouteHeatMap = dynamic(() => import('./RouteHeatMap'), { ssr: false, loading: () => <div className="h-80 rounded-lg" style={{ background: '#141414' }} /> })
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const fmtPace = (min: number) => `${Math.floor(min)}:${String(Math.round((min % 1) * 60)).padStart(2, '0')}`
 
 /** Runs, hikes and walks together, following the page's date range. */
@@ -27,7 +26,7 @@ export default function OnFootTab({ sessions, ctx, routes }: { sessions: Session
   const buckets = useMemo(() => activityByBucket(sessions, ctx.buckets), [sessions, ctx.buckets])
   const prev = useMemo(() => (ctx.compare ? activityByBucket(sessions, ctx.prev) : null), [sessions, ctx.prev, ctx.compare])
   const efficiency = useMemo(() => footEfficiencyByMonth(sessions).filter(m => m.month >= ctx.span.start.slice(0, 7)).map(m => ({ ...m, label: fmtMonth(m.month) })), [sessions, ctx.span])
-  const mix = useMemo(() => runTypeByBucket(sessions, ctx.buckets), [sessions, ctx.buckets])
+  const mix = useMemo(() => runHrZonesByBucket(sessions, ctx.buckets), [sessions, ctx.buckets])
   const points = useMemo(() => paceHrPoints(sessions, ctx.span), [sessions, ctx.span])
   const hasRoutes = Object.keys(routes).length > 0
 
@@ -43,8 +42,9 @@ export default function OnFootTab({ sessions, ctx, routes }: { sessions: Session
 
   const distData = ctx.buckets.map((b, i) => ({ label: b.label, run: buckets[i].run, hike: buckets[i].hike, walk: buckets[i].walk, prev: prev ? prev[i].km : null }))
   const sumKm = buckets.reduce((n, b) => n + b.km, 0)
-  const mixData = ctx.buckets.map((b, i) => ({ label: b.label, ...mix.rows[i] }))
-  const hasMix = mix.types.length > 0 && mix.rows.some(r => Object.values(r).some(v => v > 0))
+  const mixData = ctx.buckets.map((b, i) => ({ label: b.label, minutes: mix.minutes[i], ...mix.rows[i] }))
+  const zoneLabel = Object.fromEntries(mix.zones.map(z => [z.key, z.label]))
+  const hasMix = mix.minutes.some(m => m > 0)
   const t0 = Date.parse(`${ctx.span.start}T00:00:00Z`), t1 = Date.parse(`${ctx.today}T00:00:00Z`)
   const ageOpacity = (date: string) => 0.25 + 0.75 * Math.max(0, Math.min(1, (Date.parse(`${date}T00:00:00Z`) - t0) / Math.max(1, t1 - t0)))
 
@@ -80,16 +80,18 @@ export default function OnFootTab({ sessions, ctx, routes }: { sessions: Session
       </ChartCard>
 
       {hasMix && (
-        <ChartCard title="Run Type Mix" sub={`Share of running km by session type, per ${unit}. A healthy base is mostly easy running.`}>
+        <ChartCard title="Run Heart-Rate Zones" sub={`Share of running time in each watch heart-rate zone, per ${unit}. A healthy base is mostly Z2 (easy aerobic).`}>
           <div className="h-56" data-noswipe>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={mixData} margin={{ top: 5, right: 8, left: 0, bottom: 0 }} onClick={onBucketClick(ctx.buckets, ctx.openBucket)} style={{ cursor: 'pointer' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
                 <XAxis dataKey="label" {...axisProps} minTickGap={16} />
                 <YAxis {...axisProps} width={40} unit="%" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} />
-                <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }} formatter={(v: unknown, n: unknown) => [`${v}%`, cap(String(n))]} />
-                <Legend wrapperStyle={{ fontSize: 11, color: '#A0A0A0' }} formatter={v => cap(String(v))} />
-                {mix.types.map(t => <Bar key={t} dataKey={t} stackId="mix" fill={RUN_TYPE_COLORS[t] ?? '#606060'} stroke="#1A1A1A" strokeWidth={1} {...anim} />)}
+                <Tooltip {...chartTooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                  labelFormatter={(l: unknown, p: readonly { payload?: { minutes?: number } }[]) => `${l} · ${p?.[0]?.payload?.minutes ?? 0} min running`}
+                  formatter={(v: unknown, n: unknown) => [`${v}%`, zoneLabel[String(n)] ?? String(n)]} />
+                <Legend itemSorter={null} wrapperStyle={{ fontSize: 11, color: '#A0A0A0' }} formatter={v => zoneLabel[String(v)] ?? String(v)} />
+                {mix.zones.map((z, i) => <Bar key={z.key} dataKey={z.key} stackId="mix" fill={HR_ZONE_RAMP[i] ?? '#606060'} stroke="#1A1A1A" strokeWidth={1} {...anim} />)}
               </BarChart>
             </ResponsiveContainer>
           </div>

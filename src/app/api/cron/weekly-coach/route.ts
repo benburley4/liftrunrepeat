@@ -60,7 +60,8 @@ async function generateReport(
   const lines = [
     `OVERVIEW:`,
     `- Sessions this week: ${overview.sessionsThisWeek}`,
-    `- Km run this week: ${overview.kmThisWeek}`,
+    `- Km run this week (running only): ${overview.runKmThisWeek}`,
+    `- Km on foot this week (runs + walks/hikes incl. elevation equivalent): ${overview.kmThisWeek}`,
     `- Volume lifted this week: ${overview.volumeThisWeek} kg`,
     `- Total volume lifted (all time): ${overview.totalVolume} kg`,
     `- Readiness score: ${overview.tsb}% — ${overview.readinessLabel}${factorStr ? ` (factors: ${factorStr})` : ''}`,
@@ -82,8 +83,12 @@ async function generateReport(
     ``,
     runSummary
       ? [`RUNNING:`,
-         `- Weekly km: ${runSummary.weeklyKm.map(w => `${w.week}: ${w.km}km`).join(', ')}`,
-         `- Run type mix: ${runSummary.runTypeMix.map(t => `${t.name} ${t.value}%`).join(', ')}`].join('\n')
+         `- Weekly km, oldest → this week (week starting; run km / total on-foot km): ${runSummary.weeklyKm.map(w => `${w.week}: ${w.runKm} run / ${w.km} total`).join(', ')}`,
+         runSummary.runHrZones
+           ? [`- Run time by watch HR zone this week (${runSummary.runHrZones.thisWeek.minutes} min): ${zoneText(runSummary.runHrZones.thisWeek.zones)}`,
+              `- Run time by watch HR zone, previous 4 weeks (${runSummary.runHrZones.prior4Weeks.minutes} min): ${zoneText(runSummary.runHrZones.prior4Weeks.zones)}`,
+              `- (Z2 = easy aerobic. Use these to judge whether easy runs were really easy — don't guess intensity from distance.)`].join('\n')
+           : `- Run type mix: ${runSummary.runTypeMix.map(t => `${t.name} ${t.value}%`).join(', ')}`].join('\n')
       : `RUNNING: No run sessions logged yet.`,
     ``,
     breakdown?.hasData
@@ -104,6 +109,10 @@ async function generateReport(
     user: lines.filter(Boolean).join('\n'),
     maxTokens: 1500,
   })
+}
+
+function zoneText(zones: { label: string; pct: number }[]): string {
+  return zones.map(z => `${z.label} ${z.pct}%`).join(', ')
 }
 
 /** Pulls the KEY RECOMMENDATIONS section out of a previous report (falls back to last 800 chars). */

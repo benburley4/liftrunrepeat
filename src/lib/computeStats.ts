@@ -34,15 +34,20 @@ export function segKm(seg: LoggedRunSegment): number {
   return 0
 }
 
-function sessionKm(s: SessionData): number {
-  const runKm = (s.run ?? []).reduce((rs, entry) => {
+/** Running km only (run segments) — excludes hikes/walks. */
+function sessionRunKm(s: SessionData): number {
+  return (s.run ?? []).reduce((rs, entry) => {
     if ('kind' in entry && entry.kind === 'repeat')
       return rs + entry.laps.reduce((ls, l) => ls + segKm(l), 0) * (parseInt(entry.count) || 1)
     return rs + segKm(entry as LoggedRunSegment)
   }, 0)
+}
+
+/** Run km + hike/walk km + elevation equivalent — the "on foot" load figure. */
+function sessionKm(s: SessionData): number {
   // Naismith: every 100m of elevation gain ≈ 1km additional effort
   const elevEquiv = (s.hikeElevationM ?? 0) / 100
-  return runKm + (s.hikeKm ?? 0) + elevEquiv
+  return sessionRunKm(s) + (s.hikeKm ?? 0) + elevEquiv
 }
 
 function sessionVolume(s: SessionData, mults?: VolumeMultipliers): number {
@@ -54,12 +59,17 @@ function sessionLoad(s: SessionData, mults?: VolumeMultipliers): number {
 }
 
 export function epleyRM(w: number, r: number) { return r === 1 ? w : Math.round(w * (1 + r / 30)) }
+/** YYYY-MM-DD in local time (toISOString would shift local midnight to the previous UTC day). */
+function localYmd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 
 function weekStart(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
   const day = d.getDay()
   d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
-  return d.toISOString().split('T')[0]
+  return localYmd(d)
 }
 
 // First match wins, so order matters: core before legs ("leg raise"), hinge before
@@ -210,9 +220,9 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
   const personalWeeklyAvg = allWeekLoads.length > 0
     ? allWeekLoads.reduce((s, w) => s + w.total, 0) / allWeekLoads.length : 0
 
-  const thisWk = weekStart(now.toISOString().split('T')[0])
+  const thisWk = weekStart(localYmd(now))
   const lastWkDate = new Date(now); lastWkDate.setDate(now.getDate() - 7)
-  const lastWk = weekStart(lastWkDate.toISOString().split('T')[0])
+  const lastWk = weekStart(localYmd(lastWkDate))
   const thisWeekLoad = byWeek[thisWk]?.total ?? 0
   const lastWeekLoad = byWeek[lastWk]?.total ?? 0
 
@@ -297,6 +307,7 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
     : 'Hard week — well earned rest'
 
   const kmThisWeek = thisWeek.reduce((sum, s) => sum + sessionKm(s), 0)
+  const runKmThisWeek = thisWeek.reduce((sum, s) => sum + sessionRunKm(s), 0)
   const volumeThisWeek = thisWeek.reduce((sum, s) => sum + sessionVolume(s, mults), 0)
   const totalVolume = history.reduce((sum, s) => sum + sessionVolume(s, mults), 0)
 
@@ -333,19 +344,22 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
 
   // Run/hike weekly km (last 12 weeks)
   const runSessions = history.filter(s => (s.run ?? []).length > 0 || s.type === 'hike' || s.type === 'run')
-  const today = new Date(); today.setHours(0, 0, 0, 0)
+  // Anchor to the report week (not the wall clock) — the cron runs just after
+  // the week ends, so "today" would make the last bucket the new, empty week.
+  const today = new Date(now)
   const weeks: string[] = Array.from({ length: 12 }, (_, i) => {
     const d = new Date(today)
     d.setDate(today.getDate() - (11 - i) * 7)
     const day = d.getDay()
     d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
-    return d.toISOString().split('T')[0]
+    return localYmd(d)
   })
   const byWeekRun: Record<string, SessionData[]> = {}
   for (const s of runSessions) { const wk = weekStart(s.date); (byWeekRun[wk] ??= []).push(s) }
   const weeklyKm = weeks.map(wk => ({
     week: new Date(wk + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     km: Math.round(byWeekRun[wk]?.reduce((sum, s) => sum + sessionKm(s), 0) ?? 0),
+    runKm: Math.round((byWeekRun[wk]?.reduce((sum, s) => sum + sessionRunKm(s), 0) ?? 0) * 10) / 10,
   }))
 
   // Run/hike type mix
@@ -375,6 +389,35 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
         .filter(d => d.value > 0).sort((a, b) => b.value - a.value)
     : []
 
+  // Run time per watch HR zone: the report week vs the 4 weeks before it.
+  // Zones are numbered Z1–Z6 like the app (Z2 = easy aerobic); bpm bounds come
+  // from the most recent zoned run.
+  const isRun = (s: SessionData) => s.type === 'run' || (s.run ?? []).length > 0
+  const zonedRuns = history.filter(s => isRun(s) && (s.zepp?.hrZones?.length ?? 0) > 0)
+  const latestZoned = zonedRuns.reduce<SessionData | null>((a, s) => (!a || s.date > a.date ? s : a), null)
+  const zoneBounds = latestZoned?.zepp?.hrZones?.map(z => z.upperBpm) ?? []
+  const fourWeeksBefore = new Date(monday); fourWeeksBefore.setDate(monday.getDate() - 28)
+  const zoneSplit = (from: Date, to: Date) => {
+    const secs: number[] = zoneBounds.map(() => 0)
+    for (const s of zonedRuns) {
+      const d = new Date(s.date + 'T00:00:00')
+      if (d < from || d > to) continue
+      s.zepp!.hrZones!.forEach((z, i) => { if (i < secs.length) secs[i] += z.seconds || 0 })
+    }
+    const total = secs.reduce((a, b) => a + b, 0)
+    return {
+      minutes: Math.round(total / 60),
+      zones: zoneBounds.map((ub, i) => ({
+        label: `Z${i + 1} (${i === 0 ? `<${ub}` : `${zoneBounds[i - 1]}-${ub}`} bpm)`,
+        pct: total ? Math.round((secs[i] / total) * 100) : 0,
+      })),
+    }
+  }
+  const dayBeforeMonday = new Date(monday); dayBeforeMonday.setDate(monday.getDate() - 1)
+  const runHrZones = zoneBounds.length > 0
+    ? { thisWeek: zoneSplit(monday, now), prior4Weeks: zoneSplit(fourWeeksBefore, dayBeforeMonday) }
+    : null
+
   // PPL / body breakdown
   const ppl:  Record<string, number> = { Push: 0, Pull: 0, Legs: 0, Hinge: 0, Core: 0, Cardio: 0 }
   const body: Record<string, number> = { Chest: 0, Back: 0, Shoulders: 0, Legs: 0, Arms: 0, Core: 0, Cardio: 0 }
@@ -400,6 +443,7 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
     overview: {
       sessionsThisWeek: thisWeek.length,
       kmThisWeek: Math.round(kmThisWeek * 10) / 10,
+      runKmThisWeek: Math.round(runKmThisWeek * 10) / 10,
       volumeThisWeek: Math.round(volumeThisWeek),
       totalVolume: Math.round(totalVolume),
       tsb,
@@ -415,7 +459,7 @@ export function computeStats(history: SessionData[], referenceDate?: string, mul
     },
     totalSessions: history.length,
     strengthSummary: liftSessions.length > 0 ? { topExercises, prs } : null,
-    runSummary: runSessions.length > 0 || history.some(s => s.type === 'hike') ? { weeklyKm, runTypeMix } : null,
+    runSummary: runSessions.length > 0 || history.some(s => s.type === 'hike') ? { weeklyKm, runTypeMix, runHrZones } : null,
     breakdown: { pplSlices: toSlices(ppl, PPL_COLORS), bodySlices: toSlices(body, BODY_COLORS), hasData: Object.values(ppl).some(v => v > 0) },
     balance: { liftPct: Math.round((liftCount / total) * 100), runPct: Math.round((runCount / total) * 100) },
   }

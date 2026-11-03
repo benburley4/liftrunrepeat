@@ -513,38 +513,39 @@ export type ExerciseStat = ReturnType<typeof exerciseAnalysis>[number]
 
 // ─── Running ─────────────────────────────────────────────────────────────────
 
-export const RUN_TYPE_COLORS: Record<string, string> = {
-  easy: '#4CAF50', tempo: '#F59E0B', long: '#00BFA5', interval: '#EF4444', recovery: '#60A5FA',
-  warmup: '#A78BFA', cooldown: '#A78BFA', hills: '#F97316', rest: '#606060',
-}
+/** One HR zone band: index into the watch's zone list, plus its bpm label. */
+export interface HrZoneBand { key: string; label: string }
 
-/** km per run-segment type in each bucket, as a share of that bucket's total (0–100). */
-export function runTypeByBucket(history: SessionData[], buckets: Bucket[]): { types: string[]; rows: Record<string, number>[] } {
-  const raw = buckets.map(() => ({} as Record<string, number>))
-  const seen = new Set<string>()
+/**
+ * Share of running time spent in each watch HR zone, per bucket (0–100).
+ * Uses the per-run `zepp.hrZones` seconds, so runs without watch zones are
+ * left out. Band labels come from the most recent run's zone bounds.
+ */
+export function runHrZonesByBucket(history: SessionData[], buckets: Bucket[]): {
+  zones: HrZoneBand[]; rows: Record<string, number>[]; minutes: number[]
+} {
+  const raw = buckets.map(() => [] as number[])
+  let latest: { date: string; bounds: number[] } | null = null
   for (const s of history) {
+    if (footKind(s) !== 'run') continue
+    const zones = s.zepp?.hrZones
+    if (!zones?.length) continue
+    if (!latest || s.date > latest.date) latest = { date: s.date, bounds: zones.map(z => z.upperBpm) }
     const i = bucketIndex(buckets, s.date)
     if (i < 0) continue
-    for (const entry of s.run ?? []) {
-      const segs = 'kind' in entry && entry.kind === 'repeat'
-        ? entry.laps.map(l => [l, parseInt(entry.count) || 1] as const)
-        : [[entry as LoggedRunSegment, 1] as const]
-      for (const [seg, n] of segs) {
-        const km = segKm(seg) * n
-        if (!km || seg.segmentType === 'rest') continue
-        const t = (seg.segmentType || 'easy').toLowerCase()
-        raw[i][t] = (raw[i][t] ?? 0) + km
-        seen.add(t)
-      }
-    }
+    zones.forEach((z, zi) => { raw[i][zi] = (raw[i][zi] ?? 0) + (z.seconds || 0) })
   }
-  const order = Object.keys(RUN_TYPE_COLORS)
-  const types = [...seen].sort((a, b) => (order.indexOf(a) + 99 * +(order.indexOf(a) < 0)) - (order.indexOf(b) + 99 * +(order.indexOf(b) < 0)))
+  const bounds = latest?.bounds ?? []
+  const zones: HrZoneBand[] = bounds.map((ub, i) => ({
+    key: `z${i}`,
+    label: `Z${i + 1} · ${i === 0 ? `<${ub}` : `${bounds[i - 1]}–${ub}`} bpm`,
+  }))
   const rows = raw.map(r => {
-    const total = Object.values(r).reduce((a, b) => a + b, 0)
-    return Object.fromEntries(types.map(t => [t, total ? Math.round(((r[t] ?? 0) / total) * 1000) / 10 : 0]))
+    const total = r.reduce((a, b) => a + (b ?? 0), 0)
+    return Object.fromEntries(zones.map((z, i) => [z.key, total ? Math.round(((r[i] ?? 0) / total) * 1000) / 10 : 0]))
   })
-  return { types, rows }
+  const minutes = raw.map(r => Math.round(r.reduce((a, b) => a + (b ?? 0), 0) / 60))
+  return { zones, rows, minutes }
 }
 
 export const KEY_DISTANCES = [

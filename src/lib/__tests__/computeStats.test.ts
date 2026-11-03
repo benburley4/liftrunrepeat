@@ -102,6 +102,30 @@ describe('computeStats', () => {
     expect(stats.overview.kmThisWeek).toBe(10)
   })
 
+  it('separates run km from hike/walk km and anchors weekly km to the reference week', () => {
+    const hike: SessionData = { type: 'hike', name: 'Walk', date: '2026-06-25', savedAt: '2026-06-25T09:00:00Z', hikeKm: 8 }
+    const history = [runSession('2026-06-24', 3), runSession('2026-06-28', 3), hike]
+    const stats = computeStats(history, REF)
+    expect(stats.overview.runKmThisWeek).toBe(6)
+    expect(stats.overview.kmThisWeek).toBe(14)
+    const last = stats.runSummary!.weeklyKm.at(-1)!
+    expect(last.week).toBe('Jun 22') // week of REF, not of the wall clock
+    expect(last.runKm).toBe(6)
+    expect(last.km).toBe(14)
+  })
+
+  it('splits run time by HR zone for the week and the 4 weeks before', () => {
+    const zoned = (date: string, secs: number[]): SessionData => ({
+      ...runSession(date, 3), zepp: { hrZones: secs.map((seconds, i) => ({ seconds, upperBpm: [120, 134, 155][i] })) } as SessionData['zepp'],
+    })
+    const stats = computeStats([zoned('2026-06-24', [60, 60, 120]), zoned('2026-06-10', [0, 600, 0])], REF)
+    const z = stats.runSummary!.runHrZones!
+    expect(z.thisWeek.minutes).toBe(4)
+    expect(z.thisWeek.zones.map(x => x.pct)).toEqual([25, 25, 50])
+    expect(z.thisWeek.zones[1].label).toBe('Z2 (120-134 bpm)')
+    expect(z.prior4Weeks.zones.map(x => x.pct)).toEqual([0, 100, 0])
+  })
+
   it('reports PRs with estimated 1RM', () => {
     const history = [liftSession('2026-06-23', 100, 5)]
     const stats = computeStats(history, REF)

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   activityKind, activityByBucket, computeOverviewStats, computeProgressStats, dayKind, e1rmByBucket,
   exerciseRanking, goalStreaks, liftRecords, nextMilestone, predictRaceTimes, prEvents, runRecords,
-  runTypeByBucket, strengthShare, weekStreaks, weekSummary, bodyPartSets, paceHrPoints,
+  runHrZonesByBucket, strengthShare, weekStreaks, weekSummary, bodyPartSets, paceHrPoints,
 } from '../progressData'
 import { rangeBuckets } from '../progressRange'
 import type { SessionData, LoggedRunSegment } from '../computeStats'
@@ -122,10 +122,16 @@ describe('running records', () => {
     expect(half.fromLabel).toBe('10 km')
     expect(half.predictedSecs).toBeGreaterThan(3100 * 2.1)
   })
-  it('reports type mix per bucket as percentages', () => {
-    const mix = runTypeByBucket(h, rangeBuckets('all', '2026-10-26', '2026-09-01'))
-    expect(mix.types).toEqual(['easy', 'interval'])
-    expect(mix.rows[1].easy + mix.rows[1].interval).toBeCloseTo(100, 0)
+  it('reports share of run time per HR zone per bucket', () => {
+    const zoned = (date: string, secs: number[], bounds = [120, 134, 155]): SessionData => ({
+      ...run(date, 3, '9:00'), zepp: { hrZones: secs.map((seconds, i) => ({ seconds, upperBpm: bounds[i] })) } as ZeppStats,
+    })
+    const hz = [zoned('2026-10-27', [60, 60, 120]), zoned('2026-10-29', [0, 0, 240], [118, 132, 150]), run('2026-10-28', 5, '5:00')]
+    const mix = runHrZonesByBucket(hz, rangeBuckets('all', '2026-11-01', '2026-10-01'))
+    expect(mix.zones.map(z => z.label)).toEqual(['Z1 · <118 bpm', 'Z2 · 118–132 bpm', 'Z3 · 132–150 bpm'])
+    const i = mix.minutes.findIndex(m => m > 0)
+    expect(mix.minutes[i]).toBe(8)
+    expect(mix.rows[i]).toEqual({ z0: 12.5, z1: 12.5, z2: 75 })
   })
 })
 
