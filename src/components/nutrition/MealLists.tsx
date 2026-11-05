@@ -30,27 +30,28 @@ export function RepeatMeals({
   if (!favourites.length && !recentOnly.length) return null
 
   const row = (key: string, m: Pick<Meal, 'title' | 'items' | 'share' | 'thumb'>, fav?: FavouriteMeal) => (
-    <div key={key} className="flex items-center gap-2 sm:gap-3 py-2" style={{ borderBottom: '1px solid #1E1E1E' }}>
+    <div key={key} className="flex items-center gap-3 py-3" style={{ borderBottom: '1px solid #1E1E1E' }}>
       <Thumb src={m.thumb} />
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold truncate" style={{ color: '#F5F5F5' }}>
+        <p className="text-sm font-bold line-clamp-2 break-words" style={{ color: '#F5F5F5' }}>
           {fav && <Star size={12} className="inline mr-1 -mt-0.5" color="#00BFA5" fill="#00BFA5" />}{m.title}
         </p>
-        <p className="text-xs" style={{ color: sub, fontFamily: 'var(--font-mono)' }}>
-          {r(mealMacros(m).kcal)} kcal{m.share > 1 ? ` · shared ÷${m.share}` : ''}
+        <p className="text-xs mt-0.5 flex items-center gap-2 flex-wrap" style={{ color: sub }}>
+          <span style={{ fontFamily: 'var(--font-mono)' }}>{r(mealMacros(m).kcal)} kcal{m.share > 1 ? ` · ÷${m.share}` : ''}</span>
+          {fav && (
+            <button type="button" onClick={() => onUnfavourite(fav.id)} className="underline underline-offset-2 py-1" style={{ color: '#8A8A8A' }}>
+              Remove
+            </button>
+          )}
         </p>
       </div>
-      {fav && (
-        <button type="button" onClick={() => onUnfavourite(fav.id)} aria-label={`Remove ${m.title} from favourites`} className="p-2.5 sm:p-2 rounded-lg" style={{ color: '#606060' }}>
-          <Trash2 size={14} />
-        </button>
-      )}
       <button
         type="button" onClick={() => onLog(m)} disabled={busy}
-        className="flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-bold"
+        aria-label={`Log ${m.title} again`}
+        className="shrink-0 flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-bold"
         style={{ background: 'rgba(0,191,165,0.12)', color: '#00BFA5' }}
       >
-        <Plus size={14} /> Log
+        <Plus size={16} /> Log
       </button>
     </div>
   )
@@ -82,23 +83,31 @@ export function DayMeals({
         const t = mealMacros(m)
         const fav = favouriteTitles.has(m.title.trim().toLowerCase())
         return (
-          <div key={m.id} className="flex items-center gap-2 sm:gap-3 py-2" style={{ borderBottom: '1px solid #1E1E1E' }}>
+          <div key={m.id} className="flex items-start gap-3 py-3" style={{ borderBottom: '1px solid #1E1E1E' }}>
             <Thumb src={m.thumb} />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold truncate" style={{ color: '#F5F5F5' }}>{m.title}</p>
-              <p className="text-xs truncate" style={{ color: sub }}>
-                {new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {m.share > 1 && <> · <Users size={11} className="inline -mt-0.5" /> ÷{m.share}</>}
-                {' · '}{r(t.protein)}P {r(t.carbs)}C {r(t.fat)}F
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-bold line-clamp-2 break-words min-w-0" style={{ color: '#F5F5F5' }}>{m.title}</p>
+                <p className="shrink-0 text-base font-bold leading-5" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
+                  {r(t.kcal)}<span className="text-xs font-normal ml-0.5" style={{ color: sub }}>kcal</span>
+                </p>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-0.5">
+                <p className="text-xs min-w-0 truncate" style={{ color: sub }}>
+                  {new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {m.share > 1 && <> · <Users size={11} className="inline -mt-0.5" /> ÷{m.share}</>}
+                  {' · '}{r(t.protein)}P {r(t.carbs)}C {r(t.fat)}F
+                </p>
+                <div className="shrink-0 flex -mr-2">
+                  <button type="button" onClick={() => onFavourite(m)} disabled={fav} aria-label={fav ? 'Already a favourite' : `Add ${m.title} to favourites`} className="p-2.5 rounded-lg">
+                    <Star size={16} color={fav ? '#00BFA5' : '#8A8A8A'} fill={fav ? '#00BFA5' : 'none'} />
+                  </button>
+                  <button type="button" onClick={() => onDelete(m)} aria-label={`Delete ${m.title}`} className="p-2.5 rounded-lg" style={{ color: '#8A8A8A' }}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
             </div>
-            <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{r(t.kcal)}</p>
-            <button type="button" onClick={() => onFavourite(m)} disabled={fav} aria-label={fav ? 'Already a favourite' : `Add ${m.title} to favourites`} className="p-2.5 sm:p-2 rounded-lg">
-              <Star size={14} color={fav ? '#00BFA5' : '#606060'} fill={fav ? '#00BFA5' : 'none'} />
-            </button>
-            <button type="button" onClick={() => onDelete(m)} aria-label={`Delete ${m.title}`} className="p-2.5 sm:p-2 rounded-lg" style={{ color: '#606060' }}>
-              <Trash2 size={14} />
-            </button>
           </div>
         )
       })}

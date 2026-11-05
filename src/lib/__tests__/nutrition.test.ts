@@ -2,8 +2,43 @@ import { describe, it, expect } from 'vitest'
 import {
   MealItem, Meal, itemMacros, mealMacros, setItemSize, setItemGrams, validateMealEstimate, bmrMifflin, burnForDay,
   weightOn, energyBalance, summarizeBalance, repeatMeal, recentDistinctMeals, parseSex, intakeByDate,
-  macroSplit, proteinTarget, weightTrend,
+  macroSplit, proteinTarget, weightTrend, weekStart, bucketSizeFor, bucketBalance, BalanceDay,
 } from '../nutrition'
+
+describe('period buckets', () => {
+  const bd = (date: string, eaten: number | null, burned: number | null): BalanceDay => ({
+    date, eaten, burned, resting: burned != null ? 1800 : null, active: burned != null ? burned - 1800 : null,
+    deficit: eaten != null && burned != null ? burned - eaten : null,
+    activeSource: 'watch', weightKg: null, protein: null, carbs: null, fat: null,
+  })
+
+  it('finds the Monday of the week', () => {
+    expect(weekStart('2026-11-05')).toBe('2026-11-02') // Thu → Mon
+    expect(weekStart('2026-11-02')).toBe('2026-11-02')
+    expect(weekStart('2026-11-08')).toBe('2026-11-02') // Sun belongs to the week before
+  })
+
+  it('picks daily / weekly / monthly bars by range length', () => {
+    expect(bucketSizeFor(7)).toBe('day')
+    expect(bucketSizeFor(30)).toBe('day')
+    expect(bucketSizeFor(182)).toBe('week')
+    expect(bucketSizeFor(365)).toBe('week')
+    expect(bucketSizeFor(800)).toBe('month')
+  })
+
+  it('averages each bucket over days that have a value', () => {
+    const b = bucketBalance([
+      bd('2026-11-02', 2000, 3000), bd('2026-11-03', null, 2800), bd('2026-11-04', 2400, 3000),
+      bd('2026-11-09', 1800, 2600),
+    ], 'week')
+    expect(b).toEqual([
+      { start: '2026-11-02', eaten: 2200, burned: 2933, resting: 1800, active: 1133, deficit: 800 },
+      { start: '2026-11-09', eaten: 1800, burned: 2600, resting: 1800, active: 800, deficit: 800 },
+    ])
+    expect(bucketBalance([bd('2026-10-31', 2000, 3000), bd('2026-11-01', 1000, 3000)], 'month').map(x => x.start))
+      .toEqual(['2026-10-01', '2026-11-01'])
+  })
+})
 
 describe('weightTrend', () => {
   it('averages readings in the trailing 7-day window', () => {
@@ -165,7 +200,7 @@ describe('energy balance', () => {
     const days = energyBalance(meals, rows, body, null, '2026-11-05', 3)
     expect(days.map(d => d.date)).toEqual(['2026-11-03', '2026-11-04', '2026-11-05'])
     // 11-03: BMR at 96 kg = 1860, + 1000 active = 2860 − 2000 eaten
-    expect(days[0]).toMatchObject({ eaten: 2000, burned: 2860, deficit: 860, weightKg: 96 })
+    expect(days[0]).toMatchObject({ eaten: 2000, burned: 2860, resting: 1860, active: 1000, deficit: 860, weightKg: 96 })
     expect(days[1]).toMatchObject({ eaten: null, deficit: null, burned: 2860 })
     // 11-05: BMR at 95 kg = 1850 + 500
     expect(days[2]).toMatchObject({ eaten: 1000, burned: 2350, deficit: 1350 })
@@ -176,6 +211,7 @@ describe('energy balance', () => {
     const s = summarizeBalance(days, '2026-11-05')
     expect(s.loggedDays).toBe(1) // today excluded, 11-04 unlogged
     expect(s.avgDeficit).toBe(860)
+    expect(s).toMatchObject({ avgResting: 1860, avgActive: 1000, avgBurned: 2860 })
     expect(s.expectedChangeKg).toBe(-0.1)
     expect(s.actualChangeKg).toBe(-1)
   })

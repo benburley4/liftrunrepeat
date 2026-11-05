@@ -5,21 +5,26 @@ import { Macros, macroSplit, proteinTarget, PROTEIN_G_PER_KG } from '@/lib/nutri
 
 // Validated (dataviz validator, dark #141414), fixed order protein → carbs → fat.
 export const MACRO_COLORS = { protein: '#00A893', carbs: '#C7851F', fat: '#8B6CF0' }
+// Same steps as the Eaten vs burned chart (EnergyBalance ENERGY_COLORS).
+const BURN_COLORS = { resting: '#C7851F', active: '#00A893' }
 
 const sub = 'var(--color-text-subtle)'
 const r = Math.round
 
 /** Glanceable day card: calories eaten vs burned, and the macro breakdown with a protein target. */
+export interface DayBurn { total: number; resting: number; active: number }
+
 export default function DaySummary({
-  macros, burned, weightKg, inProgress,
+  macros, burn, weightKg, inProgress,
 }: {
   macros: Macros
-  burned: number | null
+  burn: DayBurn | null
   weightKg: number | null
   inProgress: boolean
 }) {
   const split = macroSplit(macros)
   const target = proteinTarget(weightKg)
+  const burned = burn?.total ?? null
   const deficit = burned != null ? burned - r(macros.kcal) : null
   const proteinPct = target ? Math.min(100, (macros.protein / target) * 100) : 0
 
@@ -45,6 +50,23 @@ export default function DaySummary({
           </p>
         )}
       </div>
+
+      {burn && (
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          {([['Resting', burn.resting, 'at rest — from your profile'], ['Active', burn.active, inProgress ? 'so far — from your watch' : 'from your watch']] as const).map(([label, v, note]) => (
+            <div key={label} className="rounded-xl px-3 py-2" style={{ background: '#1E1E1E' }}>
+              <p className="text-xs flex items-center gap-1.5" style={{ color: '#A0A0A0' }}>
+                <span className="inline-block w-2 h-2 rounded-full" style={{ background: label === 'Resting' ? BURN_COLORS.resting : BURN_COLORS.active }} />
+                {label}
+              </p>
+              <p className="text-lg font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
+                {v}<span className="text-xs font-normal ml-1" style={{ color: sub }}>kcal</span>
+              </p>
+              <p className="text-xs" style={{ color: sub }}>{note}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Calorie split: one bar, 2px surface gaps between segments */}
       <div className="flex gap-0.5 h-2 rounded-full overflow-hidden mt-4" style={{ background: '#1E1E1E' }} aria-hidden="true">

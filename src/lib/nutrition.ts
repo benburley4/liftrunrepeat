@@ -196,10 +196,15 @@ export function shiftDay(date: string, days: number): string {
 export interface BalanceDay {
   date: string
   eaten: number | null          // null = nothing logged that day
-  burned: number | null         // null = no body stats for BMR
+  burned: number | null         // null = no body stats for BMR; = resting + active
+  resting: number | null        // BMR (Mifflin–St Jeor)
+  active: number | null         // watch active calories (or steps estimate)
   deficit: number | null        // burned − eaten (positive = deficit); only when both known
   activeSource: ActiveSource
   weightKg: number | null       // scale reading that day (not carried forward)
+  protein: number | null        // grams; null = nothing logged
+  carbs: number | null
+  fat: number | null
 }
 
 export function energyBalance(
@@ -214,13 +219,19 @@ export function energyBalance(
     const w = weightOn(rows, date, fallbackWeight)
     const bmr = bmrMifflin({ ...body, weightKg: w })
     const burn = bmr != null && w != null ? burnForDay(byDate.get(date), bmr, w) : null
-    const eaten = intake.has(date) ? Math.round(intake.get(date)!.kcal) : null
+    const m = intake.get(date)
+    const eaten = m ? Math.round(m.kcal) : null
     out.push({
       date, eaten,
       burned: burn?.total ?? null,
+      resting: burn?.bmr ?? null,
+      active: burn?.active ?? null,
       deficit: burn && eaten != null ? burn.total - eaten : null,
       activeSource: burn?.activeSource ?? 'none',
       weightKg: byDate.get(date)?.weight_kg ?? null,
+      protein: m ? Math.round(m.protein) : null,
+      carbs: m ? Math.round(m.carbs) : null,
+      fat: m ? Math.round(m.fat) : null,
     })
   }
   return out
@@ -240,6 +251,47 @@ export function weightTrend(days: Pick<BalanceDay, 'date' | 'weightKg'>[], windo
   })
 }
 
+const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
+
+// ─── Period buckets (week / month averages for long ranges) ──────────────────
+
+export type BucketSize = 'day' | 'week' | 'month'
+
+/** Monday of the ISO week containing `date`. */
+export function weekStart(date: string): string {
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay() // 0 = Sun
+  return shiftDay(date, -((dow + 6) % 7))
+}
+
+/** Daily bars up to a month, weekly up to a year, monthly beyond. */
+export function bucketSizeFor(dayCount: number): BucketSize {
+  return dayCount <= 31 ? 'day' : dayCount <= 366 ? 'week' : 'month'
+}
+
+export interface BalanceBucket {
+  start: string                 // first day of the bucket
+  eaten: number | null          // averages per day, over days that have the value
+  burned: number | null
+  resting: number | null
+  active: number | null
+  deficit: number | null
+}
+
+export function bucketBalance(days: BalanceDay[], size: BucketSize): BalanceBucket[] {
+  const keyOf = (d: string) => (size === 'day' ? d : size === 'week' ? weekStart(d) : `${d.slice(0, 7)}-01`)
+  const groups = new Map<string, BalanceDay[]>()
+  for (const d of days) {
+    const k = keyOf(d.date)
+    if (!groups.has(k)) groups.set(k, [])
+    groups.get(k)!.push(d)
+  }
+  const pick = (g: BalanceDay[], k: 'eaten' | 'burned' | 'resting' | 'active' | 'deficit') =>
+    avg(g.map(d => d[k]).filter((v): v is number => v != null))
+  return [...groups.entries()].map(([start, g]) => ({
+    start, eaten: pick(g, 'eaten'), burned: pick(g, 'burned'), resting: pick(g, 'resting'), active: pick(g, 'active'), deficit: pick(g, 'deficit'),
+  }))
+}
+
 /** ~7700 kcal per kg of body fat. */
 export const KCAL_PER_KG = 7700
 
@@ -247,7 +299,12 @@ export interface BalanceSummary {
   loggedDays: number
   avgEaten: number | null
   avgBurned: number | null
+  avgResting: number | null
+  avgActive: number | null
   avgDeficit: number | null
+  avgProtein: number | null
+  avgCarbs: number | null
+  avgFat: number | null
   totalDeficit: number            // over logged days (excluding today, which is incomplete)
   expectedChangeKg: number | null // from the logged deficit
   actualChangeKg: number | null   // scale: mean of first 3 vs last 3 readings in the range
@@ -255,7 +312,8 @@ export interface BalanceSummary {
 
 export function summarizeBalance(days: BalanceDay[], today: string): BalanceSummary {
   const done = days.filter(d => d.date < today && d.deficit != null)
-  const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
+  // Macros don't need a burn estimate — average every completed day with meals logged.
+  const eatenDays = days.filter(d => d.date < today && d.eaten != null)
   const total = done.reduce((a, d) => a + d.deficit!, 0)
   const weights = days.filter(d => d.weightKg != null).map(d => d.weightKg!)
   let actual: number | null = null
@@ -265,10 +323,15 @@ export function summarizeBalance(days: BalanceDay[], today: string): BalanceSumm
     actual = Math.round((m(weights.slice(-n)) - m(weights.slice(0, n))) * 10) / 10
   }
   return {
-    loggedDays: done.length,
-    avgEaten: avg(done.map(d => d.eaten!)),
+    loggedDays: eatenDays.length,
+    avgEaten: avg(eatenDays.map(d => d.eaten!)),
     avgBurned: avg(done.map(d => d.burned!)),
+    avgResting: avg(done.map(d => d.resting ?? 0)),
+    avgActive: avg(done.map(d => d.active ?? 0)),
     avgDeficit: avg(done.map(d => d.deficit!)),
+    avgProtein: avg(eatenDays.map(d => d.protein ?? 0)),
+    avgCarbs: avg(eatenDays.map(d => d.carbs ?? 0)),
+    avgFat: avg(eatenDays.map(d => d.fat ?? 0)),
     totalDeficit: Math.round(total),
     expectedChangeKg: done.length ? Math.round((-total / KCAL_PER_KG) * 10) / 10 : null,
     actualChangeKg: actual,

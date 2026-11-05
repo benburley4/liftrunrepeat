@@ -102,10 +102,16 @@ export default function NutritionPage() {
     weightOn(rows, today, fallbackWeight) == null && 'bodyweight',
   ].filter(Boolean) as string[]
 
+  // Load at least a year (for the Year range), more if meals go back further (All).
+  const balanceDays = useMemo(() => {
+    const first = (meals ?? []).reduce<string | null>((a, m) => (!a || m.date < a ? m.date : a), null)
+    const span = first ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000) + 1 : 0
+    return Math.min(3650, Math.max(365, span))
+  }, [meals, today])
   const balance = useMemo(
-    () => energyBalance(meals ?? [], rows, body, fallbackWeight, today, 90),
+    () => energyBalance(meals ?? [], rows, body, fallbackWeight, today, balanceDays),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- body is derived from profile
-    [meals, rows, profile, fallbackWeight, today],
+    [meals, rows, profile, fallbackWeight, today, balanceDays],
   )
   const todayW = weightOn(rows, today, fallbackWeight)
   const todayBmr = bmrMifflin({ ...body, weightKg: todayW })
@@ -115,7 +121,11 @@ export default function NutritionPage() {
   const dayMeals = mealsOnDate(meals ?? [], date)
   const dayMacros = dayMeals.reduce((a, m) => addMacros(a, mealMacros(m)), ZERO_MACROS)
   const dayWeight = weightOn(rows, date, fallbackWeight)
-  const dayBurnTotal = date === today ? (todayBurn?.total ?? null) : (balance.find(d => d.date === date)?.burned ?? null)
+  const dayBurn = (() => {
+    if (date === today) return todayBurn ? { total: todayBurn.total, resting: todayBurn.bmr, active: todayBurn.active } : null
+    const d = balance.find(x => x.date === date)
+    return d?.burned != null ? { total: d.burned, resting: d.resting ?? 0, active: d.active ?? 0 } : null
+  })()
   const recent = recentDistinctMeals(meals ?? [], 10)
   const favTitles = new Set(favourites.map(f => f.title.trim().toLowerCase()))
   const dayLabel = date === today ? 'Today' : date === shiftDay(today, -1) ? 'Yesterday' : date
@@ -159,16 +169,18 @@ export default function NutritionPage() {
             />
           </label>
         </div>
-        <DaySummary macros={dayMacros} burned={dayBurnTotal} weightKg={dayWeight} inProgress={date === today} />
+        <DaySummary macros={dayMacros} burn={dayBurn} weightKg={dayWeight} inProgress={date === today} />
         </section>
 
-        <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
+        {/* grid-cols-1 (= minmax(0,1fr)) + min-w-0: without them a long meal name
+            stretches the column past the phone screen. */}
+        <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+          <div className="min-w-0 space-y-4">
             <MealLogger onSave={onLogged} />
             <RepeatMeals favourites={favourites} recent={recent} onLog={onRepeat} onUnfavourite={onUnfavourite} busy={busy} />
           </div>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             {meals === null
               ? <p className="text-sm" style={{ color: 'var(--color-text-subtle)' }}>Loading meals…</p>
               : <DayMeals meals={dayMeals} favouriteTitles={favTitles} onDelete={onDelete} onFavourite={addFavourite} label={`${dayLabel}'s meals`} />}

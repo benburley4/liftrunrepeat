@@ -138,6 +138,7 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
     try {
       const img = await loadImage(file)
       const full = toJpeg(img, 1280, 0.82)
+      dictation.stop()
       setImage(full); setThumb(toJpeg(img, 112, 0.7)); setDraft(null)
       estimate(full, text.trim())
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not read that image') }
@@ -154,12 +155,45 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
     } finally { setSaving(false) }
   }
 
+  // Text box with a mic button — used for the photo note and the description (both edit `text`).
+  const dictField = (rows: number, placeholder: string, hint: string) => (
+    <div className="space-y-1.5">
+      <div className="relative">
+        <textarea
+          value={dictation.interim ? `${text} ${dictation.interim}`.trim() : text}
+          onChange={e => setText(e.target.value)} rows={rows}
+          readOnly={dictation.listening}
+          placeholder={placeholder}
+          className="w-full rounded-lg pl-3 pr-14 py-2 text-base sm:text-sm block"
+          style={{ background: '#1E1E1E', border: `1px solid ${dictation.listening ? '#C8102E' : '#2E2E2E'}`, color: '#F5F5F5' }}
+        />
+        {dictation.supported && (
+          <button
+            type="button"
+            onClick={dictation.listening ? dictation.stop : dictation.start}
+            aria-label={dictation.listening ? 'Stop dictation' : 'Dictate'}
+            aria-pressed={dictation.listening}
+            className={`absolute right-2 top-2 w-10 h-10 rounded-full flex items-center justify-center ${dictation.listening ? 'animate-pulse' : ''}`}
+            style={{ background: dictation.listening ? '#C8102E' : 'rgba(0,191,165,0.12)', color: dictation.listening ? '#F5F5F5' : '#00BFA5' }}
+          >
+            {dictation.listening ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+          </button>
+        )}
+      </div>
+      <p className="text-xs" style={{ color: dictation.micError ? '#E5484D' : 'var(--color-text-subtle)' }}>
+        {dictation.micError
+          || (dictation.listening ? 'Listening… tap ■ when you’re done.'
+            : dictation.supported ? hint : 'Tip: tap the mic on your keyboard to dictate.')}
+      </p>
+    </div>
+  )
+
   const tab = (m: Mode, label: string, Icon: typeof Camera) => (
     <button
       type="button"
       onClick={() => { setMode(m); reset() }}
       aria-pressed={mode === m}
-      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-bold"
+      className="flex-1 flex items-center justify-center gap-2 py-2.5 sm:py-2 rounded-lg text-sm font-bold"
       style={{ background: mode === m ? 'rgba(0,191,165,0.12)' : 'transparent', color: mode === m ? '#00BFA5' : '#A0A0A0', fontFamily: 'var(--font-sans)' }}
     >
       <Icon size={16} /> {label}
@@ -179,23 +213,28 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
             // eslint-disable-next-line @next/next/no-img-element -- local data URL preview
             ? <img src={image} alt="Meal" className="w-full max-h-80 object-cover rounded-xl" />
             : (
-              <div className="grid gap-2" style={{ gridTemplateColumns: '2fr 1fr' }}>
-                <Button onClick={() => camRef.current?.click()} disabled={busy}><Camera size={16} /> Take photo</Button>
-                <Button variant="subtle" onClick={() => libRef.current?.click()} disabled={busy}><ImageIcon size={16} /> Library</Button>
+              <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr] gap-2">
+                {/* Big thumb-sized camera target on phones */}
+                <button
+                  type="button" onClick={() => camRef.current?.click()} disabled={busy}
+                  className="flex flex-col sm:flex-row items-center justify-center gap-2 rounded-xl py-6 sm:py-3 font-bold transition-all active:scale-[0.98]"
+                  style={{ background: '#00BFA5', color: '#0D0D0D', fontFamily: 'var(--font-sans)' }}
+                >
+                  <Camera size={28} className="sm:w-4 sm:h-4" /> Take photo
+                </button>
+                <Button variant="subtle" onClick={() => libRef.current?.click()} disabled={busy} fullWidth>
+                  <ImageIcon size={16} /> Choose from library
+                </Button>
               </div>
             )}
           <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
           <input ref={libRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
-          <textarea
-            value={text} onChange={e => setText(e.target.value)} rows={2}
-            placeholder="Optional note, e.g. “fried in butter”, “about 200 g rice”"
-            className="w-full rounded-lg px-3 py-2 text-base sm:text-sm"
-            style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5' }}
-          />
+          {dictField(2, 'Optional note, e.g. “fried in butter”, “about 200 g rice”',
+            image ? 'Tap the mic to add a note, then Estimate again.' : 'Add a note first (or after, then Estimate again) — e.g. “cooked in butter”.')}
           {image && !busy && (
-            <div className="flex gap-2 justify-end">
-              <Button variant="subtle" size="sm" onClick={reset}>Retake</Button>
-              <Button size="sm" onClick={() => estimate(image, text.trim())}>Estimate again</Button>
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <Button variant="subtle" onClick={reset}>Retake</Button>
+              <Button onClick={() => { dictation.stop(); estimate(image, text.trim()) }}>Estimate again</Button>
             </div>
           )}
         </div>
@@ -203,34 +242,8 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
 
       {mode === 'text' && !draft && (
         <div className="space-y-3">
-          <div className="relative">
-            <textarea
-              value={dictation.interim ? `${text} ${dictation.interim}`.trim() : text}
-              onChange={e => setText(e.target.value)} rows={3}
-              readOnly={dictation.listening}
-              placeholder="Describe the meal, e.g. “2 slices of sourdough with peanut butter and a banana” or “chicken caesar salad, large”"
-              className="w-full rounded-lg pl-3 pr-14 py-2 text-base sm:text-sm"
-              style={{ background: '#1E1E1E', border: `1px solid ${dictation.listening ? '#C8102E' : '#2E2E2E'}`, color: '#F5F5F5' }}
-            />
-            {dictation.supported && (
-              <button
-                type="button"
-                onClick={dictation.listening ? dictation.stop : dictation.start}
-                aria-label={dictation.listening ? 'Stop dictation' : 'Dictate the meal'}
-                aria-pressed={dictation.listening}
-                className={`absolute right-2 top-2 w-10 h-10 rounded-full flex items-center justify-center ${dictation.listening ? 'animate-pulse' : ''}`}
-                style={{ background: dictation.listening ? '#C8102E' : 'rgba(0,191,165,0.12)', color: dictation.listening ? '#F5F5F5' : '#00BFA5' }}
-              >
-                {dictation.listening ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
-              </button>
-            )}
-          </div>
-          <p className="text-xs" style={{ color: dictation.micError ? '#E5484D' : 'var(--color-text-subtle)' }}>
-            {dictation.micError
-              || (dictation.listening ? 'Listening… tap ■ when you’re done.'
-                : dictation.supported ? 'Tap the mic and say what you ate — amounts help (“two eggs”, “a large bowl”).'
-                  : 'Tip: tap the mic on your keyboard to dictate.')}
-          </p>
+          {dictField(4, 'e.g. “2 slices of sourdough with peanut butter and a banana”',
+            'Tap the mic and say what you ate — amounts help (“two eggs”, “a large bowl”).')}
           <div className="flex justify-end">
             <Button onClick={() => { dictation.stop(); estimate(null, text.trim()) }} disabled={busy || !text.trim()} className="w-full sm:w-auto">Estimate calories</Button>
           </div>
