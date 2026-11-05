@@ -24,6 +24,7 @@ const groups: NavGroup[] = [
       { href: '/log/session', label: 'Today' },
       { href: '/templates', label: 'Templates' },
       { href: '/running', label: 'Running' },
+      { href: '/nutrition', label: 'Nutrition' },
     ],
   },
   {

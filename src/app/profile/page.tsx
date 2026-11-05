@@ -273,6 +273,8 @@ export default function ProfilePage() {
                 <Field label="Sex" value={profile.sex ?? ''} onChange={set('sex')} placeholder="e.g. Male" />
                 <Field label="Bodyweight (kg)" value={profile.bodyweightKg ?? ''} onChange={set('bodyweightKg')} placeholder="e.g. 78"
                   hint={watch?.bodyweightKg ? `Smart scale: ${watch.bodyweightKg} kg${watch.restingHr ? ` · resting HR ${watch.restingHr} bpm` : ''}` : undefined} />
+                <Field label="Height (cm)" value={profile.heightCm ?? ''} onChange={set('heightCm')} placeholder="e.g. 180"
+                  hint="Used to estimate calories burned on Nutrition" />
                 <DatePartsField
                   label="Training start date"
                   value={profile.trainingStartDate ?? ''} onChange={set('trainingStartDate')}

@@ -46,6 +46,13 @@ See README.md for setup/env vars and PROGRESS.md for recent work.
   `src/lib/server/deepseek.ts` (never instantiate DeepSeek clients ad hoc).
   Client callers send `authHeaders()` from `src/lib/auth.ts` and attach the
   athlete profile via `profileToPrompt(await loadProfile())`.
+- **Nutrition** (`/nutrition`): the one AI route not on DeepSeek —
+  `api/meal-estimate` uses `src/lib/server/mealEstimate.ts` (OpenRouter vision,
+  `OPENROUTER_API_KEY`, model `MEAL_MODEL` default `google/gemini-3.8-flash`)
+  because DeepSeek has no image input. Meals are stored in `user_settings` as
+  one row per day (`meals:YYYY-MM-DD`, JSON `Meal[]`) plus `meal_favourites` —
+  no table/migration. Logic + energy balance (Mifflin BMR + Zepp
+  `active_calories`, steps fallback) in `src/lib/nutrition.ts`.
 - **Programme JSON** from the AI is validated with `validateAIProgramme()`
   (`src/lib/programmeSchema.ts`) before expansion.
 - **`src/lib/exerciseLibrary.ts`** is the real built-in exercise/programme/

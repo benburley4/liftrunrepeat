@@ -10,6 +10,7 @@ export interface AthleteProfile {
   dob?: string                       // YYYY-MM-DD; age is derived from this
   sex?: string
   bodyweightKg?: string
+  heightCm?: string                  // used for resting-calorie (BMR) estimate on Nutrition
   trainingAgeYears?: string          // legacy manual entry — superseded by trainingStartDate when set
   trainingStartDate?: string         // YYYY-MM-DD; training age is derived from this
   squat1RM?: string                  // kg
@@ -92,6 +93,7 @@ export function profileToPrompt(profile: AthleteProfile | null | undefined): str
   if (age) lines.push(`- Age: ${age}`)
   if (profile.sex) lines.push(`- Sex: ${profile.sex}`)
   if (profile.bodyweightKg) lines.push(`- Bodyweight: ${profile.bodyweightKg} kg`)
+  if (profile.heightCm) lines.push(`- Height: ${profile.heightCm} cm`)
   if (trainingYears) lines.push(`- Training age: ${trainingYears} years`)
   const rms = [
     profile.squat1RM && `Squat ${profile.squat1RM} kg`,

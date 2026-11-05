@@ -205,6 +205,23 @@ export async function getSetting(key: string): Promise<string | null> {
   return data?.value ?? null
 }
 
+/** All settings whose key starts with `prefix` (no `%` / `_` in the prefix). */
+export async function getSettingsByPrefix(prefix: string): Promise<{ key: string; value: string | null }[]> {
+  const out: { key: string; value: string | null }[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('user_settings')
+      .select('key, value')
+      .like('key', `${prefix}%`)
+      .order('key', { ascending: true })
+      .range(from, from + PAGE - 1)
+    throwIfError(error)
+    out.push(...((data ?? []) as { key: string; value: string | null }[]))
+    if ((data ?? []).length < PAGE) break
+  }
+  return out
+}
+
 export async function upsertSetting(key: string, value: string | null): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
