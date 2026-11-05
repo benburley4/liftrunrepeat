@@ -1,0 +1,6 @@
+# Local-only folders — not needed to build or run the site (keeps CLI uploads small).
+Data
+backups
+logs
+AI
+Brand Identity
