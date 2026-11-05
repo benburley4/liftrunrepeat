@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { Camera, ImageIcon, PenLine, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Camera, ImageIcon, PenLine, Loader2, Mic, Square } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import MealEditor, { MealDraft } from './MealEditor'
@@ -30,6 +30,68 @@ function toJpeg(img: HTMLImageElement, max: number, quality: number): string {
   return c.toDataURL('image/jpeg', quality)
 }
 
+// Minimal Web Speech API types (Safari / Chrome ship it as webkitSpeechRecognition).
+interface SpeechRec {
+  lang: string; continuous: boolean; interimResults: boolean
+  onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null
+  onend: (() => void) | null
+  onerror: ((e: { error: string }) => void) | null
+  start(): void; stop(): void
+}
+type SpeechRecCtor = new () => SpeechRec
+function speechCtor(): SpeechRecCtor | null {
+  if (typeof window === 'undefined') return null
+  const w = window as unknown as { SpeechRecognition?: SpeechRecCtor; webkitSpeechRecognition?: SpeechRecCtor }
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null
+}
+
+const noopSubscribe = () => () => {}
+
+/** Dictate into a text field: appends final phrases to `value`, shows the live phrase meanwhile. */
+function useDictation(value: string, setValue: (v: string) => void) {
+  // false on the server / first paint, real value after hydration — no mismatch.
+  const supported = useSyncExternalStore(noopSubscribe, () => !!speechCtor(), () => false)
+  const [listening, setListening] = useState(false)
+  const [interim, setInterim] = useState('')
+  const [micError, setMicError] = useState('')
+  const recRef = useRef<SpeechRec | null>(null)
+  const baseRef = useRef('')
+
+  useEffect(() => () => recRef.current?.stop(), [])
+
+  function start() {
+    const Ctor = speechCtor()
+    if (!Ctor) return
+    const rec = new Ctor()
+    rec.lang = navigator.language || 'en-GB'
+    rec.continuous = true
+    rec.interimResults = true
+    baseRef.current = value.trim()
+    rec.onresult = (e) => {
+      let live = ''
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const text = e.results[i][0].transcript.trim()
+        if (e.results[i].isFinal) baseRef.current = [baseRef.current, text].filter(Boolean).join(' ')
+        else live += ` ${text}`
+      }
+      setValue(baseRef.current)
+      setInterim(live.trim())
+    }
+    rec.onerror = (e) => {
+      setMicError(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+        ? 'Microphone blocked — allow it for this site in Settings, or use the mic on your keyboard.'
+        : `Dictation stopped (${e.error}).`)
+    }
+    rec.onend = () => { setListening(false); setInterim('') }
+    recRef.current = rec
+    setMicError('')
+    try { rec.start(); setListening(true) } catch { setMicError('Could not start dictation.') }
+  }
+  function stop() { recRef.current?.stop() }
+
+  return { supported, listening, interim, micError, start, stop }
+}
+
 export interface LoggedMeal { draft: MealDraft; source: 'photo' | 'text'; note?: string; thumb?: string }
 
 export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favourite: boolean) => Promise<void> }) {
@@ -43,8 +105,10 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
   const [error, setError] = useState('')
   const camRef = useRef<HTMLInputElement>(null)
   const libRef = useRef<HTMLInputElement>(null)
+  const dictation = useDictation(text, setText)
 
   function reset() {
+    dictation.stop()
     setImage(null); setThumb(undefined); setText(''); setDraft(null); setError('')
   }
 
@@ -125,7 +189,7 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
           <textarea
             value={text} onChange={e => setText(e.target.value)} rows={2}
             placeholder="Optional note, e.g. “fried in butter”, “about 200 g rice”"
-            className="w-full rounded-lg px-3 py-2 text-sm"
+            className="w-full rounded-lg px-3 py-2 text-base sm:text-sm"
             style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5' }}
           />
           {image && !busy && (
@@ -139,14 +203,36 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
 
       {mode === 'text' && !draft && (
         <div className="space-y-3">
-          <textarea
-            value={text} onChange={e => setText(e.target.value)} rows={3}
-            placeholder="Describe the meal, e.g. “2 slices of sourdough with peanut butter and a banana” or “chicken caesar salad, large”"
-            className="w-full rounded-lg px-3 py-2 text-sm"
-            style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5' }}
-          />
+          <div className="relative">
+            <textarea
+              value={dictation.interim ? `${text} ${dictation.interim}`.trim() : text}
+              onChange={e => setText(e.target.value)} rows={3}
+              readOnly={dictation.listening}
+              placeholder="Describe the meal, e.g. “2 slices of sourdough with peanut butter and a banana” or “chicken caesar salad, large”"
+              className="w-full rounded-lg pl-3 pr-14 py-2 text-base sm:text-sm"
+              style={{ background: '#1E1E1E', border: `1px solid ${dictation.listening ? '#C8102E' : '#2E2E2E'}`, color: '#F5F5F5' }}
+            />
+            {dictation.supported && (
+              <button
+                type="button"
+                onClick={dictation.listening ? dictation.stop : dictation.start}
+                aria-label={dictation.listening ? 'Stop dictation' : 'Dictate the meal'}
+                aria-pressed={dictation.listening}
+                className={`absolute right-2 top-2 w-10 h-10 rounded-full flex items-center justify-center ${dictation.listening ? 'animate-pulse' : ''}`}
+                style={{ background: dictation.listening ? '#C8102E' : 'rgba(0,191,165,0.12)', color: dictation.listening ? '#F5F5F5' : '#00BFA5' }}
+              >
+                {dictation.listening ? <Square size={14} fill="currentColor" /> : <Mic size={18} />}
+              </button>
+            )}
+          </div>
+          <p className="text-xs" style={{ color: dictation.micError ? '#E5484D' : 'var(--color-text-subtle)' }}>
+            {dictation.micError
+              || (dictation.listening ? 'Listening… tap ■ when you’re done.'
+                : dictation.supported ? 'Tap the mic and say what you ate — amounts help (“two eggs”, “a large bowl”).'
+                  : 'Tip: tap the mic on your keyboard to dictate.')}
+          </p>
           <div className="flex justify-end">
-            <Button size="sm" onClick={() => estimate(null, text.trim())} disabled={busy || !text.trim()}>Estimate calories</Button>
+            <Button onClick={() => { dictation.stop(); estimate(null, text.trim()) }} disabled={busy || !text.trim()} className="w-full sm:w-auto">Estimate calories</Button>
           </div>
         </div>
       )}

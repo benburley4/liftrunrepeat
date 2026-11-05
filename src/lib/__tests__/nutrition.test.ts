@@ -2,7 +2,35 @@ import { describe, it, expect } from 'vitest'
 import {
   MealItem, Meal, itemMacros, mealMacros, setItemSize, setItemGrams, validateMealEstimate, bmrMifflin, burnForDay,
   weightOn, energyBalance, summarizeBalance, repeatMeal, recentDistinctMeals, parseSex, intakeByDate,
+  macroSplit, proteinTarget, weightTrend,
 } from '../nutrition'
+
+describe('weightTrend', () => {
+  it('averages readings in the trailing 7-day window', () => {
+    const t = weightTrend([
+      { date: '2026-11-01', weightKg: 98 },
+      { date: '2026-11-02', weightKg: null },
+      { date: '2026-11-03', weightKg: 96 },
+      { date: '2026-11-08', weightKg: 94 }, // window 11-02..11-08 → 96, 94
+      { date: '2026-11-15', weightKg: 93 }, // window 11-09..11-15 → 93 only
+    ])
+    expect(t.map(x => x.trendKg)).toEqual([98, 97, 95, 93])
+    expect(t.map(x => x.date)).toEqual(['2026-11-01', '2026-11-03', '2026-11-08', '2026-11-15'])
+  })
+})
+
+describe('macros', () => {
+  it('splits calories by macro', () => {
+    // 50 g P = 200, 100 g C = 400, 20 g F = 180 → 780 kcal
+    expect(macroSplit({ kcal: 780, protein: 50, carbs: 100, fat: 20 })).toEqual({ protein: 26, carbs: 51, fat: 23 })
+    expect(macroSplit({ kcal: 0, protein: 0, carbs: 0, fat: 0 })).toBeNull()
+  })
+
+  it('sets protein target from bodyweight', () => {
+    expect(proteinTarget(96)).toBe(173)
+    expect(proteinTarget(null)).toBeNull()
+  })
+})
 import type { ZeppDailyRow } from '../zeppDaily'
 
 const item = (over: Partial<MealItem> = {}): MealItem => ({

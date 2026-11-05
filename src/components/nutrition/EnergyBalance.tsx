@@ -7,7 +7,7 @@ import {
 import Card from '@/components/ui/Card'
 import StatTile from '@/components/ui/StatTile'
 import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
-import { BalanceDay, BurnEstimate, summarizeBalance } from '@/lib/nutrition'
+import { BalanceDay, BurnEstimate, summarizeBalance, weightTrend } from '@/lib/nutrition'
 
 // Validated (dataviz validator, dark #141414): burned ↔ eaten categorical pair; deficit ↔ surplus polarity.
 export const ENERGY_COLORS = { burned: '#00A893', eaten: '#8B6CF0', deficit: '#00A893', surplus: '#D9474C' }
@@ -39,7 +39,11 @@ export default function EnergyBalance({
   const shown = useMemo(() => days.slice(-range), [days, range])
   const summary = useMemo(() => summarizeBalance(shown, today), [shown, today])
   const chartData = shown.map(d => ({ ...d, label: fmtDay(d.date) }))
-  const weightData = chartData.filter(d => d.weightKg != null)
+  // Trend uses all loaded days so the first points of a short range still have history behind them.
+  const weightData = useMemo(() => {
+    const first = shown[0]?.date ?? today
+    return weightTrend(days).filter(w => w.date >= first).map(w => ({ ...w, label: fmtDay(w.date) }))
+  }, [days, shown, today])
   const todayDeficit = todayBurn ? todayBurn.total - Math.round(todayEaten) : null
 
   return (
@@ -87,8 +91,8 @@ export default function EnergyBalance({
         <StatTile value={summary.avgDeficit != null ? fmtSigned(summary.avgDeficit) : '—'} label={`Avg daily deficit (${summary.loggedDays} logged days)`} animate={false}
           accent={summary.avgDeficit == null ? '#F5F5F5' : summary.avgDeficit >= 0 ? '#00BFA5' : '#E5484D'} />
         <StatTile value={summary.avgEaten ?? '—'} label="Avg eaten (kcal)" />
-        <StatTile value={summary.expectedChangeKg != null ? `${fmtSigned(summary.expectedChangeKg)} kg` : '—'} label="Expected change from deficit" animate={false} />
-        <StatTile value={summary.actualChangeKg != null ? `${fmtSigned(summary.actualChangeKg)} kg` : '—'} label="Scale change" animate={false} />
+        <StatTile value={summary.expectedChangeKg != null ? fmtSigned(summary.expectedChangeKg) : '—'} label="Expected change (kg)" animate={false} />
+        <StatTile value={summary.actualChangeKg != null ? fmtSigned(summary.actualChangeKg) : '—'} label="Scale change (kg)" animate={false} />
       </div>
       <p className="text-xs -mt-3" style={{ color: sub }}>
         Averages use completed days with meals logged. Expected change assumes ~7,700 kcal per kg; if the scale moves much less than
@@ -125,14 +129,19 @@ export default function EnergyBalance({
         </ResponsiveContainer>
       </ChartCard>
 
-      <ChartCard title="Bodyweight" sub={weightData.length ? 'Smart-scale readings (kg)' : 'No scale readings in this range'}>
+      <ChartCard title="Bodyweight" sub={weightData.length ? 'Smart-scale readings (kg) with 7-day average trend' : 'No scale readings in this range'}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={weightData} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
             <CartesianGrid stroke="#1E1E1E" vertical={false} />
             <XAxis dataKey="label" {...axisProps} minTickGap={16} />
-            <YAxis {...axisProps} width={48} domain={['dataMin - 1', 'dataMax + 1']} tickFormatter={(v: number) => v.toFixed(0)} />
-            <Tooltip {...chartTooltipStyle} formatter={(v) => [`${v} kg`, 'Weight']} />
-            <Line dataKey="weightKg" name="Weight" stroke={ENERGY_COLORS.burned} strokeWidth={2} dot={{ r: 4, strokeWidth: 0, fill: ENERGY_COLORS.burned }} />
+            <YAxis {...axisProps} width={48} allowDecimals={false}
+              domain={[(min: number) => Math.floor(min - 0.5), (max: number) => Math.ceil(max + 0.5)]} />
+            <Tooltip {...chartTooltipStyle} formatter={(v, name) => [`${v} kg`, name]} />
+            <Legend wrapperStyle={{ fontSize: 11, color: '#A0A0A0' }} />
+            {/* Readings: dots only (recessive grey); trend: the line to read. */}
+            <Line dataKey="weightKg" name="Reading" stroke="#8A8A8A" strokeWidth={0} isAnimationActive={false}
+              dot={{ r: 4, strokeWidth: 2, stroke: '#141414', fill: '#8A8A8A' }} activeDot={{ r: 5, strokeWidth: 2, stroke: '#141414', fill: '#A0A0A0' }} legendType="circle" />
+            <Line dataKey="trendKg" name="7-day average" stroke={ENERGY_COLORS.burned} strokeWidth={2} dot={false} type="monotone" />
           </LineChart>
         </ResponsiveContainer>
       </ChartCard>

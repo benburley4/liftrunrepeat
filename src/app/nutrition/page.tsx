@@ -6,12 +6,13 @@ import SectionHeading from '@/components/ui/SectionHeading'
 import MealLogger, { LoggedMeal } from '@/components/nutrition/MealLogger'
 import { RepeatMeals, DayMeals } from '@/components/nutrition/MealLists'
 import EnergyBalance from '@/components/nutrition/EnergyBalance'
+import DaySummary from '@/components/nutrition/DaySummary'
 import { getZeppDaily, getSetting } from '@/lib/db'
 import { loadProfile, derivedAge, AthleteProfile } from '@/lib/athleteProfile'
 import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import {
-  Meal, mealMacros, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
+  Meal, mealMacros, addMacros, ZERO_MACROS, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
   bmrMifflin, burnForDay, weightOn, parseSex, shiftDay,
 } from '@/lib/nutrition'
 import { loadMeals, saveDay, loadFavourites, saveFavourites, FavouriteMeal } from '@/lib/nutritionStore'
@@ -112,60 +113,62 @@ export default function NutritionPage() {
   const todayEaten = intakeByDate(meals ?? []).get(today)?.kcal ?? 0
 
   const dayMeals = mealsOnDate(meals ?? [], date)
-  const dayTotal = dayMeals.reduce((a, m) => a + mealMacros(m).kcal, 0)
+  const dayMacros = dayMeals.reduce((a, m) => addMacros(a, mealMacros(m)), ZERO_MACROS)
+  const dayWeight = weightOn(rows, date, fallbackWeight)
+  const dayBurnTotal = date === today ? (todayBurn?.total ?? null) : (balance.find(d => d.date === date)?.burned ?? null)
   const recent = recentDistinctMeals(meals ?? [], 10)
   const favTitles = new Set(favourites.map(f => f.title.trim().toLowerCase()))
   const dayLabel = date === today ? 'Today' : date === shiftDay(today, -1) ? 'Yesterday' : date
 
   return (
     <div style={{ background: '#0D0D0D', minHeight: '100vh' }}>
+      {/* Hero — compact on phones so the logger is near the top of the screen */}
       <div
-        className="pt-16 pb-12"
+        className="pt-16 pb-5 sm:pb-12"
         style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,191,165,0.08) 0%, transparent 70%)', borderBottom: '1px solid #1A1A1A' }}
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10">
-          <p className="text-xs uppercase tracking-widest mb-2" style={{ color: '#00BFA5' }}>Fuel</p>
-          <h1 className="text-5xl sm:text-6xl font-black uppercase mb-3" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-10">
+          <p className="text-xs uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#00BFA5' }}>Fuel</p>
+          <h1 className="text-4xl sm:text-6xl font-black uppercase sm:mb-3" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
             Nutrition
           </h1>
-          <p className="text-lg" style={{ color: '#A0A0A0' }}>
+          <p className="hidden sm:block text-lg" style={{ color: '#A0A0A0' }}>
             Snap or describe a meal, and see what you ate against what your watch says you burned.
           </p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-10 space-y-8 sm:space-y-10">
         {error && (
           <Card tint="#C8102E" hover={false}>
             <p className="text-sm" style={{ color: '#F5F5F5' }}>{error}</p>
           </Card>
         )}
 
-        <section className="grid gap-6 lg:grid-cols-2">
+        {/* Day picker + summary first: on a phone it's the glanceable bit */}
+        <section className="space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>{dayLabel}</p>
+          <label className="text-xs flex items-center gap-2" style={{ color: 'var(--color-text-subtle)' }}>
+            Log to
+            <input
+              type="date" value={date} max={today}
+              onChange={e => setDate(e.target.value || today)}
+              className="rounded-lg px-2 py-1.5 text-base sm:text-sm"
+              style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5', colorScheme: 'dark' }}
+            />
+          </label>
+        </div>
+        <DaySummary macros={dayMacros} burned={dayBurnTotal} weightKg={dayWeight} inProgress={date === today} />
+        </section>
+
+        <section className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <SectionHeading eyebrow="Log a meal" title={dayLabel} className="!mb-0" />
-              <label className="text-xs flex items-center gap-2" style={{ color: 'var(--color-text-subtle)' }}>
-                Log to
-                <input
-                  type="date" value={date} max={today}
-                  onChange={e => setDate(e.target.value || today)}
-                  className="rounded-lg px-2 py-1.5 text-sm"
-                  style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5', colorScheme: 'dark' }}
-                />
-              </label>
-            </div>
             <MealLogger onSave={onLogged} />
             <RepeatMeals favourites={favourites} recent={recent} onLog={onRepeat} onUnfavourite={onUnfavourite} busy={busy} />
           </div>
 
           <div className="space-y-4">
-            <Card hover={false}>
-              <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>{dayLabel}</p>
-              <p className="text-4xl font-black mt-1" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
-                {Math.round(dayTotal)}<span className="text-sm font-normal ml-1" style={{ color: 'var(--color-text-subtle)' }}>kcal eaten</span>
-              </p>
-            </Card>
             {meals === null
               ? <p className="text-sm" style={{ color: 'var(--color-text-subtle)' }}>Loading meals…</p>
               : <DayMeals meals={dayMeals} favouriteTitles={favTitles} onDelete={onDelete} onFavourite={addFavourite} label={`${dayLabel}'s meals`} />}

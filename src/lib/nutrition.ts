@@ -55,6 +55,20 @@ export function mealMacros(meal: Pick<Meal, 'items' | 'share'>): Macros {
   return scale(whole, 1 / Math.max(1, meal.share || 1))
 }
 
+/** Share of calories from each macro (4 / 4 / 9 kcal per g), whole percents. Null when nothing eaten. */
+export function macroSplit(m: Macros): { protein: number; carbs: number; fat: number } | null {
+  const p = m.protein * 4, c = m.carbs * 4, f = m.fat * 9
+  const total = p + c + f
+  if (total <= 0) return null
+  return { protein: Math.round((p / total) * 100), carbs: Math.round((c / total) * 100), fat: Math.round((f / total) * 100) }
+}
+
+/** Daily protein target for a hybrid (strength + endurance) athlete: ~1.8 g/kg (range 1.6–2.2). */
+export const PROTEIN_G_PER_KG = 1.8
+export function proteinTarget(weightKg: number | null): number | null {
+  return weightKg ? Math.round(weightKg * PROTEIN_G_PER_KG) : null
+}
+
 export function setItemSize(it: MealItem, size: PortionSize): MealItem {
   return { ...it, size, grams: Math.round(it.base * PORTION_FACTOR[size]) }
 }
@@ -210,6 +224,20 @@ export function energyBalance(
     })
   }
   return out
+}
+
+/**
+ * Bodyweight trend: for each day with a scale reading, the mean of all readings
+ * in the `window` days ending that day. Smooths day-to-day water swings.
+ */
+export function weightTrend(days: Pick<BalanceDay, 'date' | 'weightKg'>[], window = 7): { date: string; weightKg: number; trendKg: number }[] {
+  const readings = days.filter(d => d.weightKg != null) as { date: string; weightKg: number }[]
+  return readings.map(r => {
+    const from = shiftDay(r.date, -(window - 1))
+    const inWin = readings.filter(x => x.date >= from && x.date <= r.date)
+    const mean = inWin.reduce((a, x) => a + x.weightKg, 0) / inWin.length
+    return { date: r.date, weightKg: r.weightKg, trendKg: Math.round(mean * 10) / 10 }
+  })
 }
 
 /** ~7700 kcal per kg of body fat. */

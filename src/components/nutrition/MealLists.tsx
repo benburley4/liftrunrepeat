@@ -11,8 +11,8 @@ const r = Math.round
 function Thumb({ src }: { src?: string }) {
   return src
     // eslint-disable-next-line @next/next/no-img-element -- stored data URL thumbnail
-    ? <img src={src} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
-    : <div className="w-12 h-12 rounded-lg shrink-0 flex items-center justify-center" style={{ background: '#1E1E1E' }}><Repeat size={16} color="#606060" /></div>
+    ? <img src={src} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0" />
+    : <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg shrink-0 flex items-center justify-center" style={{ background: '#1E1E1E' }}><Repeat size={16} color="#606060" /></div>
 }
 
 /** Favourites + recent meals — one tap logs it again, no photo or AI call. */
@@ -30,7 +30,7 @@ export function RepeatMeals({
   if (!favourites.length && !recentOnly.length) return null
 
   const row = (key: string, m: Pick<Meal, 'title' | 'items' | 'share' | 'thumb'>, fav?: FavouriteMeal) => (
-    <div key={key} className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid #1E1E1E' }}>
+    <div key={key} className="flex items-center gap-2 sm:gap-3 py-2" style={{ borderBottom: '1px solid #1E1E1E' }}>
       <Thumb src={m.thumb} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold truncate" style={{ color: '#F5F5F5' }}>
@@ -41,7 +41,7 @@ export function RepeatMeals({
         </p>
       </div>
       {fav && (
-        <button type="button" onClick={() => onUnfavourite(fav.id)} aria-label={`Remove ${m.title} from favourites`} className="p-2 rounded-lg" style={{ color: '#606060' }}>
+        <button type="button" onClick={() => onUnfavourite(fav.id)} aria-label={`Remove ${m.title} from favourites`} className="p-2.5 sm:p-2 rounded-lg" style={{ color: '#606060' }}>
           <Trash2 size={14} />
         </button>
       )}
@@ -82,7 +82,7 @@ export function DayMeals({
         const t = mealMacros(m)
         const fav = favouriteTitles.has(m.title.trim().toLowerCase())
         return (
-          <div key={m.id} className="flex items-center gap-3 py-2" style={{ borderBottom: '1px solid #1E1E1E' }}>
+          <div key={m.id} className="flex items-center gap-2 sm:gap-3 py-2" style={{ borderBottom: '1px solid #1E1E1E' }}>
             <Thumb src={m.thumb} />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold truncate" style={{ color: '#F5F5F5' }}>{m.title}</p>
@@ -93,10 +93,10 @@ export function DayMeals({
               </p>
             </div>
             <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>{r(t.kcal)}</p>
-            <button type="button" onClick={() => onFavourite(m)} disabled={fav} aria-label={fav ? 'Already a favourite' : `Add ${m.title} to favourites`} className="p-2 rounded-lg">
+            <button type="button" onClick={() => onFavourite(m)} disabled={fav} aria-label={fav ? 'Already a favourite' : `Add ${m.title} to favourites`} className="p-2.5 sm:p-2 rounded-lg">
               <Star size={14} color={fav ? '#00BFA5' : '#606060'} fill={fav ? '#00BFA5' : 'none'} />
             </button>
-            <button type="button" onClick={() => onDelete(m)} aria-label={`Delete ${m.title}`} className="p-2 rounded-lg" style={{ color: '#606060' }}>
+            <button type="button" onClick={() => onDelete(m)} aria-label={`Delete ${m.title}`} className="p-2.5 sm:p-2 rounded-lg" style={{ color: '#606060' }}>
               <Trash2 size={14} />
             </button>
           </div>

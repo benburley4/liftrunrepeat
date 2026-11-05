@@ -28,7 +28,7 @@ function SizeToggle({ value, onChange, label }: { value: PortionSize | null; onC
           type="button"
           onClick={() => onChange(s)}
           aria-pressed={value === s}
-          className="px-3 py-1 text-xs font-bold"
+          className="px-4 py-2 sm:px-3 sm:py-1 text-xs font-bold"
           style={{
             background: value === s ? '#00BFA5' : 'transparent',
             color: value === s ? '#0D0D0D' : '#A0A0A0',
@@ -124,12 +124,12 @@ export default function MealEditor({
                   value={it.grams}
                   onChange={e => setItems(draft.items.map((x, j) => (j === i ? setItemGrams(x, Number(e.target.value)) : x)))}
                   aria-label={`${it.name} grams`}
-                  className="w-20 rounded-lg px-2 py-2 text-right text-sm"
+                  className="w-20 rounded-lg px-2 py-2 text-right text-base sm:text-sm"
                   style={inputStyle}
                 />
                 <span className="text-xs" style={{ color: sub }}>g</span>
               </label>
-              <button type="button" onClick={() => setItems(draft.items.filter((_, j) => j !== i))} aria-label={`Remove ${it.name}`} className="p-2 rounded-lg" style={{ color: '#A0A0A0' }}>
+              <button type="button" onClick={() => setItems(draft.items.filter((_, j) => j !== i))} aria-label={`Remove ${it.name}`} className="p-2.5 -mr-2 rounded-lg" style={{ color: '#A0A0A0' }}>
                 <X size={16} />
               </button>
             </div>
@@ -137,11 +137,12 @@ export default function MealEditor({
         })}
       </div>
 
-      <div className="grid gap-2" style={{ gridTemplateColumns: '1fr 72px 84px auto' }}>
-        <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Add item" aria-label="Item name" className="rounded-lg px-3 py-2 text-sm min-w-0" style={inputStyle} />
-        <input value={addGrams} onChange={e => setAddGrams(e.target.value)} type="number" inputMode="decimal" placeholder="g" aria-label="Item grams" className="rounded-lg px-2 py-2 text-sm" style={inputStyle} />
-        <input value={addKcal} onChange={e => setAddKcal(e.target.value)} type="number" inputMode="decimal" placeholder="kcal/100g" aria-label="Item calories per 100 g" className="rounded-lg px-2 py-2 text-sm" style={inputStyle} />
-        <button type="button" onClick={addItem} aria-label="Add item" className="rounded-lg px-3" style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5' }}>
+      {/* Phone: name on its own row, then grams / kcal / add. Desktop: one row. */}
+      <div className="grid gap-2 grid-cols-[1fr_1fr_auto] sm:grid-cols-[1fr_72px_96px_auto]">
+        <input value={addName} onChange={e => setAddName(e.target.value)} placeholder="Add item (e.g. olive oil)" aria-label="Item name" className="col-span-3 sm:col-span-1 rounded-lg px-3 py-2 text-base sm:text-sm min-w-0" style={inputStyle} />
+        <input value={addGrams} onChange={e => setAddGrams(e.target.value)} type="number" inputMode="decimal" placeholder="grams" aria-label="Item grams" className="rounded-lg px-2 py-2 text-base sm:text-sm min-w-0" style={inputStyle} />
+        <input value={addKcal} onChange={e => setAddKcal(e.target.value)} type="number" inputMode="decimal" placeholder="kcal/100g" aria-label="Item calories per 100 g" className="rounded-lg px-2 py-2 text-base sm:text-sm min-w-0" style={inputStyle} />
+        <button type="button" onClick={addItem} aria-label="Add item" className="rounded-lg px-4 sm:px-3" style={{ background: '#242424', border: '1px solid #2E2E2E', color: '#F5F5F5' }}>
           <Plus size={16} />
         </button>
       </div>
@@ -152,13 +153,13 @@ export default function MealEditor({
           {draft.share > 1 && <p className="text-xs" style={{ color: sub }}>Whole dish {r(whole.kcal)} kcal · you get 1/{draft.share}</p>}
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => onChange({ ...draft, share: Math.max(1, draft.share - 1) })} disabled={draft.share <= 1} aria-label="Fewer people" className="p-2 rounded-lg" style={{ background: '#242424', color: draft.share <= 1 ? '#606060' : '#F5F5F5' }}>
+          <button type="button" onClick={() => onChange({ ...draft, share: Math.max(1, draft.share - 1) })} disabled={draft.share <= 1} aria-label="Fewer people" className="p-3 sm:p-2 rounded-lg" style={{ background: '#242424', color: draft.share <= 1 ? '#606060' : '#F5F5F5' }}>
             <Minus size={14} />
           </button>
           <span className="w-16 text-center text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
             {draft.share} {draft.share === 1 ? 'person' : 'people'}
           </span>
-          <button type="button" onClick={() => onChange({ ...draft, share: Math.min(20, draft.share + 1) })} aria-label="More people" className="p-2 rounded-lg" style={{ background: '#242424', color: '#F5F5F5' }}>
+          <button type="button" onClick={() => onChange({ ...draft, share: Math.min(20, draft.share + 1) })} aria-label="More people" className="p-3 sm:p-2 rounded-lg" style={{ background: '#242424', color: '#F5F5F5' }}>
             <Plus size={14} />
           </button>
         </div>
@@ -180,12 +181,15 @@ export default function MealEditor({
         <p className="text-xs" style={{ color: sub }}>{[draft.comment, draft.meta].filter(Boolean).join(' — ')}</p>
       )}
 
-      <div className="flex flex-wrap gap-2 justify-end">
+      {/* Phone: big full-width Save on top, the other two side by side below. */}
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+        <Button size="md" onClick={() => onSave(false)} disabled={saving || !draft.items.length} className="col-span-2 sm:order-last">
+          {saving ? 'Saving…' : 'Save meal'}
+        </Button>
         <Button variant="subtle" size="sm" onClick={onDiscard} disabled={saving}>Discard</Button>
         <Button variant="ghost" size="sm" onClick={() => onSave(true)} disabled={saving || !draft.items.length}>
           <Star size={14} /> Save + favourite
         </Button>
-        <Button size="sm" onClick={() => onSave(false)} disabled={saving || !draft.items.length}>Save meal</Button>
       </div>
     </div>
   )
