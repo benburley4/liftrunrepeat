@@ -21,7 +21,7 @@ export interface MealItem {
   fat_per_100g: number
 }
 
-export type MealSource = 'photo' | 'text' | 'repeat'
+export type MealSource = 'photo' | 'text' | 'repeat' | 'drink'
 
 export interface Meal {
   id: string
@@ -31,6 +31,7 @@ export interface Meal {
   items: MealItem[]          // the whole dish
   share: number              // people sharing it — your intake = items ÷ share
   source: MealSource
+  kind?: 'meal' | 'drink'    // drinks count towards fluids (item grams ≈ ml); default meal
   note?: string
   thumb?: string             // small JPEG data URL (photo meals only)
 }
@@ -87,6 +88,54 @@ export function intakeByDate(meals: Meal[]): Map<string, Macros> {
   const out = new Map<string, Macros>()
   for (const m of meals) out.set(m.date, addMacros(out.get(m.date) ?? ZERO_MACROS, mealMacros(m)))
   return out
+}
+
+// ─── Drinks ──────────────────────────────────────────────────────────────────
+
+export interface DrinkPreset {
+  id: string
+  name: string
+  ml: number                 // regular serving
+  kcal: number               // per serving
+  protein: number
+  carbs: number
+  fat: number
+}
+
+/** Typical UK servings; values per serving (generic, not brand-specific). */
+export const DRINKS: DrinkPreset[] = [
+  { id: 'water', name: 'Water', ml: 250, kcal: 0, protein: 0, carbs: 0, fat: 0 },
+  { id: 'coffee', name: 'Black coffee', ml: 250, kcal: 2, protein: 0.3, carbs: 0, fat: 0 },
+  { id: 'flatwhite', name: 'Flat white', ml: 220, kcal: 110, protein: 6, carbs: 9, fat: 6 },
+  { id: 'latte', name: 'Latte', ml: 350, kcal: 150, protein: 10, carbs: 15, fat: 5 },
+  { id: 'tea', name: 'Tea with milk', ml: 250, kcal: 20, protein: 1, carbs: 2, fat: 1 },
+  { id: 'shake', name: 'Protein shake (water)', ml: 300, kcal: 120, protein: 24, carbs: 3, fat: 1.5 },
+  { id: 'milk', name: 'Milk (semi-skimmed)', ml: 250, kcal: 125, protein: 9, carbs: 12, fat: 4.5 },
+  { id: 'oj', name: 'Orange juice', ml: 250, kcal: 112, protein: 2, carbs: 26, fat: 0 },
+  { id: 'cola', name: 'Cola', ml: 330, kcal: 139, protein: 0, carbs: 35, fat: 0 },
+  { id: 'zero', name: 'Diet / zero cola', ml: 330, kcal: 1, protein: 0, carbs: 0, fat: 0 },
+  { id: 'sports', name: 'Sports drink', ml: 500, kcal: 125, protein: 0, carbs: 30, fat: 0 },
+  { id: 'beer', name: 'Beer (pint)', ml: 568, kcal: 215, protein: 2, carbs: 18, fat: 0 },
+  { id: 'wine', name: 'Wine (175 ml)', ml: 175, kcal: 160, protein: 0, carbs: 4, fat: 0 },
+  { id: 'gt', name: 'Gin & tonic', ml: 250, kcal: 125, protein: 0, carbs: 14, fat: 0 },
+]
+
+/** A drink as a one-item meal (grams = ml) at the chosen size. */
+export function drinkMeal(p: DrinkPreset, size: PortionSize, date: string, id: string, at: string): Meal {
+  const per100 = (v: number) => Math.round((v * 100 / p.ml) * 100) / 100
+  const item: MealItem = {
+    name: p.name, grams: p.ml, base: p.ml, size: 'M',
+    kcal_per_100g: per100(p.kcal), protein_per_100g: per100(p.protein), carbs_per_100g: per100(p.carbs), fat_per_100g: per100(p.fat),
+  }
+  const sized = setItemSize(item, size)
+  const title = size === 'M' ? p.name : `${size === 'S' ? 'Small' : 'Large'} ${p.name.toLowerCase()}`
+  return { id, date, at, title, items: [sized], share: 1, source: 'drink', kind: 'drink' }
+}
+
+/** Fluid intake (ml) for a list of meals — drinks only. */
+export function fluidsMl(meals: Meal[]): number {
+  return Math.round(meals.filter(m => m.kind === 'drink')
+    .reduce((a, m) => a + m.items.reduce((s, it) => s + it.grams, 0) / Math.max(1, m.share || 1), 0))
 }
 
 /** Copy a past meal / favourite as a new meal for `date` — no photo or AI call. */

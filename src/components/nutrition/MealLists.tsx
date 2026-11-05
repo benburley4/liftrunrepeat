@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Star, Trash2, Users, Repeat } from 'lucide-react'
+import { Plus, Star, Trash2, Users, Repeat, GlassWater, Pencil } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import { Meal, mealMacros } from '@/lib/nutrition'
 import type { FavouriteMeal } from '@/lib/nutritionStore'
@@ -8,11 +8,12 @@ import type { FavouriteMeal } from '@/lib/nutritionStore'
 const sub = 'var(--color-text-subtle)'
 const r = Math.round
 
-function Thumb({ src }: { src?: string }) {
+function Thumb({ src, drink }: { src?: string; drink?: boolean }) {
+  const Icon = drink ? GlassWater : Repeat
   return src
     // eslint-disable-next-line @next/next/no-img-element -- stored data URL thumbnail
     ? <img src={src} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover shrink-0" />
-    : <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg shrink-0 flex items-center justify-center" style={{ background: '#1E1E1E' }}><Repeat size={16} color="#606060" /></div>
+    : <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg shrink-0 flex items-center justify-center" style={{ background: '#1E1E1E' }}><Icon size={16} color={drink ? '#00BFA5' : '#606060'} /></div>
 }
 
 /** Favourites + recent meals — one tap logs it again, no photo or AI call. */
@@ -67,12 +68,13 @@ export function RepeatMeals({
 }
 
 export function DayMeals({
-  meals, favouriteTitles, onDelete, onFavourite, label,
+  meals, favouriteTitles, onDelete, onFavourite, onEdit, label,
 }: {
   meals: Meal[]
   favouriteTitles: Set<string>
   onDelete: (m: Meal) => void
   onFavourite: (m: Meal) => void
+  onEdit: (m: Meal) => void
   label: string
 }) {
   return (
@@ -84,21 +86,27 @@ export function DayMeals({
         const fav = favouriteTitles.has(m.title.trim().toLowerCase())
         return (
           <div key={m.id} className="flex items-start gap-3 py-3" style={{ borderBottom: '1px solid #1E1E1E' }}>
-            <Thumb src={m.thumb} />
+            <Thumb src={m.thumb} drink={m.kind === 'drink'} />
             <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-bold line-clamp-2 break-words min-w-0" style={{ color: '#F5F5F5' }}>{m.title}</p>
-                <p className="shrink-0 text-base font-bold leading-5" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
+              {/* Tapping the name / calories opens the editor */}
+              <button type="button" onClick={() => onEdit(m)} aria-label={`Edit ${m.title}`} className="w-full flex items-start justify-between gap-3 text-left">
+                <span className="text-sm font-bold line-clamp-2 break-words min-w-0" style={{ color: '#F5F5F5' }}>{m.title}</span>
+                <span className="shrink-0 text-base font-bold leading-5" style={{ color: '#F5F5F5', fontFamily: 'var(--font-mono)' }}>
                   {r(t.kcal)}<span className="text-xs font-normal ml-0.5" style={{ color: sub }}>kcal</span>
-                </p>
-              </div>
+                </span>
+              </button>
               <div className="flex items-center justify-between gap-2 mt-0.5">
                 <p className="text-xs min-w-0 truncate" style={{ color: sub }}>
                   {new Date(m.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   {m.share > 1 && <> · <Users size={11} className="inline -mt-0.5" /> ÷{m.share}</>}
-                  {' · '}{r(t.protein)}P {r(t.carbs)}C {r(t.fat)}F
+                  {m.kind === 'drink'
+                    ? <>{' · '}{r(m.items.reduce((a, it) => a + it.grams, 0) / Math.max(1, m.share))} ml</>
+                    : <>{' · '}{r(t.protein)}P {r(t.carbs)}C {r(t.fat)}F</>}
                 </p>
                 <div className="shrink-0 flex -mr-2">
+                  <button type="button" onClick={() => onEdit(m)} aria-label={`Edit ${m.title}`} className="p-2.5 rounded-lg" style={{ color: '#8A8A8A' }}>
+                    <Pencil size={16} />
+                  </button>
                   <button type="button" onClick={() => onFavourite(m)} disabled={fav} aria-label={fav ? 'Already a favourite' : `Add ${m.title} to favourites`} className="p-2.5 rounded-lg">
                     <Star size={16} color={fav ? '#00BFA5' : '#8A8A8A'} fill={fav ? '#00BFA5' : 'none'} />
                   </button>

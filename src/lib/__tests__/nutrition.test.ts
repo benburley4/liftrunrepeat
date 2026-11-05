@@ -3,7 +3,30 @@ import {
   MealItem, Meal, itemMacros, mealMacros, setItemSize, setItemGrams, validateMealEstimate, bmrMifflin, burnForDay,
   weightOn, energyBalance, summarizeBalance, repeatMeal, recentDistinctMeals, parseSex, intakeByDate,
   macroSplit, proteinTarget, weightTrend, weekStart, bucketSizeFor, bucketBalance, BalanceDay,
+  DRINKS, drinkMeal, fluidsMl,
 } from '../nutrition'
+
+describe('drinks', () => {
+  const beer = DRINKS.find(d => d.id === 'beer')!
+  it('turns a preset into a one-item meal with the serving values', () => {
+    const m = drinkMeal(beer, 'M', '2026-11-05', 'd1', '2026-11-05T20:00:00Z')
+    expect(m).toMatchObject({ title: 'Beer (pint)', kind: 'drink', source: 'drink', share: 1 })
+    expect(m.items[0].grams).toBe(568)
+    expect(Math.round(mealMacros(m).kcal)).toBe(215)
+  })
+
+  it('scales by size and names it', () => {
+    const m = drinkMeal(beer, 'S', '2026-11-05', 'd2', '2026-11-05T20:00:00Z')
+    expect(m.title).toBe('Small beer (pint)')
+    expect(m.items[0].grams).toBe(398)
+    expect(Math.round(mealMacros(m).kcal)).toBe(151)
+  })
+
+  it('totals fluids from drinks only', () => {
+    const water = drinkMeal(DRINKS[0], 'M', '2026-11-05', 'w', '2026-11-05T08:00:00Z')
+    expect(fluidsMl([water, water, meal()])).toBe(500)
+  })
+})
 
 describe('period buckets', () => {
   const bd = (date: string, eaten: number | null, burned: number | null): BalanceDay => ({

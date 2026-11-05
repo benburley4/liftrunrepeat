@@ -46,13 +46,15 @@ function SizeToggle({ value, onChange, label }: { value: PortionSize | null; onC
 const r = Math.round
 
 export default function MealEditor({
-  draft, onChange, onSave, onDiscard, saving,
+  draft, onChange, onSave, onDiscard, saving, saveLabel = 'Save meal', discardLabel = 'Discard',
 }: {
   draft: MealDraft
   onChange: (d: MealDraft) => void
   onSave: (favourite: boolean) => void
   onDiscard: () => void
   saving: boolean
+  saveLabel?: string
+  discardLabel?: string
 }) {
   const [addName, setAddName] = useState('')
   const [addGrams, setAddGrams] = useState('')
@@ -184,9 +186,9 @@ export default function MealEditor({
       {/* Phone: big full-width Save on top, the other two side by side below. */}
       <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
         <Button size="md" onClick={() => onSave(false)} disabled={saving || !draft.items.length} className="col-span-2 sm:order-last">
-          {saving ? 'Saving…' : 'Save meal'}
+          {saving ? 'Saving…' : saveLabel}
         </Button>
-        <Button variant="subtle" size="sm" onClick={onDiscard} disabled={saving}>Discard</Button>
+        <Button variant="subtle" size="sm" onClick={onDiscard} disabled={saving}>{discardLabel}</Button>
         <Button variant="ghost" size="sm" onClick={() => onSave(true)} disabled={saving || !draft.items.length}>
           <Star size={14} /> Save + favourite
         </Button>

@@ -7,13 +7,16 @@ import MealLogger, { LoggedMeal } from '@/components/nutrition/MealLogger'
 import { RepeatMeals, DayMeals } from '@/components/nutrition/MealLists'
 import EnergyBalance from '@/components/nutrition/EnergyBalance'
 import DaySummary from '@/components/nutrition/DaySummary'
+import DrinksCard from '@/components/nutrition/DrinksCard'
+import MealEditor, { MealDraft } from '@/components/nutrition/MealEditor'
+import Modal from '@/components/ui/Modal'
 import { getZeppDaily, getSetting } from '@/lib/db'
 import { loadProfile, derivedAge, AthleteProfile } from '@/lib/athleteProfile'
 import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import {
   Meal, mealMacros, addMacros, ZERO_MACROS, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
-  bmrMifflin, burnForDay, weightOn, parseSex, shiftDay,
+  bmrMifflin, burnForDay, weightOn, parseSex, shiftDay, drinkMeal, fluidsMl, DrinkPreset, PortionSize,
 } from '@/lib/nutrition'
 import { loadMeals, saveDay, loadFavourites, saveFavourites, FavouriteMeal } from '@/lib/nutritionStore'
 
@@ -75,6 +78,30 @@ export default function NutritionPage() {
     try { await addMeal(repeatMeal(src, date, newId(), new Date().toISOString())) } catch { /* error shown */ } finally { setBusy(false) }
   }
 
+  async function onDrink(p: DrinkPreset, size: PortionSize) {
+    setBusy(true)
+    try { await addMeal(drinkMeal(p, size, date, newId(), new Date().toISOString())) } catch { /* error shown */ } finally { setBusy(false) }
+  }
+
+  // ── Edit an already-logged meal or drink ──
+  const [editing, setEditing] = useState<Meal | null>(null)
+  const [editDraft, setEditDraft] = useState<MealDraft | null>(null)
+  function openEdit(m: Meal) {
+    setEditing(m)
+    setEditDraft({ title: m.title, items: m.items.map(it => ({ ...it })), share: m.share })
+  }
+  async function saveEdit(favourite: boolean) {
+    if (!editing || !editDraft) return
+    const updated: Meal = { ...editing, title: editDraft.title.trim() || editing.title, items: editDraft.items, share: editDraft.share }
+    const prev = meals ?? []
+    setBusy(true)
+    try {
+      await commit(prev.map(x => (x.id === editing.id ? updated : x)), editing.date, prev)
+      if (favourite) await addFavourite(updated)
+      setEditing(null)
+    } catch { /* error shown */ } finally { setBusy(false) }
+  }
+
   async function onDelete(m: Meal) {
     if (!confirm(`Delete “${m.title}”?`)) return
     const prev = meals ?? []
@@ -126,7 +153,7 @@ export default function NutritionPage() {
     const d = balance.find(x => x.date === date)
     return d?.burned != null ? { total: d.burned, resting: d.resting ?? 0, active: d.active ?? 0 } : null
   })()
-  const recent = recentDistinctMeals(meals ?? [], 10)
+  const recent = recentDistinctMeals((meals ?? []).filter(m => m.kind !== 'drink'), 10)
   const favTitles = new Set(favourites.map(f => f.title.trim().toLowerCase()))
   const dayLabel = date === today ? 'Today' : date === shiftDay(today, -1) ? 'Yesterday' : date
 
@@ -155,8 +182,8 @@ export default function NutritionPage() {
           </Card>
         )}
 
-        {/* Day picker + summary first: on a phone it's the glanceable bit */}
-        <section className="space-y-2">
+        {/* Logging first (easiest to reach on a phone), then the day summary and list.
+            Phone: one column in DOM order. Desktop: logging on the left, summary + list on the right. */}
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>{dayLabel}</p>
           <label className="text-xs flex items-center gap-2" style={{ color: 'var(--color-text-subtle)' }}>
@@ -169,23 +196,37 @@ export default function NutritionPage() {
             />
           </label>
         </div>
-        <DaySummary macros={dayMacros} burn={dayBurn} weightKg={dayWeight} inProgress={date === today} />
-        </section>
 
         {/* grid-cols-1 (= minmax(0,1fr)) + min-w-0: without them a long meal name
             stretches the column past the phone screen. */}
-        <section className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+        <section className="-mt-4 sm:-mt-6 grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2 items-start">
           <div className="min-w-0 space-y-4">
             <MealLogger onSave={onLogged} />
+            <DrinksCard onLog={onDrink} fluidsMl={fluidsMl(dayMeals)} busy={busy} />
             <RepeatMeals favourites={favourites} recent={recent} onLog={onRepeat} onUnfavourite={onUnfavourite} busy={busy} />
           </div>
 
           <div className="min-w-0 space-y-4">
+            <DaySummary macros={dayMacros} burn={dayBurn} weightKg={dayWeight} inProgress={date === today} />
             {meals === null
               ? <p className="text-sm" style={{ color: 'var(--color-text-subtle)' }}>Loading meals…</p>
-              : <DayMeals meals={dayMeals} favouriteTitles={favTitles} onDelete={onDelete} onFavourite={addFavourite} label={`${dayLabel}'s meals`} />}
+              : <DayMeals meals={dayMeals} favouriteTitles={favTitles} onDelete={onDelete} onFavourite={addFavourite} onEdit={openEdit} label={`${dayLabel}'s meals & drinks`} />}
           </div>
         </section>
+
+        {editing && (
+          <Modal onClose={() => setEditing(null)} title={editing.kind === 'drink' ? 'Edit drink' : 'Edit meal'}>
+            <MealEditor
+              draft={editDraft ?? { title: editing.title, items: editing.items, share: editing.share }}
+              onChange={setEditDraft}
+              onSave={fav => saveEdit(fav)}
+              onDiscard={() => setEditing(null)}
+              saving={busy}
+              saveLabel="Save changes"
+              discardLabel="Cancel"
+            />
+          </Modal>
+        )}
 
         <section className="space-y-6">
           <SectionHeading eyebrow="Energy balance" title="Deficit & weight" sub="Calories burned = resting burn from your profile plus active calories from your watch." />
