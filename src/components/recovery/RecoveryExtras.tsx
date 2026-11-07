@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import Card from '@/components/ui/Card'
-import { READINESS_THRESHOLDS, lastDays, weeklyLoadRecovery, withRollingMean, type ZeppDay } from '@/lib/recovery'
+import { READINESS_THRESHOLDS, lastDays, weeklyLoadRecovery, type ZeppDay } from '@/lib/recovery'
 import { chartTooltipStyle, axisProps, BASELINE_GREY, fmtDay } from './chartStyle'
 
 function ChartCard({ title, sub, children, height = 'h-48' }: { title: string; sub: string; children: React.ReactNode; height?: string }) {
@@ -32,17 +32,10 @@ function MiniLine({ data, dataKey, unit, color = '#00BFA5', domain }: {
   )
 }
 
-const WEIGHT_TREND = '#D946EF'   // magenta trend over grey readings
-
-/** Load vs recovery, night vitals and weight — below the main Recovery trends. */
+/** Load vs recovery and night vitals — below the main Recovery trends. */
 export default function RecoveryExtras({ rows, today }: { rows: ZeppDay[]; today: string }) {
   const weeks = useMemo(() => weeklyLoadRecovery(rows, today, 16).map(w => ({ ...w, label: fmtDay(w.week) })), [rows, today])
   const night = useMemo(() => lastDays(rows, 90, today).map(r => ({ ...r, label: fmtDay(r.date) })), [rows, today])
-  const weight = useMemo(() => {
-    const w = rows.filter(r => r.weight_kg != null && r.date <= today)
-    const avg = withRollingMean(w, 'weight_kg', 7)
-    return w.map((r, i) => ({ label: fmtDay(r.date), kg: r.weight_kg, avg: avg[i] }))
-  }, [rows, today])
 
   const hasNight = night.some(r => r.spo2_score != null || r.resp_rate != null || r.stress_avg != null)
 
@@ -92,21 +85,6 @@ export default function RecoveryExtras({ rows, today }: { rows: ZeppDay[]; today
             <MiniLine data={night} dataKey="stress_avg" unit="" domain={[0, 'dataMax + 5']} />
           </ChartCard>
         </div>
-      )}
-
-      {weight.length > 1 && (
-        <ChartCard title="Bodyweight" sub="Smart-scale readings in kg (grey dots) with the 7-reading average trend (magenta)" height="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={weight} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" vertical={false} />
-              <XAxis dataKey="label" {...axisProps} minTickGap={28} />
-              <YAxis {...axisProps} width={40} domain={['dataMin - 1', 'dataMax + 1']} tickFormatter={v => String(Math.round(v))} />
-              <Tooltip {...chartTooltipStyle} formatter={(v: unknown, n: unknown) => [`${v} kg`, n === 'avg' ? '7-reading avg' : 'Weight']} />
-              <Line dataKey="kg" stroke="#8A8A8A" strokeWidth={0} dot={{ r: 2.5, fill: '#8A8A8A', stroke: 'none' }} activeDot={{ r: 4, fill: '#F5F5F5' }} isAnimationActive={false} />
-              <Line dataKey="avg" stroke={WEIGHT_TREND} strokeWidth={2.5} dot={false} activeDot={{ r: 4, fill: WEIGHT_TREND }} isAnimationActive={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </ChartCard>
       )}
     </div>
   )

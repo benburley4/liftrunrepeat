@@ -48,6 +48,7 @@ export interface ZeppDailyRow {
   spo2_score: number | null
   resp_rate: number | null
   weight_kg: number | null
+  weight_am_kg?: number | null   // lowest morning reading; absent until the 2026-11-06 migration
   distance_m: number | null
   active_calories: number | null
   step_goal: number | null
@@ -80,6 +81,10 @@ const METRIC_COLUMNS: Record<string, string[]> = {
 
 export const DEFAULT_TIME_ZONE = 'Asia/Hong_Kong'
 
+// Local hours counted as a morning weigh-in: from 05:00, before 10:00.
+const MORNING_FROM_HOUR = 5
+const MORNING_TO_HOUR = 10
+
 function localDate(iso: string, timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' })
     .format(new Date(iso))
@@ -92,9 +97,13 @@ function emptyRow(date: string): ZeppDailyRow {
     sleep_hrv_ms: null, hrv_baseline_ms: null, sleep_rhr: null, rhr_baseline: null, resting_hr: null,
     sleep_min: null, sleep_score: null, deep_min: null, light_min: null, rem_min: null, awake_min: null,
     wake_count: null, nap_min: null, training_load: null, pai_daily: null, pai_total: null, steps: null,
-    active_min: null, stress_avg: null, spo2_score: null, resp_rate: null, weight_kg: null,
+    active_min: null, stress_avg: null, spo2_score: null, resp_rate: null, weight_kg: null, weight_am_kg: null,
     distance_m: null, active_calories: null, step_goal: null,
   }
+}
+
+function localHour(iso: string, timeZone: string): number {
+  return Number(new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(new Date(iso)))
 }
 
 const overlaps = (a: SleepRow, b: SleepRow) => a.startTime < b.endTime && b.startTime < a.endTime
@@ -178,6 +187,17 @@ export function buildZeppDaily(
     if (!cur || w.timestamp > cur.timestamp) lastWeight.set(d, w)
   }
   for (const [date, w] of lastWeight) row(date).weight_kg = Math.round(w.kg * 10) / 10
+
+  // Lowest morning reading of each local day: the trend charts use this, so
+  // evening food and water don't move the line.
+  const lowestMorning = new Map<string, number>()
+  for (const w of weights) {
+    const hour = localHour(w.timestamp, timeZone)
+    if (hour < MORNING_FROM_HOUR || hour >= MORNING_TO_HOUR) continue
+    const d = localDate(w.timestamp, timeZone)
+    lowestMorning.set(d, Math.min(lowestMorning.get(d) ?? Infinity, w.kg))
+  }
+  for (const [date, kg] of lowestMorning) row(date).weight_am_kg = Math.round(kg * 10) / 10
 
   // Old empty months can come back as a lone zero (e.g. training_load 0) — drop
   // days without a single non-zero value.

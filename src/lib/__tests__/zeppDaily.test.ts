@@ -56,6 +56,19 @@ describe('buildZeppDaily', () => {
     })
     expect(rows[1]).toMatchObject({ readiness: 64, sleep_min: null, weight_kg: null })
   })
+  it('keeps the lowest morning reading separately from the last reading of the day', () => {
+    const [row] = buildZeppDaily([], [], [
+      { timestamp: '2026-10-29T18:30:00+00:00', kg: 94.0 }, // 02:30 HKT, too early
+      { timestamp: '2026-10-29T22:10:00+00:00', kg: 95.5 }, // 06:10 HKT
+      { timestamp: '2026-10-29T23:10:00+00:00', kg: 95.04 }, // 07:10 HKT
+      { timestamp: '2026-10-30T12:00:00+00:00', kg: 97.0 }, // 20:00 HKT
+    ])
+    expect(row).toMatchObject({ date: '2026-10-30', weight_kg: 97, weight_am_kg: 95 })
+  })
+  it('leaves the morning weight empty on a day with only evening readings', () => {
+    const [row] = buildZeppDaily([], [], [{ timestamp: '2026-10-30T12:00:00+00:00', kg: 97.0 }])
+    expect(row).toMatchObject({ weight_kg: 97, weight_am_kg: null })
+  })
   it('drops placeholder days with no non-zero values', () => {
     expect(buildZeppDaily([{ date: '2024-01-01', metric: 'training_load', value: 0 }], [], [])).toEqual([])
   })

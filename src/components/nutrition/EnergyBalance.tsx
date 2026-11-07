@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, Cell,
 } from 'recharts'
 import Card from '@/components/ui/Card'
 import StatTile from '@/components/ui/StatTile'
 import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
-import { BalanceDay, BurnEstimate, summarizeBalance, weightTrend, bucketBalance, bucketSizeFor, BucketSize } from '@/lib/nutrition'
+import { BalanceDay, BurnEstimate, summarizeBalance, bucketBalance, bucketSizeFor, BucketSize } from '@/lib/nutrition'
 
 // Validated (dataviz validator, dark #141414): resting ↔ active ↔ eaten categorical set; deficit ↔ surplus polarity.
 export const ENERGY_COLORS = { resting: '#C7851F', active: '#00A893', burned: '#00A893', eaten: '#8B6CF0', deficit: '#00A893', surplus: '#D9474C' }
@@ -63,18 +63,6 @@ export default function EnergyBalance({
   )
   const wideBars = chartData.length <= 31
   const fmtAvg = (n: number | null, unit = '') => (n == null ? '—' : `${n.toLocaleString('en-GB')}${unit}`)
-  // Trend uses all loaded days so the first points of a short range still have history behind them.
-  // If the range has under 2 readings (e.g. Week, scale not used lately), fall back to the
-  // latest few readings so the chart is never empty — the subtitle says so.
-  const { weightData, weightFallback } = useMemo(() => {
-    const first = shown[0]?.date ?? today
-    const all = weightTrend(days)
-    let pts = all.filter(w => w.date >= first)
-    const fallback = pts.length < 2 && all.length > pts.length
-    if (fallback) pts = [...all.filter(w => w.date < first).slice(-(6 - pts.length)), ...pts]
-    return { weightData: pts.map(w => ({ ...w, label: fmtDay(w.date) })), weightFallback: fallback }
-  }, [days, shown, today])
-  const lastWeight = weightData[weightData.length - 1]
   const todayDeficit = todayBurn ? todayBurn.total - Math.round(todayEaten) : null
 
   return (
@@ -175,28 +163,6 @@ export default function EnergyBalance({
               {chartData.map(d => <Cell key={d.start} fill={(d.deficit ?? 0) >= 0 ? ENERGY_COLORS.deficit : ENERGY_COLORS.surplus} />)}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
-      </ChartCard>
-
-      <ChartCard
-        title="Bodyweight"
-        sub={!weightData.length ? 'No scale readings yet — they come from your smart scale via the watch sync'
-          : weightFallback ? `No reading in this range — last one ${lastWeight.weightKg} kg on ${lastWeight.label}. Showing your latest readings.`
-            : 'Smart-scale readings (kg) with 7-day average trend'}
-      >
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={weightData} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
-            <CartesianGrid stroke="#1E1E1E" vertical={false} />
-            <XAxis dataKey="label" {...axisProps} minTickGap={16} />
-            <YAxis {...axisProps} width={48} allowDecimals={false}
-              domain={[(min: number) => Math.floor(min - 0.5), (max: number) => Math.ceil(max + 0.5)]} />
-            <Tooltip {...chartTooltipStyle} formatter={(v, name) => [`${v} kg`, name]} />
-            <Legend wrapperStyle={{ fontSize: 11, color: '#A0A0A0' }} />
-            {/* Readings: dots only (recessive grey); trend: the line to read. */}
-            <Line dataKey="weightKg" name="Reading" stroke="#8A8A8A" strokeWidth={0} isAnimationActive={false}
-              dot={{ r: 4, strokeWidth: 2, stroke: '#141414', fill: '#8A8A8A' }} activeDot={{ r: 5, strokeWidth: 2, stroke: '#141414', fill: '#A0A0A0' }} legendType="circle" />
-            <Line dataKey="trendKg" name="7-day average" stroke={ENERGY_COLORS.burned} strokeWidth={2} dot={false} type="monotone" />
-          </LineChart>
         </ResponsiveContainer>
       </ChartCard>
     </div>

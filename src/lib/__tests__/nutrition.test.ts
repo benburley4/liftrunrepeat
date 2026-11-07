@@ -64,6 +64,14 @@ describe('period buckets', () => {
 })
 
 describe('weightTrend', () => {
+  it('prefers the morning reading and falls back to the reading of the day', () => {
+    const t = weightTrend([
+      { date: '2026-11-01', weightKg: 98, morningKg: 96 },
+      { date: '2026-11-02', weightKg: 97 },
+    ])
+    expect(t.map(x => x.trendKg)).toEqual([96, 96.5])
+    expect(t.map(x => x.weightKg)).toEqual([98, 97])
+  })
   it('averages readings in the trailing 7-day window', () => {
     const t = weightTrend([
       { date: '2026-11-01', weightKg: 98 },

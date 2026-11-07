@@ -7,7 +7,8 @@
  * service role key:
  *   - workouts → sessions (matching rules in src/lib/zeppImport.ts)
  *   - readiness/HRV/RHR/sleep/load/steps → zepp_daily (src/lib/zeppDaily.ts)
- *   - smart-scale weight → user_settings.bodyweight_kg (7-day median)
+ *   - smart-scale weight → user_settings.bodyweight_kg (7-day median), only
+ *     when Renpho isn't set up (renpho-sync.mjs handles weight then)
  *
  * Usage:
  *   node scripts/zepp-sync.mjs              # last 14 days
@@ -164,10 +165,15 @@ db.close()
 const supabase = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
 
 // ── Daily recovery rows + scale bodyweight ───────────────────────────────────
+// Renpho is the main weight source once it's set up (scripts/renpho-sync.mjs):
+// leave its columns out of the upsert, or this sync would blank or overwrite them.
+const RENPHO_WEIGHTS = Boolean(env.RENPHO_EMAIL)
 const daily = buildZeppDaily(dailyMetrics, sleeps, weights)
   .filter(r => r.date >= since.slice(0, 10))
-  .map(r => ({ ...r, user_id: USER_ID, updated_at: new Date().toISOString() }))
-const bodyweight = scaleBodyweight(weights)
+  .map(({ weight_kg, weight_am_kg, ...r }) => ({
+    ...r, ...(RENPHO_WEIGHTS ? {} : { weight_kg, weight_am_kg }), user_id: USER_ID, updated_at: new Date().toISOString(),
+  }))
+const bodyweight = RENPHO_WEIGHTS ? null : scaleBodyweight(weights)
 
 if (DRY_RUN) {
   const last = daily.at(-1)
@@ -176,7 +182,12 @@ if (DRY_RUN) {
   if (bodyweight) console.log(`Scale bodyweight ${bodyweight.kg} kg (as of ${bodyweight.asOf.slice(0, 10)})`)
 } else {
   if (daily.length) {
-    const { error } = await supabase.from('zepp_daily').upsert(daily, { onConflict: 'user_id,date' })
+    let { error } = await supabase.from('zepp_daily').upsert(daily, { onConflict: 'user_id,date' })
+    if (error && !RENPHO_WEIGHTS && /weight_am_kg/.test(error.message)) {
+      console.log('weight_am_kg column missing — run the 2026-11-06 migration in supabase/schema.sql')
+      ;({ error } = await supabase.from('zepp_daily')
+        .upsert(daily.map(({ weight_am_kg, ...r }) => r), { onConflict: 'user_id,date' }))
+    }
     if (!error) console.log(`Wrote ${daily.length} daily rows`)
     else if (/zepp_daily/.test(error.message) && /not find|does not exist/i.test(error.message))
       console.log('zepp_daily table missing — run the 2026-10-25 migration in supabase/schema.sql')

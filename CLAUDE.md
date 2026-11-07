@@ -46,6 +46,15 @@ See README.md for setup/env vars and PROGRESS.md for recent work.
   `src/lib/server/deepseek.ts` (never instantiate DeepSeek clients ad hoc).
   Client callers send `authHeaders()` from `src/lib/auth.ts` and attach the
   athlete profile via `profileToPrompt(await loadProfile())`.
+- **Weight & Renpho**: `/nutrition` is the "Weight & Nutrition" nav item, with
+  Nutrition and Weight & Body tabs (`src/components/body/`). Renpho is the main
+  weight source. `scripts/renpho-sync.mjs` (run by `zepp-sync.bat` and the
+  every-minute poll for the "Sync Renpho" button) writes `renpho_body`,
+  `zepp_daily.weight_kg` / `weight_am_kg` and `user_settings.bodyweight_kg`;
+  `zepp-sync.mjs` leaves those alone while `RENPHO_EMAIL` is set. The Renpho API
+  is unofficial (`scripts/renpho-client.mjs`, port of renpho-py) and the password
+  stays in `.env.local` on the PC, never in Vercel. The account also holds another
+  person's profile: only the signed-in profile may be fetched or stored.
 - **Nutrition** (`/nutrition`): the one AI route not on DeepSeek —
   `api/meal-estimate` uses `src/lib/server/mealEstimate.ts` (OpenRouter vision,
   `OPENROUTER_API_KEY`, model `MEAL_MODEL` default `google/gemini-3.8-flash`)

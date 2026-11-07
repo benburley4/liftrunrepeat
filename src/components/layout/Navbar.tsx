@@ -17,6 +17,11 @@ const primaryLinks: NavItem[] = [
   { href: '/programme-review', label: 'AI Coach' },
 ]
 
+// To the right of the groups.
+const trailingLinks: NavItem[] = [
+  { href: '/nutrition', label: 'Weight & Nutrition' },
+]
+
 const groups: NavGroup[] = [
   {
     label: 'Train',
@@ -24,7 +29,6 @@ const groups: NavGroup[] = [
       { href: '/log/session', label: 'Today' },
       { href: '/templates', label: 'Templates' },
       { href: '/running', label: 'Running' },
-      { href: '/nutrition', label: 'Nutrition' },
     ],
   },
   {
@@ -88,8 +92,9 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 shrink-0">
             <LogoMark />
+            {/* Wordmark drops out on tablets and small laptops to leave room for the links */}
             <span
-              className="text-lg font-black tracking-wider uppercase"
+              className="text-lg font-black tracking-wider uppercase md:hidden xl:inline"
               style={{ fontFamily: 'var(--font-heading)', letterSpacing: '0.06em' }}
             >
               <span style={{ color: '#C8102E' }}>LIFT</span>
@@ -158,6 +163,17 @@ export default function Navbar() {
                 </div>
               )
             })}
+
+            {trailingLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="px-3 py-2 rounded text-sm font-medium transition-colors hover:text-white whitespace-nowrap"
+                style={linkStyle(isActive(pathname, link.href))}
+              >
+                {link.label}
+              </Link>
+            ))}
 
             {/* Watch sync box (signed-in users) */}
             {user && <div className="ml-2"><WatchSyncBox /></div>}
@@ -281,6 +297,18 @@ export default function Navbar() {
                   </Link>
                 ))}
               </div>
+            ))}
+
+            {trailingLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileOpen(false)}
+                className="mt-2 px-3 py-3 rounded text-sm font-medium"
+                style={linkStyle(isActive(pathname, link.href))}
+              >
+                {link.label}
+              </Link>
             ))}
 
             {user && (

@@ -7,6 +7,9 @@
 
 export const SYNC_REQUEST_KEY = 'zepp_sync_request'
 export const SYNC_STATUS_KEY = 'zepp_sync_status'
+// Same flow for the Weight tab's "Sync Renpho" button (scripts/renpho-sync.mjs).
+export const RENPHO_REQUEST_KEY = 'renpho_sync_request'
+export const RENPHO_STATUS_KEY = 'renpho_sync_status'
 
 /** A request older than this without a matching sync is reported as unanswered. */
 export const REQUEST_TIMEOUT_MS = 3 * 60_000

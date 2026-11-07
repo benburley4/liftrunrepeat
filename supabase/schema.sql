@@ -52,8 +52,9 @@ create table if not exists ai_reports (
 -- ─── user_settings ───────────────────────────────────────────────────────────
 -- Key/value per user. Known keys: current_programme_id, gen_form_state,
 -- ai_usage, is_premium, athlete_profile, onboarding_done, bodyweight_kg
--- (also written by zepp-sync from the smart scale), bodyweight_source,
--- zepp_sync_request (navbar "Sync now"), zepp_sync_status (written by zepp-sync).
+-- (also written by renpho-sync from the smart scale), bodyweight_source,
+-- zepp_sync_request (navbar "Sync now"), zepp_sync_status (written by zepp-sync),
+-- renpho_sync_request (Weight tab "Sync Renpho"), renpho_sync_status (written by renpho-sync).
 create table if not exists user_settings (
   key     text not null,
   user_id uuid references auth.users not null,
@@ -133,8 +134,42 @@ alter table zepp_workout_series alter column points drop not null;
 alter table zepp_daily add column if not exists distance_m      real;
 alter table zepp_daily add column if not exists active_calories real;
 alter table zepp_daily add column if not exists step_goal       integer;
+-- MIGRATION (2026-11-06): lowest morning scale reading per day, for the weight trend.
+alter table zepp_daily add column if not exists weight_am_kg    real;
 drop policy if exists "own rows select" on zepp_workout_series;
 create policy "own rows select" on zepp_workout_series for select using (auth.uid() = user_id);
+
+-- ─── renpho_body (Renpho smart-scale readings) ───────────────────────────────
+-- MIGRATION (2026-11-07, run before the Weight tab deploys):
+-- One row per weigh-in, written only by scripts/renpho-sync.mjs (service role);
+-- users read their own. Composition columns are null on weight-only readings.
+-- renpho-sync also writes zepp_daily.weight_am_kg, so run the 2026-11-06
+-- migration above too.
+create table if not exists renpho_body (
+  user_id              uuid references auth.users not null,
+  reading_id           text not null,
+  measured_at          timestamptz not null,
+  date                 date not null,
+  weight_kg            real not null,
+  bmi                  real,
+  body_fat_pct         real,
+  water_pct            real,
+  muscle_pct           real,
+  bone_kg              real,
+  bmr_kcal             real,
+  visceral_fat         real,
+  subcutaneous_fat_pct real,
+  protein_pct          real,
+  body_age             real,
+  lean_mass_kg         real,
+  fat_free_kg          real,
+  updated_at           timestamptz not null default now(),
+  primary key (user_id, reading_id)
+);
+create index if not exists renpho_body_user_time on renpho_body (user_id, measured_at);
+alter table renpho_body enable row level security;
+drop policy if exists "own rows select" on renpho_body;
+create policy "own rows select" on renpho_body for select using (auth.uid() = user_id);
 
 -- ─── Row Level Security ──────────────────────────────────────────────────────
 -- Every table must scope rows to auth.uid(). The app's client queries do NOT

@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { dedupeSessions } from './sessionDedupe'
 import type { ZeppDailyRow } from './zeppDaily'
+import type { BodyReading } from './renpho'
 import type { SeriesPoint, LatLon } from './zeppSeries'
 
 export interface StoredSession {
@@ -126,6 +127,22 @@ export async function deleteTemplate(id: string): Promise<void> {
 }
 
 // ─── Zepp daily recovery data (written by scripts/zepp-sync.mjs) ─────────────
+
+/** Every Renpho weigh-in, oldest first. Paged: a reading a day passes the row cap. */
+export async function getRenphoBody(): Promise<BodyReading[]> {
+  const rows: BodyReading[] = []
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from('renpho_body')
+      .select('*')
+      .order('measured_at', { ascending: true })
+      .range(from, from + PAGE - 1)
+    throwIfError(error)
+    rows.push(...((data ?? []) as BodyReading[]))
+    if ((data ?? []).length < PAGE) break
+  }
+  return rows
+}
 
 export async function getZeppDaily(): Promise<ZeppDailyRow[]> {
   // Garmin backfill reaches back to 2018 (>1000 days), so page it.

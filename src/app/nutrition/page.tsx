@@ -9,12 +9,14 @@ import { RepeatMeals, DayMeals } from '@/components/nutrition/MealLists'
 import EnergyBalance from '@/components/nutrition/EnergyBalance'
 import DaySummary from '@/components/nutrition/DaySummary'
 import DrinksCard from '@/components/nutrition/DrinksCard'
+import BodyTab from '@/components/body/BodyTab'
 import MealEditor, { MealDraft } from '@/components/nutrition/MealEditor'
 import Modal from '@/components/ui/Modal'
-import { getZeppDaily, getSetting } from '@/lib/db'
+import { getZeppDaily, getRenphoBody, getSetting } from '@/lib/db'
 import { loadProfile, derivedAge, AthleteProfile } from '@/lib/athleteProfile'
 import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
+import type { BodyReading } from '@/lib/renpho'
 import {
   Meal, mealMacros, addMacros, ZERO_MACROS, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
   bmrMifflin, burnForDay, weightOn, parseSex, shiftDay, drinkMeal, fluidsMl, DrinkPreset, PortionSize,
@@ -23,8 +25,16 @@ import { loadMeals, saveDay, loadFavourites, saveFavourites, FavouriteMeal } fro
 
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 
+const TABS = [
+  { key: 'nutrition', label: 'Nutrition' },
+  { key: 'weight', label: 'Weight & Body' },
+] as const
+type TabKey = (typeof TABS)[number]['key']
+
 export default function NutritionPage() {
   const today = localToday()
+  const [tab, setTab] = useState<TabKey>('nutrition')
+  const [readings, setReadings] = useState<BodyReading[]>([])
   const [date, setDate] = useState(today)
   const [meals, setMeals] = useState<Meal[] | null>(null)
   const [favourites, setFavourites] = useState<FavouriteMeal[]>([])
@@ -34,13 +44,19 @@ export default function NutritionPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  // After a Renpho sync: new readings, plus the daily weights the other pages use.
+  const reloadBody = useCallback(() => {
+    getZeppDaily().then(setRows).catch(() => {})
+    getRenphoBody().then(setReadings).catch(() => {})
+    getSetting('bodyweight_kg').then(v => setScaleKg(v ? Number(v) || null : null)).catch(() => {})
+  }, [])
+
   useEffect(() => {
     loadMeals().then(setMeals).catch(e => { setError(e instanceof Error ? e.message : 'Failed to load meals'); setMeals([]) })
     loadFavourites().then(setFavourites).catch(() => {})
-    getZeppDaily().then(setRows).catch(() => {})
     loadProfile().then(setProfile).catch(() => {})
-    getSetting('bodyweight_kg').then(v => setScaleKg(v ? Number(v) || null : null)).catch(() => {})
-  }, [])
+    reloadBody()
+  }, [reloadBody])
 
   // Persist one day, rolling back the optimistic change on failure.
   const commit = useCallback(async (next: Meal[], day: string, prev: Meal[]) => {
@@ -166,17 +182,32 @@ export default function NutritionPage() {
         style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,191,165,0.08) 0%, transparent 70%)', borderBottom: '1px solid #1A1A1A' }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 sm:pt-10">
-          <p className="text-xs uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#00BFA5' }}>Fuel</p>
+          <p className="text-xs uppercase tracking-widest mb-1 sm:mb-2" style={{ color: '#00BFA5' }}>Fuel &amp; body</p>
           <h1 className="text-4xl sm:text-6xl font-black uppercase sm:mb-3" style={{ fontFamily: 'var(--font-heading)', color: '#F5F5F5' }}>
-            Nutrition
+            Weight &amp; Nutrition
           </h1>
           <p className="hidden sm:block text-lg" style={{ color: '#A0A0A0' }}>
-            Snap or describe a meal, and see what you ate against what your watch says you burned.
+            Log your meals, see them against what you burned, and track what your weight is made of.
           </p>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-10 space-y-8 sm:space-y-10">
+        <div className="flex gap-2" role="tablist" aria-label="Section">
+          {TABS.map(t => (
+            <button
+              key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
+              className="px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap"
+              style={{ background: tab === t.key ? 'rgba(0,191,165,0.12)' : '#1E1E1E', color: tab === t.key ? '#00BFA5' : '#A0A0A0', border: '1px solid #2E2E2E', cursor: 'pointer' }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'weight' && <BodyTab rows={rows} readings={readings} today={today} onSynced={reloadBody} />}
+
+        {tab === 'nutrition' && <>
         {error && (
           <Card tint="#C8102E" hover={false}>
             <p className="text-sm" style={{ color: '#F5F5F5' }}>{error}</p>
@@ -245,13 +276,14 @@ export default function NutritionPage() {
         )}
 
         <section className="space-y-6">
-          <SectionHeading eyebrow="Energy balance" title="Deficit & weight" sub="Calories burned = resting burn from your profile plus active calories from your watch." />
+          <SectionHeading eyebrow="Energy balance" title="Eaten vs burned" sub="Calories burned = resting burn from your profile plus active calories from your watch." />
           <EnergyBalance days={balance} today={today} todayEaten={todayEaten} todayBurn={todayBurn} missingStats={missingStats} />
         </section>
 
         <p className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>
           Photo estimates are rough — often ±20–40% on mixed plates. Use S / M / L or type grams to correct them before saving.
         </p>
+        </>}
       </div>
     </div>
   )

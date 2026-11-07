@@ -251,6 +251,7 @@ export interface BalanceDay {
   deficit: number | null        // burned − eaten (positive = deficit); only when both known
   activeSource: ActiveSource
   weightKg: number | null       // scale reading that day (not carried forward)
+  morningKg?: number | null     // lowest morning reading that day; the trend prefers it
   protein: number | null        // grams; null = nothing logged
   carbs: number | null
   fat: number | null
@@ -278,6 +279,7 @@ export function energyBalance(
       deficit: burn && eaten != null ? burn.total - eaten : null,
       activeSource: burn?.activeSource ?? 'none',
       weightKg: byDate.get(date)?.weight_kg ?? null,
+      morningKg: byDate.get(date)?.weight_am_kg ?? null,
       protein: m ? Math.round(m.protein) : null,
       carbs: m ? Math.round(m.carbs) : null,
       fat: m ? Math.round(m.fat) : null,
@@ -287,15 +289,16 @@ export function energyBalance(
 }
 
 /**
- * Bodyweight trend: for each day with a scale reading, the mean of all readings
- * in the `window` days ending that day. Smooths day-to-day water swings.
+ * Bodyweight trend: for each day with a scale reading, the mean over the
+ * `window` days ending that day of each day's lowest morning reading (that
+ * day's reading if it has no morning one). Smooths day-to-day water swings.
  */
-export function weightTrend(days: Pick<BalanceDay, 'date' | 'weightKg'>[], window = 7): { date: string; weightKg: number; trendKg: number }[] {
-  const readings = days.filter(d => d.weightKg != null) as { date: string; weightKg: number }[]
+export function weightTrend(days: Pick<BalanceDay, 'date' | 'weightKg' | 'morningKg'>[], window = 7): { date: string; weightKg: number; trendKg: number }[] {
+  const readings = days.filter(d => d.weightKg != null) as { date: string; weightKg: number; morningKg?: number | null }[]
   return readings.map(r => {
     const from = shiftDay(r.date, -(window - 1))
     const inWin = readings.filter(x => x.date >= from && x.date <= r.date)
-    const mean = inWin.reduce((a, x) => a + x.weightKg, 0) / inWin.length
+    const mean = inWin.reduce((a, x) => a + (x.morningKg ?? x.weightKg), 0) / inWin.length
     return { date: r.date, weightKg: r.weightKg, trendKg: Math.round(mean * 10) / 10 }
   })
 }
