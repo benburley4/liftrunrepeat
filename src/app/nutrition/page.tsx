@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Card from '@/components/ui/Card'
 import SectionHeading from '@/components/ui/SectionHeading'
 import MealLogger, { LoggedMeal } from '@/components/nutrition/MealLogger'
@@ -184,17 +185,32 @@ export default function NutritionPage() {
 
         {/* Logging first (easiest to reach on a phone), then the day summary and list.
             Phone: one column in DOM order. Desktop: logging on the left, summary + list on the right. */}
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>{dayLabel}</p>
-          <label className="text-xs flex items-center gap-2" style={{ color: 'var(--color-text-subtle)' }}>
-            Log to
+          <div className="flex items-center gap-2">
+            {/* Arrows stay outside the label: a click inside it would also activate the input. */}
+            <label htmlFor="log-date" className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>Log to</label>
+            <button
+              type="button" aria-label="Previous day" onClick={() => setDate(shiftDay(date, -1))}
+              className="w-9 h-9 flex items-center justify-center rounded-lg"
+              style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5' }}
+            >
+              <ChevronLeft size={16} />
+            </button>
             <input
-              type="date" value={date} max={today}
+              id="log-date" type="date" value={date} max={today}
               onChange={e => setDate(e.target.value || today)}
               className="rounded-lg px-2 py-1.5 text-base sm:text-sm"
               style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5', colorScheme: 'dark' }}
             />
-          </label>
+            <button
+              type="button" aria-label="Next day" disabled={date >= today} onClick={() => setDate(shiftDay(date, 1))}
+              className="w-9 h-9 flex items-center justify-center rounded-lg disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: '#1E1E1E', border: '1px solid #2E2E2E', color: '#F5F5F5' }}
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
 
         {/* grid-cols-1 (= minmax(0,1fr)) + min-w-0: without them a long meal name
