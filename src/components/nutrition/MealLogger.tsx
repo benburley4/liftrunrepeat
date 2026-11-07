@@ -140,7 +140,6 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
       const full = toJpeg(img, 1280, 0.82)
       dictation.stop()
       setImage(full); setThumb(toJpeg(img, 112, 0.7)); setDraft(null)
-      estimate(full, text.trim())
     } catch (err) { setError(err instanceof Error ? err.message : 'Could not read that image') }
   }
 
@@ -230,11 +229,11 @@ export default function MealLogger({ onSave }: { onSave: (meal: LoggedMeal, favo
           <input ref={camRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFile} />
           <input ref={libRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
           {dictField(2, 'Optional note, e.g. “fried in butter”, “about 200 g rice”',
-            image ? 'Tap the mic to add a note, then Estimate again.' : 'Add a note first (or after, then Estimate again) — e.g. “cooked in butter”.')}
+            image ? 'Add a note if you like, then tap Estimate calories.' : 'Add a note now or after the photo — e.g. “cooked in butter”.')}
           {image && !busy && (
             <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <Button variant="subtle" onClick={reset}>Retake</Button>
-              <Button onClick={() => { dictation.stop(); estimate(image, text.trim()) }}>Estimate again</Button>
+              <Button onClick={() => { dictation.stop(); estimate(image, text.trim()) }}>Estimate calories</Button>
             </div>
           )}
         </div>
