@@ -10,6 +10,7 @@ import EnergyBalance from '@/components/nutrition/EnergyBalance'
 import DaySummary from '@/components/nutrition/DaySummary'
 import DrinksCard from '@/components/nutrition/DrinksCard'
 import BodyTab from '@/components/body/BodyTab'
+import PlanTab from '@/components/body/PlanTab'
 import MealEditor, { MealDraft } from '@/components/nutrition/MealEditor'
 import Modal from '@/components/ui/Modal'
 import { getZeppDaily, getRenphoBody, getSetting } from '@/lib/db'
@@ -28,6 +29,7 @@ const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? c
 const TABS = [
   { key: 'nutrition', label: 'Nutrition' },
   { key: 'weight', label: 'Weight & Body' },
+  { key: 'plan', label: 'Plan' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
@@ -206,6 +208,8 @@ export default function NutritionPage() {
         </div>
 
         {tab === 'weight' && <BodyTab rows={rows} readings={readings} today={today} onSynced={reloadBody} />}
+
+        {tab === 'plan' && <PlanTab rows={rows} balance={balance} bmr={todayBmr} today={today} />}
 
         {tab === 'nutrition' && <>
         {error && (

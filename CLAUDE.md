@@ -47,7 +47,8 @@ See README.md for setup/env vars and PROGRESS.md for recent work.
   Client callers send `authHeaders()` from `src/lib/auth.ts` and attach the
   athlete profile via `profileToPrompt(await loadProfile())`.
 - **Weight & Renpho**: `/nutrition` is the "Weight & Nutrition" nav item, with
-  Nutrition and Weight & Body tabs (`src/components/body/`). Renpho is the main
+  Nutrition, Weight & Body and Plan tabs (`src/components/body/`). The Plan tab's
+  logic is `src/lib/weightPlan.ts`, stored in `user_settings.weight_plan`. Renpho is the main
   weight source. `scripts/renpho-sync.mjs` (run by `zepp-sync.bat` and the
   every-minute poll for the "Sync Renpho" button) writes `renpho_body`,
   `zepp_daily.weight_kg` / `weight_am_kg` and `user_settings.bodyweight_kg`;

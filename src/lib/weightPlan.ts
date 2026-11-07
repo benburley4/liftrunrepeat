@@ -1,0 +1,120 @@
+// Weight-loss plan: a target weight over a number of weeks, turned into a weekly
+// rate, a calorie target and a schedule. Saved in user_settings.weight_plan.
+
+import { KCAL_PER_KG, shiftDay } from './nutrition'
+
+export const WEIGHT_PLAN_KEY = 'weight_plan'
+export const MAX_PLAN_WEEKS = 104
+const ON_TRACK_KG = 0.3
+
+export interface WeightPlan {
+  startDate: string
+  startKg: number
+  targetKg: number
+  weeks: number
+}
+
+export function parsePlan(value: string | null): WeightPlan | null {
+  if (!value) return null
+  try {
+    const p = JSON.parse(value) as Partial<WeightPlan>
+    if (typeof p.startDate !== 'string' || !(Number(p.startKg) > 0) || !(Number(p.targetKg) > 0) || !(Number(p.weeks) > 0)) return null
+    return { startDate: p.startDate, startKg: Number(p.startKg), targetKg: Number(p.targetKg), weeks: Number(p.weeks) }
+  } catch { return null }
+}
+
+/** Why these inputs can't make a plan, or null if they can. */
+export function planIssue(startKg: number | null, targetKg: number, weeks: number): string | null {
+  if (startKg == null) return 'A plan needs a scale reading to start from. Sync your scale first.'
+  if (!(targetKg > 0)) return 'Enter your target weight.'
+  if (targetKg >= startKg) return `Your target needs to be below your current ${startKg.toFixed(1)} kg.`
+  if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_PLAN_WEEKS) return `Enter a whole number of weeks, from 1 to ${MAX_PLAN_WEEKS}.`
+  return null
+}
+
+export type PlanPace = 'gentle' | 'steady' | 'fast'
+
+export interface PlanNumbers {
+  totalKg: number
+  perWeekKg: number
+  pctPerWeek: number             // weekly loss as a % of starting weight
+  pace: PlanPace
+  dailyDeficit: number
+  calorieTarget: number | null   // null until burn is known; never below resting burn
+  belowResting: boolean          // the plan's pace would need less than resting burn
+  weeksAtResting: number | null  // shortest plan that stays at or above resting burn
+}
+
+const round = (n: number, digits: number) => Math.round(n * 10 ** digits) / 10 ** digits
+
+/** Rate and calories for a plan. burnKcal = recent average daily burn; bmrKcal = resting burn. */
+export function planNumbers(plan: Pick<WeightPlan, 'startKg' | 'targetKg' | 'weeks'>, burnKcal: number | null, bmrKcal: number | null): PlanNumbers {
+  const totalKg = plan.startKg - plan.targetKg
+  const perWeekKg = totalKg / plan.weeks
+  const pctPerWeek = perWeekKg / plan.startKg * 100
+  const dailyDeficit = Math.round(perWeekKg * KCAL_PER_KG / 7 / 10) * 10
+  const eat = burnKcal != null ? burnKcal - dailyDeficit : null
+  const belowResting = eat != null && bmrKcal != null && eat < bmrKcal
+  const room = burnKcal != null && bmrKcal != null ? burnKcal - bmrKcal : 0
+  return {
+    totalKg: round(totalKg, 1),
+    perWeekKg: round(perWeekKg, 2),
+    pctPerWeek: round(pctPerWeek, 2),
+    pace: pctPerWeek <= 0.5 ? 'gentle' : pctPerWeek <= 1 ? 'steady' : 'fast',
+    dailyDeficit,
+    calorieTarget: eat == null ? null : Math.round((belowResting ? bmrKcal! : eat) / 10) * 10,
+    belowResting,
+    weeksAtResting: belowResting && room > 0 ? Math.ceil(totalKg * KCAL_PER_KG / 7 / room) : null,
+  }
+}
+
+export const planEndDate = (plan: WeightPlan) => shiftDay(plan.startDate, plan.weeks * 7)
+
+const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
+
+/** Where the plan says you should be on a date: a straight line, held at each end. */
+export function planWeight(plan: WeightPlan, date: string): number {
+  const total = plan.weeks * 7
+  const day = Math.min(total, Math.max(0, daysBetween(plan.startDate, date)))
+  return round(plan.startKg - (plan.startKg - plan.targetKg) * day / total, 1)
+}
+
+export interface TrendWeight { date: string; trendKg: number }
+
+export interface PlanWeek { week: number; date: string; planKg: number; actualKg: number | null }
+
+/** One row per week. Actual = the latest smoothed weight in the 7 days up to that date. */
+export function planSchedule(plan: WeightPlan, actual: TrendWeight[], today: string): PlanWeek[] {
+  return Array.from({ length: plan.weeks + 1 }, (_, week) => {
+    const date = shiftDay(plan.startDate, week * 7)
+    const from = shiftDay(date, -6)
+    const hit = date > today ? undefined : actual.findLast(a => a.date >= from && a.date <= date)
+    return { week, date, planKg: planWeight(plan, date), actualKg: hit?.trendKg ?? null }
+  })
+}
+
+export interface PlanProgress {
+  state: 'ahead' | 'on-track' | 'behind'
+  expectedKg: number
+  actualKg: number
+  diffKg: number       // actual − expected; negative = ahead of the plan
+  lostKg: number
+  remainingKg: number
+  daysLeft: number
+}
+
+/** How today compares with the plan, from the latest smoothed weight. */
+export function planProgress(plan: WeightPlan, latest: TrendWeight | null, today: string): PlanProgress | null {
+  if (!latest) return null
+  const expectedKg = planWeight(plan, today)
+  const diffKg = round(latest.trendKg - expectedKg, 1)
+  return {
+    state: Math.abs(diffKg) <= ON_TRACK_KG ? 'on-track' : diffKg < 0 ? 'ahead' : 'behind',
+    expectedKg,
+    actualKg: latest.trendKg,
+    diffKg,
+    lostKg: round(plan.startKg - latest.trendKg, 1),
+    remainingKg: round(Math.max(0, latest.trendKg - plan.targetKg), 1),
+    daysLeft: Math.max(0, daysBetween(today, planEndDate(plan))),
+  }
+}

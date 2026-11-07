@@ -54,7 +54,8 @@ create table if not exists ai_reports (
 -- ai_usage, is_premium, athlete_profile, onboarding_done, bodyweight_kg
 -- (also written by renpho-sync from the smart scale), bodyweight_source,
 -- zepp_sync_request (navbar "Sync now"), zepp_sync_status (written by zepp-sync),
--- renpho_sync_request (Weight tab "Sync Renpho"), renpho_sync_status (written by renpho-sync).
+-- renpho_sync_request (Weight tab "Sync Renpho"), renpho_sync_status (written by renpho-sync),
+-- weight_plan (Plan tab: start, target, weeks).
 create table if not exists user_settings (
   key     text not null,
   user_id uuid references auth.users not null,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { offsetMinutes, toBodyReading, type BodyReading } from '../renpho'
-import { bucketBody, dailyBody, metricChange } from '../bodyComp'
+import { bucketBody, dailyBody, linearTrend, lowestWeights, weightChanges } from '../bodyComp'
 
 const ME = '5975813831868809088'
 
@@ -66,6 +66,23 @@ describe('dailyBody', () => {
     expect(days[0].body_fat_pct).toBe(19)
   })
 
+  it("can take the day's lightest reading instead", () => {
+    const days = dailyBody([
+      reading('2026-11-01', '2026-10-31T23:00:00Z', { weight_kg: 96, body_fat_pct: 19 }),
+      reading('2026-11-01', '2026-11-01T01:00:00Z', { weight_kg: 95, body_fat_pct: 18 }),
+      reading('2026-11-01', '2026-11-01T12:00:00Z', { weight_kg: 94, body_fat_pct: null }),
+    ], 'lowest')
+    expect(days[0].body_fat_pct).toBe(18)
+  })
+
+  it('takes the earlier reading when two tie for lowest', () => {
+    const days = dailyBody([
+      reading('2026-11-01', '2026-11-01T12:00:00Z', { weight_kg: 95, body_fat_pct: 21 }),
+      reading('2026-11-01', '2026-11-01T01:00:00Z', { weight_kg: 95, body_fat_pct: 19 }),
+    ], 'lowest')
+    expect(days[0].body_fat_pct).toBe(19)
+  })
+
   it('derives fat mass from that reading', () => {
     expect(dailyBody([reading('2026-11-01', '2026-11-01T00:00:00Z', { weight_kg: 94.6, body_fat_pct: 18.1 })])[0].fat_mass_kg).toBe(17.1)
   })
@@ -104,18 +121,74 @@ describe('bucketBody', () => {
   })
 })
 
-describe('metricChange', () => {
-  const days = dailyBody([
-    reading('2026-11-01', '2026-11-01T00:00:00Z', { body_fat_pct: 20 }),
-    reading('2026-11-02', '2026-11-02T00:00:00Z', { body_fat_pct: 18.5 }),
-  ])
+describe('lowestWeights', () => {
+  it('keeps the lowest reading each day, including weight-only ones', () => {
+    expect(lowestWeights([
+      reading('2026-11-02', '2026-11-02T00:00:00Z', { weight_kg: 96 }),
+      reading('2026-11-01', '2026-11-01T00:00:00Z', { weight_kg: 97 }),
+      reading('2026-11-01', '2026-11-01T12:00:00Z', { weight_kg: 95.5, body_fat_pct: null }),
+    ])).toEqual([
+      { date: '2026-11-01', weightKg: 95.5, morningKg: 95.5 },
+      { date: '2026-11-02', weightKg: 96, morningKg: 96 },
+    ])
+  })
+})
 
-  it('reports the latest value and change across the range', () => {
-    expect(metricChange(days, 'body_fat_pct')).toEqual({ latest: 18.5, change: -1.5 })
+describe('linearTrend', () => {
+  const line = (values: (number | null)[], stepDays = 7) => values.map((value, i) => ({
+    date: new Date(Date.UTC(2026, 0, 1 + i * stepDays)).toISOString().slice(0, 10), value,
+  }))
+
+  it('reads a steady fall as decreasing, with the rate per week', () => {
+    expect(linearTrend(line([100, 99.5, 99, 98.5]), 0.3)).toEqual({ direction: 'down', perWeek: -0.5, total: -1.5 })
   })
 
-  it('has no change from a single value, and nothing from none', () => {
-    expect(metricChange(days.slice(0, 1), 'body_fat_pct')).toEqual({ latest: 20, change: null })
-    expect(metricChange([], 'body_fat_pct')).toBeNull()
+  it('reads a rise as increasing', () => {
+    expect(linearTrend(line([90, 91, 92]), 0.3)?.direction).toBe('up')
+  })
+
+  it('calls a change inside the noise band steady', () => {
+    expect(linearTrend(line([95, 95.1, 95, 95.1]), 0.3)?.direction).toBe('flat')
+  })
+
+  it("isn't set by one odd reading at the end", () => {
+    const t = linearTrend(line([95, 95, 95, 95, 95, 95, 95, 95, 95, 96.5]), 0.3)!
+    expect(t.total).toBeLessThan(1.5)
+  })
+
+  it('skips gaps', () => {
+    expect(linearTrend(line([100, null, 99, null, 98]), 0.3)?.perWeek).toBe(-0.5)
+  })
+
+  it('needs 3 readings across at least a week', () => {
+    expect(linearTrend(line([100, 99]), 0.3)).toBeNull()
+    expect(linearTrend(line([100, 99, 98], 1), 0.3)).toBeNull()
+  })
+})
+
+describe('weightChanges', () => {
+  const points = [
+    { date: '2026-11-02', weightKg: 100 },   // Monday
+    { date: '2026-11-03', weightKg: 98 },
+    { date: '2026-11-09', weightKg: 98.5 },  // next Monday
+    { date: '2026-11-16', weightKg: 99 },
+  ]
+
+  it('compares each week with the one before', () => {
+    expect(weightChanges(points, 'week')).toEqual([
+      { date: '2026-11-09', avgKg: 98.5, changeKg: -0.5 },
+      { date: '2026-11-16', avgKg: 99, changeKg: 0.5 },
+    ])
+  })
+
+  it('keeps the comparison for the first period in a range', () => {
+    expect(weightChanges(points, 'week', '2026-11-09')[0].changeKg).toBe(-0.5)
+    expect(weightChanges(points, 'week', '2026-11-16')).toHaveLength(1)
+  })
+
+  it('works by month', () => {
+    expect(weightChanges([{ date: '2026-10-05', weightKg: 100 }, ...points], 'month')).toEqual([
+      { date: '2026-11-01', avgKg: 98.88, changeKg: -1.12 },
+    ])
   })
 })
