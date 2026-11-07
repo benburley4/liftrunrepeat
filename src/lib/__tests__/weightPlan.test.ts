@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parsePlan, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, type WeightPlan } from '../weightPlan'
+import { parsePlan, planActiveOn, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, recentBurn, weekBudget, type WeightPlan } from '../weightPlan'
+import type { BalanceDay } from '../nutrition'
 
 const plan: WeightPlan = { startDate: '2026-11-02', startKg: 96, targetKg: 90, weeks: 12 }
 
@@ -86,5 +87,70 @@ describe('planProgress', () => {
 
   it('needs a weight to compare', () => {
     expect(planProgress(plan, null, '2026-12-14')).toBeNull()
+  })
+})
+
+describe('planActiveOn', () => {
+  it('covers the start date up to, not including, the end date', () => {
+    expect(planActiveOn(plan, '2026-11-01')).toBe(false)
+    expect(planActiveOn(plan, '2026-11-02')).toBe(true)
+    expect(planActiveOn(plan, '2027-01-24')).toBe(true)
+    expect(planActiveOn(plan, '2027-01-25')).toBe(false)
+  })
+})
+
+describe('recentBurn', () => {
+  const day = (date: string, burned: number | null) => ({ date, burned }) as BalanceDay
+
+  it('averages finished days only', () => {
+    expect(recentBurn([day('2026-11-05', 2800), day('2026-11-06', 2600), day('2026-11-07', 900)], '2026-11-07')).toBe(2700)
+  })
+
+  it('uses the most recent days, skipping gaps', () => {
+    expect(recentBurn([day('2026-11-04', 9000), day('2026-11-05', 2800), day('2026-11-06', null)], '2026-11-07', 2)).toBe(2800)
+  })
+
+  it('is null with no burn data', () => {
+    expect(recentBurn([], '2026-11-07')).toBeNull()
+  })
+})
+
+describe('weekBudget', () => {
+  // 2 Nov 2026 is a Monday and the plan's first day.
+  const eaten = (entries: [string, number][]) => new Map(entries.map(([d, kcal]) => [d, { kcal }]))
+
+  it('balances finished logged days and spreads it over the days left', () => {
+    const w = weekBudget(plan, eaten([['2026-11-02', 2000], ['2026-11-03', 2100], ['2026-11-04', 1900]]), '2026-11-05', '2026-11-05', 2200, 1800)
+    expect(w).toEqual({ loggedDays: 3, unloggedDays: 0, balanceKcal: 600, restDays: 4, restPerDay: 2350, atFloor: false })
+  })
+
+  it('reads overeating as a smaller allowance', () => {
+    const w = weekBudget(plan, eaten([['2026-11-02', 3000]]), '2026-11-03', '2026-11-03', 2200, 1800)
+    expect(w).toMatchObject({ balanceKcal: -800, restDays: 6, restPerDay: 2070 })
+  })
+
+  it("doesn't treat an unlogged day as eating nothing", () => {
+    const w = weekBudget(plan, eaten([['2026-11-02', 2200]]), '2026-11-04', '2026-11-04', 2200, 1800)
+    expect(w).toMatchObject({ loggedDays: 1, unloggedDays: 1, balanceKcal: 0, restPerDay: 2200 })
+  })
+
+  it('leaves today out of the balance while it is in progress', () => {
+    expect(weekBudget(plan, eaten([['2026-11-03', 5000]]), '2026-11-03', '2026-11-03', 2200, 1800).balanceKcal).toBe(0)
+  })
+
+  it('stops at resting burn', () => {
+    const w = weekBudget(plan, eaten([['2026-11-07', 6000]]), '2026-11-08', '2026-11-08', 2200, 1800)
+    expect(w).toMatchObject({ restDays: 1, restPerDay: 1800, atFloor: true })
+  })
+
+  it('has no days left in a finished week', () => {
+    const w = weekBudget(plan, eaten([['2026-11-02', 2000]]), '2026-11-03', '2026-11-20', 2200, 1800)
+    expect(w).toMatchObject({ restDays: 0, restPerDay: null, unloggedDays: 6, balanceKcal: 200 })
+  })
+
+  it('counts only days inside the plan', () => {
+    const late = { ...plan, startDate: '2026-11-05' }
+    const w = weekBudget(late, eaten([['2026-11-02', 9000], ['2026-11-05', 2000]]), '2026-11-06', '2026-11-06', 2200, 1800)
+    expect(w).toMatchObject({ loggedDays: 1, balanceKcal: 200, restDays: 3 })
   })
 })

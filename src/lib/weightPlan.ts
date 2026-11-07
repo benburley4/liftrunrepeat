@@ -1,7 +1,7 @@
 // Weight-loss plan: a target weight over a number of weeks, turned into a weekly
 // rate, a calorie target and a schedule. Saved in user_settings.weight_plan.
 
-import { KCAL_PER_KG, shiftDay } from './nutrition'
+import { KCAL_PER_KG, shiftDay, weekStart, type BalanceDay } from './nutrition'
 
 export const WEIGHT_PLAN_KEY = 'weight_plan'
 export const MAX_PLAN_WEEKS = 104
@@ -69,6 +69,50 @@ export function planNumbers(plan: Pick<WeightPlan, 'startKg' | 'targetKg' | 'wee
 }
 
 export const planEndDate = (plan: WeightPlan) => shiftDay(plan.startDate, plan.weeks * 7)
+
+/** True on the days the plan runs: from its start date up to, not including, its end date. */
+export const planActiveOn = (plan: WeightPlan, date: string) => date >= plan.startDate && date < planEndDate(plan)
+
+/** Average daily burn over recent completed days; today's is still in progress. */
+export function recentBurn(balance: BalanceDay[], today: string, days = 28): number | null {
+  const burned = balance.filter(d => d.date < today).slice(-days).flatMap(d => (d.burned != null ? [d.burned] : []))
+  return burned.length ? Math.round(burned.reduce((a, b) => a + b, 0) / burned.length) : null
+}
+
+export interface WeekBudget {
+  loggedDays: number          // finished plan days this week with meals logged
+  unloggedDays: number        // finished plan days with nothing logged
+  balanceKcal: number         // target − eaten across the logged days; positive = under
+  restDays: number            // plan days left this week, including today
+  restPerDay: number | null   // daily calories that would finish the week on target
+  atFloor: boolean            // restPerDay stopped at resting burn
+}
+
+/**
+ * The Monday-to-Sunday week containing `date`, counting plan days only. Days with
+ * nothing logged are left out rather than treated as eating nothing, and today
+ * stays out of the balance until it's over.
+ */
+export function weekBudget(
+  plan: WeightPlan, intake: Map<string, { kcal: number }>, date: string, today: string, target: number, bmrKcal: number | null,
+): WeekBudget {
+  const monday = weekStart(date)
+  const days = Array.from({ length: 7 }, (_, i) => shiftDay(monday, i)).filter(d => planActiveOn(plan, d))
+  const finished = days.filter(d => d < today)
+  const logged = finished.filter(d => intake.has(d))
+  const balanceKcal = Math.round(logged.reduce((a, d) => a + target - intake.get(d)!.kcal, 0))
+  const restDays = days.length - finished.length
+  const perDay = restDays ? target + balanceKcal / restDays : null
+  const atFloor = perDay != null && bmrKcal != null && perDay < bmrKcal
+  return {
+    loggedDays: logged.length,
+    unloggedDays: finished.length - logged.length,
+    balanceKcal,
+    restDays,
+    restPerDay: perDay == null ? null : Math.round((atFloor ? bmrKcal! : perDay) / 10) * 10,
+    atFloor,
+  }
+}
 
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 

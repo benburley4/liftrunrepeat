@@ -1,19 +1,18 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import Card from '@/components/ui/Card'
 import StatTile from '@/components/ui/StatTile'
 import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
-import { getSetting, upsertSetting } from '@/lib/db'
+import { upsertSetting } from '@/lib/db'
 import { proteinTarget, weightTrend, type BalanceDay } from '@/lib/nutrition'
 import {
-  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, parsePlan, planEndDate, planIssue, planNumbers, planProgress, planSchedule,
+  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planEndDate, planIssue, planNumbers, planProgress, planSchedule, recentBurn,
   type PlanNumbers, type PlanPace, type WeightPlan,
 } from '@/lib/weightPlan'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 
-const BURN_DAYS = 28
 const EATEN_DAYS = 14
 const sub = 'var(--color-text-subtle)'
 const WARN = '#F59E0B'
@@ -59,23 +58,20 @@ function PlanWarnings({ n, burn }: { n: PlanNumbers; burn: number | null }) {
 }
 
 /** Plan tab: pick a target and a number of weeks; see the rate, calories and schedule. */
-export default function PlanTab({ rows, balance, bmr, today }: {
+export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr, today }: {
+  plan: WeightPlan | null
+  loaded: boolean
+  onPlanChange: (plan: WeightPlan | null) => void
   rows: ZeppDailyRow[]
   balance: BalanceDay[]
   bmr: number | null       // today's resting burn
   today: string
 }) {
-  const [plan, setPlan] = useState<WeightPlan | null>(null)
-  const [loaded, setLoaded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [target, setTarget] = useState('')
   const [weeks, setWeeks] = useState('12')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    getSetting(WEIGHT_PLAN_KEY).then(v => setPlan(parsePlan(v))).catch(() => {}).finally(() => setLoaded(true))
-  }, [])
 
   const actual = useMemo(() => weightTrend(
     rows.filter(r => r.date <= today).map(r => ({ date: r.date, weightKg: r.weight_kg, morningKg: r.weight_am_kg })),
@@ -83,10 +79,8 @@ export default function PlanTab({ rows, balance, bmr, today }: {
   const latest = actual[actual.length - 1] ?? null
   const currentKg = latest?.trendKg ?? null
 
-  // Completed days only: today's burn is still in progress.
-  const past = useMemo(() => balance.filter(d => d.date < today), [balance, today])
-  const burn = mean(past.slice(-BURN_DAYS).flatMap(d => (d.burned != null ? [d.burned] : [])))
-  const eaten = mean(past.slice(-EATEN_DAYS).flatMap(d => (d.eaten != null ? [d.eaten] : [])))
+  const burn = recentBurn(balance, today)
+  const eaten = mean(balance.filter(d => d.date < today).slice(-EATEN_DAYS).flatMap(d => (d.eaten != null ? [d.eaten] : [])))
   const proteinG = proteinTarget(currentKg)
 
   const targetKg = Number(target)
@@ -101,7 +95,7 @@ export default function PlanTab({ rows, balance, bmr, today }: {
     setError('')
     try {
       await upsertSetting(WEIGHT_PLAN_KEY, JSON.stringify(next))
-      setPlan(next)
+      onPlanChange(next)
       setEditing(false)
     } catch { setError('Could not save your plan') } finally { setSaving(false) }
   }
@@ -110,7 +104,7 @@ export default function PlanTab({ rows, balance, bmr, today }: {
     if (!confirm('Delete this plan?')) return
     try {
       await upsertSetting(WEIGHT_PLAN_KEY, null)
-      setPlan(null)
+      onPlanChange(null)
       setEditing(false)
     } catch { setError('Could not delete your plan') }
   }
@@ -171,7 +165,7 @@ export default function PlanTab({ rows, balance, bmr, today }: {
             <PlanWarnings n={draft} burn={burn} />
             {burn != null && (
               <p className="text-xs" style={{ color: sub }}>
-                Calories use your average burn of {burn.toLocaleString('en-GB')} kcal a day over the last {BURN_DAYS} days, and about 7,700 kcal per kg. These are estimates, not medical advice.
+                Calories use your average burn of {burn.toLocaleString('en-GB')} kcal a day over the last 28 days, and about 7,700 kcal per kg. These are estimates, not medical advice.
               </p>
             )}
           </div>
@@ -228,7 +222,7 @@ export default function PlanTab({ rows, balance, bmr, today }: {
         <PlanWarnings n={numbers} burn={burn} />
         {burn != null && (
           <p className="text-xs" style={{ color: sub }}>
-            Calories update with your average burn over the last {BURN_DAYS} days ({burn.toLocaleString('en-GB')} kcal a day), and assume about 7,700 kcal per kg. These are estimates, not medical advice.
+            Calories update with your average burn over the last 28 days ({burn.toLocaleString('en-GB')} kcal a day), and assume about 7,700 kcal per kg. These are estimates, not medical advice.
           </p>
         )}
       </div>

@@ -9,6 +9,7 @@ import { RepeatMeals, DayMeals } from '@/components/nutrition/MealLists'
 import EnergyBalance from '@/components/nutrition/EnergyBalance'
 import DaySummary from '@/components/nutrition/DaySummary'
 import DrinksCard from '@/components/nutrition/DrinksCard'
+import PlanBudget from '@/components/nutrition/PlanBudget'
 import BodyTab from '@/components/body/BodyTab'
 import PlanTab from '@/components/body/PlanTab'
 import MealEditor, { MealDraft } from '@/components/nutrition/MealEditor'
@@ -18,6 +19,7 @@ import { loadProfile, derivedAge, AthleteProfile } from '@/lib/athleteProfile'
 import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import type { BodyReading } from '@/lib/renpho'
+import { WEIGHT_PLAN_KEY, parsePlan, planActiveOn, planNumbers, recentBurn, weekBudget, type WeightPlan } from '@/lib/weightPlan'
 import {
   Meal, mealMacros, addMacros, ZERO_MACROS, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
   bmrMifflin, burnForDay, weightOn, parseSex, shiftDay, drinkMeal, fluidsMl, DrinkPreset, PortionSize,
@@ -37,6 +39,8 @@ export default function NutritionPage() {
   const today = localToday()
   const [tab, setTab] = useState<TabKey>('nutrition')
   const [readings, setReadings] = useState<BodyReading[]>([])
+  const [plan, setPlan] = useState<WeightPlan | null>(null)
+  const [planLoaded, setPlanLoaded] = useState(false)
   const [date, setDate] = useState(today)
   const [meals, setMeals] = useState<Meal[] | null>(null)
   const [favourites, setFavourites] = useState<FavouriteMeal[]>([])
@@ -57,6 +61,7 @@ export default function NutritionPage() {
     loadMeals().then(setMeals).catch(e => { setError(e instanceof Error ? e.message : 'Failed to load meals'); setMeals([]) })
     loadFavourites().then(setFavourites).catch(() => {})
     loadProfile().then(setProfile).catch(() => {})
+    getSetting(WEIGHT_PLAN_KEY).then(v => setPlan(parsePlan(v))).catch(() => {}).finally(() => setPlanLoaded(true))
     reloadBody()
   }, [reloadBody])
 
@@ -164,6 +169,12 @@ export default function NutritionPage() {
   const todayBurn = todayBmr != null && todayW != null ? burnForDay(rows.find(r => r.date === today), todayBmr, todayW) : null
   const todayEaten = intakeByDate(meals ?? []).get(today)?.kcal ?? 0
 
+  // Calorie budget from the active plan, for the Nutrition tab.
+  const planTarget = plan ? planNumbers(plan, recentBurn(balance, today), todayBmr).calorieTarget : null
+  const budgetWeek = plan && planTarget != null && planActiveOn(plan, date)
+    ? weekBudget(plan, intakeByDate(meals ?? []), date, today, planTarget, todayBmr)
+    : null
+
   const dayMeals = mealsOnDate(meals ?? [], date)
   const dayMacros = dayMeals.reduce((a, m) => addMacros(a, mealMacros(m)), ZERO_MACROS)
   const dayWeight = weightOn(rows, date, fallbackWeight)
@@ -209,7 +220,7 @@ export default function NutritionPage() {
 
         {tab === 'weight' && <BodyTab rows={rows} readings={readings} today={today} onSynced={reloadBody} />}
 
-        {tab === 'plan' && <PlanTab rows={rows} balance={balance} bmr={todayBmr} today={today} />}
+        {tab === 'plan' && <PlanTab plan={plan} loaded={planLoaded} onPlanChange={setPlan} rows={rows} balance={balance} bmr={todayBmr} today={today} />}
 
         {tab === 'nutrition' && <>
         {error && (
@@ -258,6 +269,9 @@ export default function NutritionPage() {
           </div>
 
           <div className="min-w-0 space-y-4">
+            {budgetWeek && planTarget != null && (
+              <PlanBudget eaten={dayMacros.kcal} target={planTarget} week={budgetWeek} isToday={date === today} />
+            )}
             <DaySummary macros={dayMacros} burn={dayBurn} weightKg={dayWeight} inProgress={date === today} />
             {meals === null
               ? <p className="text-sm" style={{ color: 'var(--color-text-subtle)' }}>Loading meals…</p>
