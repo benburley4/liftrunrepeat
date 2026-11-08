@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { offsetMinutes, toBodyReading, type BodyReading } from '../renpho'
-import { bucketBody, compChange, dailyBody, linearTrend, lowestWeights, weightChanges, type BodyDay } from '../bodyComp'
+import { bucketBody, compChange, dailyBody, linearFit, linearTrend, lowestWeights, weightChanges, type BodyDay } from '../bodyComp'
 
 const ME = '5975813831868809088'
 
@@ -211,5 +211,19 @@ describe('compChange', () => {
     expect(compChange([], '2026-11-02', '2026-11-08')).toBeNull()
     const small = compChange([d('2026-11-01', 18, 78), d('2026-11-07', 17.9, 77.9)], '2026-11-02', '2026-11-08')!
     expect(small.fatShare).toBeNull()
+  })
+})
+
+describe('linearFit', () => {
+  it('reads the fitted line on any date', () => {
+    const pts = [{ date: '2026-11-01', value: 20 }, { date: '2026-11-04', value: 19.4 }, { date: '2026-11-08', value: 18.6 }]
+    const fit = linearFit(pts)!
+    expect(fit.slope).toBeCloseTo(-0.2, 5)
+    expect(fit.at('2026-11-01')).toBeCloseTo(20, 5)
+    expect(fit.at('2026-11-15')).toBeCloseTo(17.2, 5)
+  })
+
+  it('needs enough points over a week', () => {
+    expect(linearFit([{ date: '2026-11-01', value: 1 }, { date: '2026-11-08', value: 2 }])).toBeNull()
   })
 })

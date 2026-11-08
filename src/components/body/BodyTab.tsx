@@ -9,7 +9,7 @@ import StatTile from '@/components/ui/StatTile'
 import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
 import { bucketSizeFor, shiftDay, weightTrend, type BucketSize } from '@/lib/nutrition'
 import {
-  BODY_METRICS, TREND_FLAT, WEIGHT_FLAT_KG, bucketBody, dailyBody, linearTrend, lowestWeights, weightChanges,
+  BODY_METRICS, TREND_FLAT, WEIGHT_FLAT_KG, bucketBody, dailyBody, linearFit, linearTrend, lowestWeights, weightChanges,
   type BodyDay, type BodyMetric, type BodyMetricKey, type Trend,
 } from '@/lib/bodyComp'
 import type { BodyReading } from '@/lib/renpho'
@@ -57,22 +57,35 @@ function ChartCard({ title, sub: s, height = 'h-56', badge, children }: {
   )
 }
 
-function MetricChart({ metric, data, trend }: { metric: BodyMetric; data: (BodyDay & { label: string })[]; trend: Trend | null }) {
+// Week and month points are averages, so the fitted line is read at the middle of each period.
+const MID_OFFSET: Record<BucketSize, number> = { day: 0, week: 3, month: 14 }
+
+function MetricChart({ metric, data, days, size, trend }: {
+  metric: BodyMetric; data: (BodyDay & { label: string })[]; days: BodyDay[]; size: BucketSize; trend: Trend | null
+}) {
   const { digits, unit } = metric
   const pad = digits === 0 ? 1 : digits === 2 ? 0.05 : 0.2
   const fixed = (v: number) => v.toFixed(digits)
+  // Straight best-fit line through the daily readings (the same fit as the badge).
+  const withFit = useMemo(() => {
+    const fit = trend ? linearFit(days.map(d => ({ date: d.date, value: d[metric.key] }))) : null
+    return fit ? data.map(d => ({ ...d, fit: fit.at(shiftDay(d.date, MID_OFFSET[size])) })) : data
+  }, [data, days, size, trend, metric.key])
   return (
     <ChartCard title={metric.label} sub={metric.note} height="h-40"
       badge={<TrendBadge trend={trend} unit={unit} digits={Math.min(digits + 1, 2)} />}>
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
+        <LineChart data={withFit} margin={{ top: 4, right: 4, left: -8, bottom: 0 }}>
           <CartesianGrid stroke="#1E1E1E" vertical={false} />
           <XAxis dataKey="label" {...axisProps} minTickGap={28} />
           <YAxis {...axisProps} width={46} allowDecimals={digits > 0} tickFormatter={v => fixed(Number(v))}
             domain={[(min: number) => min - pad, (max: number) => max + pad]} />
-          <Tooltip {...chartTooltipStyle} formatter={v => [`${fixed(Number(v))}${unit}`, metric.label]} />
-          <Line dataKey={metric.key} stroke={BODY_COLORS.fatFree} strokeWidth={2} dot={data.length <= 31 ? { r: 2.5, strokeWidth: 0, fill: BODY_COLORS.fatFree } : false}
+          <Tooltip {...chartTooltipStyle} formatter={(v, name) => [`${fixed(Number(v))}${unit}`, name]} />
+          <Line dataKey={metric.key} name={metric.label} stroke={BODY_COLORS.fatFree} strokeWidth={2} dot={data.length <= 31 ? { r: 2.5, strokeWidth: 0, fill: BODY_COLORS.fatFree } : false}
             activeDot={{ r: 4, strokeWidth: 2, stroke: '#141414', fill: BODY_COLORS.fatFree }} connectNulls isAnimationActive={false} />
+          {trend && (
+            <Line dataKey="fit" name="Trend" stroke="#8A8A8A" strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={false} isAnimationActive={false} />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </ChartCard>
@@ -238,7 +251,7 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
           <div>
             <p className="text-xs uppercase tracking-widest mb-3" style={{ color: '#00BFA5' }}>Body composition · {per}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {BODY_METRICS.map(m => <MetricChart key={m.key} metric={m} data={chartData} trend={metricTrend(days, m.key)} />)}
+              {BODY_METRICS.map(m => <MetricChart key={m.key} metric={m} data={chartData} days={days} size={size} trend={metricTrend(days, m.key)} />)}
             </div>
           </div>
         </>

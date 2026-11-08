@@ -117,12 +117,14 @@ const MIN_TREND_POINTS = 3
 const MIN_TREND_DAYS = 7
 const dayNumber = (date: string) => Date.parse(`${date}T00:00:00Z`) / 86_400_000
 
-/**
- * Least-squares line through the points. A straight fit rather than last minus
- * first, so one heavy or light morning at either end doesn't set the answer.
- * Null with too little data to call a direction.
- */
-export function linearTrend(points: TrendPoint[], flatWithin: number): Trend | null {
+export interface LinearFit {
+  slope: number                  // per day
+  span: number                   // days from the first point to the last
+  at: (date: string) => number   // the fitted value on a date
+}
+
+/** Least-squares line through the points, or null with too little data (as for linearTrend). */
+export function linearFit(points: TrendPoint[]): LinearFit | null {
   const pts = points.filter((p): p is { date: string; value: number } => p.value != null)
     .map(p => ({ x: dayNumber(p.date), y: p.value }))
   if (pts.length < MIN_TREND_POINTS) return null
@@ -132,6 +134,18 @@ export function linearTrend(points: TrendPoint[], flatWithin: number): Trend | n
   const meanY = pts.reduce((a, p) => a + p.y, 0) / pts.length
   const slope = pts.reduce((a, p) => a + (p.x - meanX) * (p.y - meanY), 0)
     / pts.reduce((a, p) => a + (p.x - meanX) ** 2, 0)
+  return { slope, span, at: date => meanY + slope * (dayNumber(date) - meanX) }
+}
+
+/**
+ * Least-squares line through the points. A straight fit rather than last minus
+ * first, so one heavy or light morning at either end doesn't set the answer.
+ * Null with too little data to call a direction.
+ */
+export function linearTrend(points: TrendPoint[], flatWithin: number): Trend | null {
+  const fit = linearFit(points)
+  if (!fit) return null
+  const { slope, span } = fit
   const total = slope * span
   const direction = Math.abs(total) < flatWithin ? 'flat' : total > 0 ? 'up' : 'down'
   return { direction, perWeek: round(slope * 7, 2), total: round(total, 2) }
