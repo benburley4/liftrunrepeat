@@ -1,7 +1,7 @@
 'use client'
 
 import StatTile from '@/components/ui/StatTile'
-import { MIN_FIT_DAYS, type PlanActuals, type PlanNumbers, type PlanPace } from '@/lib/weightPlan'
+import type { PlanActuals, PlanNumbers, PlanPace } from '@/lib/weightPlan'
 
 export const sub = 'var(--color-text-subtle)'
 export const WARN = '#F59E0B'
@@ -25,10 +25,11 @@ export function ActualFigures({ a }: { a: PlanActuals }) {
   const kcal = (n: number | null) => (n != null ? Math.abs(n).toLocaleString('en-GB') : '—')
   const gaining = a.perWeekKg != null && a.perWeekKg < 0
   const surplus = a.dailyDeficit != null && a.dailyDeficit < 0
+  const est = a.early ? ' · early estimate' : ''
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <StatTile value={a.perWeekKg != null ? Math.abs(a.perWeekKg).toFixed(2) : '—'} label={a.perWeekKg == null ? `Loss per week · from day ${MIN_FIT_DAYS}` : gaining ? 'Gain per week (kg)' : 'Loss per week (kg)'} animate={false} />
-      <StatTile value={a.pace ? PACE_LABEL[a.pace] : '—'} label={a.pctPerWeek != null ? `Pace · ${a.pctPerWeek.toFixed(1)}% a week` : `Pace · from day ${MIN_FIT_DAYS}`} animate={false} />
+      <StatTile value={a.perWeekKg != null ? Math.abs(a.perWeekKg).toFixed(2) : '—'} label={`${gaining ? 'Gain' : 'Loss'} per week (kg)${est}`} animate={false} />
+      <StatTile value={a.pace ? PACE_LABEL[a.pace] : '—'} label={a.pctPerWeek != null ? `Pace · ${a.pctPerWeek.toFixed(1)}% a week${est}` : 'Pace'} animate={false} />
       <StatTile value={kcal(a.dailyDeficit)} label={surplus ? 'Daily surplus (kcal)' : 'Daily deficit (kcal)'} animate={false} />
       <StatTile value={kcal(a.eaten)} label="Eaten per day (kcal)" animate={false} />
       <StatTile value={a.protein ?? '—'} label="Protein per day (g)" animate={false} />

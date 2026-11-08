@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parsePlan, planActiveOn, planActuals, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, recentBurn, trendOn, weekBudget, type WeightPlan } from '../weightPlan'
+import { parsePlan, planActiveOn, planActuals, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, planBudget, recentBurn, trendOn, weekBudget, type WeightPlan } from '../weightPlan'
 import type { BalanceDay } from '../nutrition'
 
 const plan: WeightPlan = { startDate: '2026-11-02', startKg: 96, targetKg: 90, weeks: 12 }
@@ -186,7 +186,7 @@ describe('planActuals', () => {
       day('2026-11-08', 500, 2500, 30), // today, still in progress
     ]
     const a = planActuals(plan, [], balance, '2026-11-08')
-    expect(a).toMatchObject({ dailyDeficit: 800, eaten: 2300, protein: 175, loggedDays: 2, planDay: 6 })
+    expect(a).toMatchObject({ dailyDeficit: 800, eaten: 2300, protein: 175, loggedDays: 2, planDay: 6, foodPerWeekKg: 0.73 })
   })
 
   // 0.1 kg a day down, with ±0.4 kg water swings on alternate days.
@@ -198,11 +198,33 @@ describe('planActuals', () => {
   it('fits loss per week through every reading, ignoring the swings', () => {
     const a = planActuals(plan, noisy(15), [], '2026-11-16')
     expect(a.perWeekKg).toBeCloseTo(0.7, 1)
-    expect(a.pace).toBe('steady')
+    expect(a).toMatchObject({ pace: 'steady', early: false })
   })
 
-  it('waits until day 14, and shows gaining', () => {
-    expect(planActuals(plan, noisy(13), [], '2026-11-14')).toMatchObject({ perWeekKg: null, pace: null, planDay: 12 })
+  it('gives an early estimate before day 14, and nothing with too few weigh-ins', () => {
+    const a = planActuals(plan, noisy(7), [], '2026-11-08')
+    expect(a).toMatchObject({ early: true, planDay: 6 })
+    expect(a.perWeekKg).not.toBeNull()
+    expect(planActuals(plan, noisy(2), [], '2026-11-08')).toMatchObject({ perWeekKg: null, pace: null, early: false })
+  })
+
+  it('shows gaining', () => {
     expect(planActuals(plan, noisy(15, 0.05), [], '2026-11-16').pace).toBe('gaining')
+  })
+})
+
+describe('planBudget', () => {
+  const short: WeightPlan = { startDate: '2026-11-02', startKg: 96, targetKg: 93, weeks: 5 }
+  const eaten = (entries: [string, number][]) => new Map(entries.map(([d, kcal]) => [d, { kcal }]))
+
+  it('balances every finished logged day since the start over the plan days left', () => {
+    // 2 Nov - 7 Dec: 35 days; today 8 Nov is day 7, so 29 days left including today.
+    const b = planBudget(short, eaten([['2026-11-02', 2000], ['2026-11-04', 2400], ['2026-11-09', 9999]]), '2026-11-08', 2500, 2000)
+    expect(b).toMatchObject({ loggedDays: 2, unloggedDays: 4, balanceKcal: 600, restDays: 29, restPerDay: 2520, atFloor: false })
+  })
+
+  it('carries on past the first week', () => {
+    const b = planBudget(short, eaten([['2026-11-02', 3000], ['2026-11-10', 3000]]), '2026-11-12', 2500, 2000)
+    expect(b).toMatchObject({ loggedDays: 2, balanceKcal: -1000 })
   })
 })

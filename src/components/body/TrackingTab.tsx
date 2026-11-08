@@ -108,7 +108,9 @@ export default function TrackingTab({ plan, loaded, rows, readings, balance, bmr
         <ActualFigures a={actuals} />
         <p className="text-xs" style={{ color: sub }}>
           Since the plan started on {fmtDay(plan.startDate)}. Loss per week is a straight line fitted through every daily weigh-in since then, so one heavy or light morning barely moves it
-          {actuals.perWeekKg == null ? `; it appears on day ${MIN_FIT_DAYS} (today is day ${actuals.planDay}), before then water swings outweigh the real change` : ''}.
+          {actuals.early ? `. Until day ${MIN_FIT_DAYS} (today is day ${actuals.planDay}) it's an early estimate, because water swings still weigh a lot` : ''}
+          {actuals.perWeekKg == null ? `. It needs a few weigh-ins over at least 3 days first` : ''}.
+          {actuals.foodPerWeekKg != null && ` Your logged deficit points to about ${Math.abs(actuals.foodPerWeekKg).toFixed(2)} kg a week ${actuals.foodPerWeekKg < 0 ? 'gained' : 'lost'}; if the scale is well behind that, meals are probably under-logged.`}
           {' '}{actuals.loggedDays
             ? `Food figures cover ${actuals.loggedDays} finished day${actuals.loggedDays === 1 ? '' : 's'} with meals logged; days with nothing logged and today are left out.`
             : 'Food figures appear once a finished plan day has meals logged.'}

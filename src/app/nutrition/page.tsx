@@ -21,7 +21,7 @@ import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import type { BodyReading } from '@/lib/renpho'
 import { dailyBody } from '@/lib/bodyComp'
-import { WEIGHT_PLAN_KEY, parsePlan, planActiveOn, planNumbers, recentBurn, weekBudget, type WeightPlan } from '@/lib/weightPlan'
+import { WEIGHT_PLAN_KEY, parsePlan, planActiveOn, planBudget, planNumbers, recentBurn, weekBudget, type WeightPlan } from '@/lib/weightPlan'
 import {
   Meal, mealMacros, addMacros, ZERO_MACROS, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
   restingOn, burnForDay, weightOn, parseSex, shiftDay, drinkMeal, fluidsMl, DrinkPreset, PortionSize,
@@ -183,6 +183,9 @@ export default function NutritionPage() {
   const budgetWeek = plan && planTarget != null && planActiveOn(plan, today)
     ? weekBudget(plan, intakeByDate(meals ?? []), today, today, planTarget, todayBmr)
     : null
+  const budgetPlan = plan && planTarget != null && planActiveOn(plan, today)
+    ? planBudget(plan, intakeByDate(meals ?? []), today, planTarget, todayBmr)
+    : null
 
   const dayMeals = mealsOnDate(meals ?? [], date)
   const dayMacros = dayMeals.reduce((a, m) => addMacros(a, mealMacros(m)), ZERO_MACROS)
@@ -235,8 +238,8 @@ export default function NutritionPage() {
           <TrackingTab
             plan={plan} loaded={planLoaded} rows={rows} readings={readings} balance={balance} bmr={todayBmr} today={today}
             onSetPlan={() => setTab('plan')}
-            budget={budgetWeek && planTarget != null
-              ? <PlanBudget eaten={todayEaten} target={planTarget} week={budgetWeek} isToday />
+            budget={budgetWeek && budgetPlan && planTarget != null
+              ? <PlanBudget eaten={todayEaten} target={planTarget} week={budgetWeek} whole={budgetPlan} />
               : null}
           />
           <section className="space-y-6">

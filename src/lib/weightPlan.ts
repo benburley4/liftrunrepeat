@@ -93,24 +93,16 @@ export function recentBurn(balance: BalanceDay[], today: string, days = 28): num
 }
 
 export interface WeekBudget {
-  loggedDays: number          // finished plan days this week with meals logged
+  loggedDays: number          // finished plan days in the period with meals logged
   unloggedDays: number        // finished plan days with nothing logged
   balanceKcal: number         // target − eaten across the logged days; positive = under
-  restDays: number            // plan days left this week, including today
-  restPerDay: number | null   // daily calories that would finish the week on target
+  restDays: number            // plan days left in the period, including today
+  restPerDay: number | null   // daily calories that would finish the period on target
   atFloor: boolean            // restPerDay stopped at resting burn
 }
 
-/**
- * The Monday-to-Sunday week containing `date`, counting plan days only. Days with
- * nothing logged are left out rather than treated as eating nothing, and today
- * stays out of the balance until it's over.
- */
-export function weekBudget(
-  plan: WeightPlan, intake: Map<string, { kcal: number }>, date: string, today: string, target: number, bmrKcal: number | null,
-): WeekBudget {
-  const monday = weekStart(date)
-  const days = Array.from({ length: 7 }, (_, i) => shiftDay(monday, i)).filter(d => planActiveOn(plan, d))
+/** Calorie balance over a run of plan days; unlogged days are skipped, today waits until it's over. */
+function budgetOver(days: string[], intake: Map<string, { kcal: number }>, today: string, target: number, bmrKcal: number | null): WeekBudget {
   const finished = days.filter(d => d < today)
   const logged = finished.filter(d => intake.has(d))
   const balanceKcal = Math.round(logged.reduce((a, d) => a + target - intake.get(d)!.kcal, 0))
@@ -125,6 +117,27 @@ export function weekBudget(
     restPerDay: perDay == null ? null : Math.round((atFloor ? bmrKcal! : perDay) / 10) * 10,
     atFloor,
   }
+}
+
+/** The whole plan so far: balance since the start, spread over the plan days left. */
+export function planBudget(
+  plan: WeightPlan, intake: Map<string, { kcal: number }>, today: string, target: number, bmrKcal: number | null,
+): WeekBudget {
+  const days = Array.from({ length: plan.weeks * 7 }, (_, i) => shiftDay(plan.startDate, i))
+  return budgetOver(days, intake, today, target, bmrKcal)
+}
+
+/**
+ * The Monday-to-Sunday week containing `date`, counting plan days only. Days with
+ * nothing logged are left out rather than treated as eating nothing, and today
+ * stays out of the balance until it's over.
+ */
+export function weekBudget(
+  plan: WeightPlan, intake: Map<string, { kcal: number }>, date: string, today: string, target: number, bmrKcal: number | null,
+): WeekBudget {
+  const monday = weekStart(date)
+  const days = Array.from({ length: 7 }, (_, i) => shiftDay(monday, i)).filter(d => planActiveOn(plan, d))
+  return budgetOver(days, intake, today, target, bmrKcal)
 }
 
 const daysBetween = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
@@ -150,9 +163,12 @@ export function planSchedule(plan: WeightPlan, actual: TrendWeight[], today: str
   })
 }
 
-/** Days into the plan before loss per week is shown; earlier, water swings dominate. */
+/** Days into the plan before loss per week is firm; earlier it's an early estimate, as water swings weigh more. */
 export const MIN_FIT_DAYS = 14
 const MIN_FIT_READINGS = 7
+/** An early estimate needs at least this many readings spanning this many days. */
+const MIN_EARLY_READINGS = 3
+const MIN_EARLY_SPAN_DAYS = 3
 
 /** Slope in kg per day of a least-squares line through dated readings. */
 function slopePerDay(points: { date: string; kg: number }[]): number {
@@ -163,7 +179,9 @@ function slopePerDay(points: { date: string; kg: number }[]): number {
 }
 
 export interface PlanActuals {
-  perWeekKg: number | null      // fitted loss per week since the start; negative = gaining; null before day 14
+  perWeekKg: number | null      // fitted loss per week since the start; negative = gaining
+  early: boolean                // perWeekKg is an early estimate (before day 14)
+  foodPerWeekKg: number | null  // loss per week the logged deficit implies
   pctPerWeek: number | null
   pace: PlanPace | 'gaining' | null
   dailyDeficit: number | null   // mean burned - eaten over logged plan days
@@ -184,16 +202,21 @@ export function planActuals(plan: WeightPlan, readings: { date: string; kg: numb
   const end = planEndDate(plan)
   const planDay = Math.max(0, daysBetween(plan.startDate, today))
   const since = readings.filter(r => r.date >= plan.startDate && r.date <= today && r.date < end)
-  const fit = planDay >= MIN_FIT_DAYS && since.length >= MIN_FIT_READINGS
-  const perWeekKg = fit ? round(-slopePerDay(since) * 7, 2) : null
+  const span = since.length ? daysBetween(since[0].date, since[since.length - 1].date) : 0
+  const firm = planDay >= MIN_FIT_DAYS && since.length >= MIN_FIT_READINGS
+  const early = !firm && since.length >= MIN_EARLY_READINGS && span >= MIN_EARLY_SPAN_DAYS
+  const perWeekKg = firm || early ? round(-slopePerDay(since) * 7, 2) : null
   const pctPerWeek = perWeekKg != null ? round(perWeekKg / plan.startKg * 100, 2) : null
   const days = balance.filter(d => d.date >= plan.startDate && d.date < today && d.date < end && d.eaten != null)
   const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
+  const dailyDeficit = mean(days.flatMap(d => (d.deficit != null ? [d.deficit] : [])))
   return {
     perWeekKg,
+    early,
+    foodPerWeekKg: dailyDeficit != null ? round(dailyDeficit * 7 / KCAL_PER_KG, 2) : null,
     pctPerWeek,
     pace: pctPerWeek == null ? null : pctPerWeek < 0 ? 'gaining' : paceFor(pctPerWeek),
-    dailyDeficit: mean(days.flatMap(d => (d.deficit != null ? [d.deficit] : []))),
+    dailyDeficit,
     eaten: mean(days.map(d => d.eaten!)),
     protein: mean(days.flatMap(d => (d.protein != null ? [d.protein] : []))),
     loggedDays: days.length,
