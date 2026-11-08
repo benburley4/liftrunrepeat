@@ -8,8 +8,8 @@ import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/char
 import { upsertSetting } from '@/lib/db'
 import { proteinTarget, weightTrend, type BalanceDay } from '@/lib/nutrition'
 import {
-  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planEndDate, planIssue, planNumbers, planProgress, planSchedule, recentBurn, trendOn,
-  type PlanNumbers, type PlanPace, type WeightPlan,
+  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planActuals, planEndDate, planIssue, planNumbers, planProgress, planSchedule, recentBurn, trendOn,
+  type PlanActuals, type PlanNumbers, type PlanPace, type WeightPlan,
 } from '@/lib/weightPlan'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 
@@ -17,7 +17,7 @@ const EATEN_DAYS = 14
 const sub = 'var(--color-text-subtle)'
 const WARN = '#F59E0B'
 
-const PACE_LABEL: Record<PlanPace, string> = { gentle: 'Gentle', steady: 'Steady', fast: 'Fast' }
+const PACE_LABEL: Record<PlanPace | 'gaining', string> = { gentle: 'Gentle', steady: 'Steady', fast: 'Fast', gaining: 'Gaining' }
 
 const legendText = (value: string) => <span style={{ color: '#A0A0A0' }}>{value}</span>
 const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
@@ -30,6 +30,22 @@ function PlanFigures({ n, proteinG }: { n: PlanNumbers; proteinG: number | null 
       <StatTile value={n.dailyDeficit.toLocaleString('en-GB')} label="Daily deficit (kcal)" animate={false} />
       <StatTile value={n.calorieTarget != null ? n.calorieTarget.toLocaleString('en-GB') : '—'} label="Eat per day (kcal)" animate={false} />
       <StatTile value={proteinG ?? '—'} label="Protein per day (g)" animate={false} />
+    </div>
+  )
+}
+
+/** Same tiles as the targets, averaged since the plan started, so each sits under its target. */
+function ActualFigures({ a }: { a: PlanActuals }) {
+  const kcal = (n: number | null) => (n != null ? Math.abs(n).toLocaleString('en-GB') : '—')
+  const gaining = a.perWeekKg != null && a.perWeekKg < 0
+  const surplus = a.dailyDeficit != null && a.dailyDeficit < 0
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <StatTile value={a.perWeekKg != null ? Math.abs(a.perWeekKg).toFixed(2) : '—'} label={gaining ? 'Gain per week (kg)' : 'Loss per week (kg)'} animate={false} />
+      <StatTile value={a.pace ? PACE_LABEL[a.pace] : '—'} label={a.pctPerWeek != null ? `Pace · ${a.pctPerWeek.toFixed(1)}% a week` : 'Pace'} animate={false} />
+      <StatTile value={kcal(a.dailyDeficit)} label={surplus ? 'Daily surplus (kcal)' : 'Daily deficit (kcal)'} animate={false} />
+      <StatTile value={kcal(a.eaten)} label="Eaten per day (kcal)" animate={false} />
+      <StatTile value={a.protein ?? '—'} label="Protein per day (g)" animate={false} />
     </div>
   )
 }
@@ -186,6 +202,7 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
   }
 
   const numbers = planNumbers(plan, burn, bmr)
+  const actuals = planActuals(plan, latest, balance, today)
   const progress = planProgress(plan, latest, today)
   const finished = today >= planEndDate(plan)
   const statusWord = !progress ? '' : progress.state === 'ahead' ? 'Ahead of plan' : progress.state === 'behind' ? 'Behind plan' : 'On track'
@@ -236,6 +253,17 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
             Calories update with your average burn over the last 28 days ({burn.toLocaleString('en-GB')} kcal a day), and assume about 7,700 kcal per kg. These are estimates, not medical advice.
           </p>
         )}
+      </div>
+
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>Your daily actuals</p>
+        <ActualFigures a={actuals} />
+        <p className="text-xs" style={{ color: sub }}>
+          Averages since the plan started on {fmtDay(plan.startDate)}. Weight loss uses your 7-day trend weight, so it lags a few days at first.
+          {' '}{actuals.loggedDays
+            ? `Food figures cover ${actuals.loggedDays} finished day${actuals.loggedDays === 1 ? '' : 's'} with meals logged; days with nothing logged and today are left out.`
+            : 'Food figures appear once a finished plan day has meals logged.'}
+        </p>
       </div>
 
       <Card hover={false}>

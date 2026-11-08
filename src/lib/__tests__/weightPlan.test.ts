@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parsePlan, planActiveOn, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, recentBurn, trendOn, weekBudget, type WeightPlan } from '../weightPlan'
+import { parsePlan, planActiveOn, planActuals, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, recentBurn, trendOn, weekBudget, type WeightPlan } from '../weightPlan'
 import type { BalanceDay } from '../nutrition'
 
 const plan: WeightPlan = { startDate: '2026-11-02', startKg: 96, targetKg: 90, weeks: 12 }
@@ -169,5 +169,28 @@ describe('plan start date', () => {
     expect(trendOn(actual, '2026-11-03')?.trendKg).toBe(96.1)
     expect(trendOn(actual, '2026-10-20')?.trendKg).toBe(96.4)
     expect(trendOn([], '2026-11-02')).toBeNull()
+  })
+})
+
+describe('planActuals', () => {
+  const plan: WeightPlan = { startDate: '2026-11-02', startKg: 96, targetKg: 93, weeks: 5 }
+  const day = (date: string, eaten: number | null, deficit: number | null, protein: number | null) =>
+    ({ date, eaten, deficit, protein }) as BalanceDay
+
+  it('averages loss since the start and food over finished logged plan days', () => {
+    const balance = [
+      day('2026-11-01', 3000, -500, 100), // before the plan
+      day('2026-11-02', 2400, 700, 170),
+      day('2026-11-03', null, null, null), // nothing logged
+      day('2026-11-04', 2200, 900, 180),
+      day('2026-11-08', 500, 2500, 30), // today, still in progress
+    ]
+    const a = planActuals(plan, { date: '2026-11-07', trendKg: 95.5 }, balance, '2026-11-08')
+    expect(a).toMatchObject({ perWeekKg: 0.7, pace: 'steady', dailyDeficit: 800, eaten: 2300, protein: 175, loggedDays: 2 })
+  })
+
+  it('shows gaining, and nothing before there is data', () => {
+    expect(planActuals(plan, { date: '2026-11-09', trendKg: 96.7 }, [], '2026-11-09').pace).toBe('gaining')
+    expect(planActuals(plan, { date: '2026-11-02', trendKg: 96 }, [], '2026-11-02')).toMatchObject({ perWeekKg: null, pace: null, eaten: null, loggedDays: 0 })
   })
 })

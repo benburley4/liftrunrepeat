@@ -44,6 +44,9 @@ export function trendOn<T extends { date: string }>(actual: T[], date: string): 
 
 export type PlanPace = 'gentle' | 'steady' | 'fast'
 
+/** Weekly loss as a % of starting weight -> pace band. */
+export const paceFor = (pctPerWeek: number): PlanPace => (pctPerWeek <= 0.5 ? 'gentle' : pctPerWeek <= 1 ? 'steady' : 'fast')
+
 export interface PlanNumbers {
   totalKg: number
   perWeekKg: number
@@ -70,7 +73,7 @@ export function planNumbers(plan: Pick<WeightPlan, 'startKg' | 'targetKg' | 'wee
     totalKg: round(totalKg, 1),
     perWeekKg: round(perWeekKg, 2),
     pctPerWeek: round(pctPerWeek, 2),
-    pace: pctPerWeek <= 0.5 ? 'gentle' : pctPerWeek <= 1 ? 'steady' : 'fast',
+    pace: paceFor(pctPerWeek),
     dailyDeficit,
     calorieTarget: eat == null ? null : Math.round((belowResting ? bmrKcal! : eat) / 10) * 10,
     belowResting,
@@ -145,6 +148,39 @@ export function planSchedule(plan: WeightPlan, actual: TrendWeight[], today: str
     const hit = date > today ? undefined : actual.findLast(a => a.date >= from && a.date <= date)
     return { week, date, planKg: planWeight(plan, date), actualKg: hit?.trendKg ?? null }
   })
+}
+
+export interface PlanActuals {
+  perWeekKg: number | null      // trend-weight loss per week since the start; negative = gaining
+  pctPerWeek: number | null
+  pace: PlanPace | 'gaining' | null
+  dailyDeficit: number | null   // mean burned - eaten over logged plan days
+  eaten: number | null          // mean kcal over logged plan days
+  protein: number | null        // mean grams over logged plan days
+  loggedDays: number            // finished plan days with meals logged
+}
+
+/**
+ * What has actually happened since the plan started, in the same terms as the
+ * targets. Food averages use finished plan days with meals logged; today is
+ * left out until it's over.
+ */
+export function planActuals(plan: WeightPlan, latest: TrendWeight | null, balance: BalanceDay[], today: string): PlanActuals {
+  const elapsed = latest ? daysBetween(plan.startDate, latest.date) : 0
+  const perWeekKg = latest && elapsed >= 1 ? round((plan.startKg - latest.trendKg) / elapsed * 7, 2) : null
+  const pctPerWeek = perWeekKg != null ? round(perWeekKg / plan.startKg * 100, 2) : null
+  const end = planEndDate(plan)
+  const days = balance.filter(d => d.date >= plan.startDate && d.date < today && d.date < end && d.eaten != null)
+  const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
+  return {
+    perWeekKg,
+    pctPerWeek,
+    pace: pctPerWeek == null ? null : pctPerWeek < 0 ? 'gaining' : paceFor(pctPerWeek),
+    dailyDeficit: mean(days.flatMap(d => (d.deficit != null ? [d.deficit] : []))),
+    eaten: mean(days.map(d => d.eaten!)),
+    protein: mean(days.flatMap(d => (d.protein != null ? [d.protein] : []))),
+    loggedDays: days.length,
+  }
 }
 
 export interface PlanProgress {
