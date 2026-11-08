@@ -19,10 +19,11 @@ import { loadProfile, derivedAge, AthleteProfile } from '@/lib/athleteProfile'
 import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import type { BodyReading } from '@/lib/renpho'
+import { dailyBody } from '@/lib/bodyComp'
 import { WEIGHT_PLAN_KEY, parsePlan, planActiveOn, planNumbers, recentBurn, weekBudget, type WeightPlan } from '@/lib/weightPlan'
 import {
   Meal, mealMacros, addMacros, ZERO_MACROS, mealsOnDate, intakeByDate, repeatMeal, recentDistinctMeals, energyBalance,
-  bmrMifflin, burnForDay, weightOn, parseSex, shiftDay, drinkMeal, fluidsMl, DrinkPreset, PortionSize,
+  restingOn, burnForDay, weightOn, parseSex, shiftDay, drinkMeal, fluidsMl, DrinkPreset, PortionSize,
 } from '@/lib/nutrition'
 import { loadMeals, saveDay, loadFavourites, saveFavourites, FavouriteMeal } from '@/lib/nutritionStore'
 
@@ -159,13 +160,19 @@ export default function NutritionPage() {
     const span = first ? Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${first}T00:00:00Z`)) / 86_400_000) + 1 : 0
     return Math.min(3650, Math.max(365, span))
   }, [meals, today])
+  // Resting burn from the scale's own estimate (first reading of each day); the profile formula fills gaps.
+  const scaleBmr = useMemo(
+    () => dailyBody(readings).flatMap(d => (d.bmr_kcal != null ? [{ date: d.date, bmr: d.bmr_kcal }] : [])),
+    [readings],
+  )
   const balance = useMemo(
-    () => energyBalance(meals ?? [], rows, body, fallbackWeight, today, balanceDays),
+    () => energyBalance(meals ?? [], rows, body, fallbackWeight, today, balanceDays, scaleBmr),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- body is derived from profile
-    [meals, rows, profile, fallbackWeight, today, balanceDays],
+    [meals, rows, profile, fallbackWeight, today, balanceDays, scaleBmr],
   )
   const todayW = weightOn(rows, today, fallbackWeight)
-  const todayBmr = bmrMifflin({ ...body, weightKg: todayW })
+  const todayRest = restingOn(scaleBmr, today, { ...body, weightKg: todayW })
+  const todayBmr = todayRest?.bmr ?? null
   const todayBurn = todayBmr != null && todayW != null ? burnForDay(rows.find(r => r.date === today), todayBmr, todayW) : null
   const todayEaten = intakeByDate(meals ?? []).get(today)?.kcal ?? 0
 
@@ -294,8 +301,8 @@ export default function NutritionPage() {
         )}
 
         <section className="space-y-6">
-          <SectionHeading eyebrow="Energy balance" title="Eaten vs burned" sub="Calories burned = resting burn from your profile plus active calories from your watch." />
-          <EnergyBalance days={balance} today={today} todayEaten={todayEaten} todayBurn={todayBurn} missingStats={missingStats} />
+          <SectionHeading eyebrow="Energy balance" title="Eaten vs burned" sub="Calories burned = resting burn from your scale (or your profile when there's no recent reading) plus active calories from your watch." />
+          <EnergyBalance days={balance} today={today} todayEaten={todayEaten} todayBurn={todayBurn} restingSource={todayRest?.source ?? null} missingStats={missingStats} />
         </section>
 
         <p className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>

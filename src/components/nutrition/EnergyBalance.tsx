@@ -7,7 +7,7 @@ import {
 import Card from '@/components/ui/Card'
 import StatTile from '@/components/ui/StatTile'
 import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
-import { BalanceDay, BurnEstimate, summarizeBalance, bucketBalance, bucketSizeFor, BucketSize } from '@/lib/nutrition'
+import { BalanceDay, BurnEstimate, RestingSource, summarizeBalance, bucketBalance, bucketSizeFor, BucketSize } from '@/lib/nutrition'
 
 // Validated (dataviz validator, dark #141414): resting ↔ active ↔ eaten categorical set; deficit ↔ surplus polarity.
 export const ENERGY_COLORS = { resting: '#C7851F', active: '#00A893', burned: '#00A893', eaten: '#8B6CF0', deficit: '#00A893', surplus: '#D9474C' }
@@ -39,12 +39,13 @@ function ChartCard({ title, sub: s, children }: { title: string; sub: string; ch
 }
 
 export default function EnergyBalance({
-  days, today, todayEaten, todayBurn, missingStats,
+  days, today, todayEaten, todayBurn, restingSource, missingStats,
 }: {
   days: BalanceDay[]           // oldest → newest, ending today; 'All' = everything passed in
   today: string
   todayEaten: number
   todayBurn: BurnEstimate | null
+  restingSource: RestingSource | null
   missingStats: string[]       // e.g. ['height'] — burned can't be estimated without them
 }) {
   const [range, setRange] = useState<RangeKey>('month')
@@ -88,7 +89,7 @@ export default function EnergyBalance({
       </div>
       {todayBurn && (
         <p className="text-xs -mt-3" style={{ color: sub }}>
-          Burned so far {todayBurn.total} = resting {todayBurn.bmr} (what your body uses at rest — Mifflin–St Jeor from your profile) + active {todayBurn.active}
+          Burned so far {todayBurn.total} = resting {todayBurn.bmr} (what your body uses at rest — {restingSource === 'scale' ? 'your scale’s estimate from your fat-free mass, averaged over 7 days' : 'Mifflin–St Jeor from your profile'}) + active {todayBurn.active}
           {todayBurn.activeSource === 'watch' ? ' (movement and workouts, from your watch)' : todayBurn.activeSource === 'steps' ? ' (estimated from steps)' : ' (no watch activity yet)'}.
           Today is still in progress.
         </p>

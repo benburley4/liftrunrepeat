@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   MealItem, Meal, itemMacros, mealMacros, setItemSize, setItemGrams, validateMealEstimate, bmrMifflin, burnForDay,
-  weightOn, energyBalance, summarizeBalance, repeatMeal, recentDistinctMeals, parseSex, intakeByDate,
+  weightOn, energyBalance, scaleBmrOn, restingOn, summarizeBalance, repeatMeal, recentDistinctMeals, parseSex, intakeByDate,
   macroSplit, proteinTarget, weightTrend, weekStart, bucketSizeFor, bucketBalance, BalanceDay,
   DRINKS, drinkMeal, fluidsMl,
 } from '../nutrition'
@@ -32,7 +32,7 @@ describe('period buckets', () => {
   const bd = (date: string, eaten: number | null, burned: number | null): BalanceDay => ({
     date, eaten, burned, resting: burned != null ? 1800 : null, active: burned != null ? burned - 1800 : null,
     deficit: eaten != null && burned != null ? burned - eaten : null,
-    activeSource: 'watch', weightKg: null, protein: null, carbs: null, fat: null,
+    activeSource: 'watch', restingSource: burned != null ? 'formula' : null, weightKg: null, protein: null, carbs: null, fat: null,
   })
 
   it('finds the Monday of the week', () => {
@@ -250,5 +250,37 @@ describe('energy balance', () => {
   it('has no burned values without body stats', () => {
     const days = energyBalance(meals, rows, { heightCm: null, age: 46, sex: 'male' }, null, '2026-11-05', 3)
     expect(days.every(d => d.burned == null && d.deficit == null)).toBe(true)
+  })
+})
+
+describe('resting burn from the scale', () => {
+  const scale = [
+    { date: '2026-11-01', bmr: 2040 },
+    { date: '2026-11-04', bmr: 2060 },
+    { date: '2026-11-07', bmr: 2062 },
+  ]
+  const body = { weightKg: 96, heightCm: 180, age: 46, sex: 'male' as const }
+
+  it('averages the readings in the 7 days up to the date', () => {
+    expect(scaleBmrOn(scale, '2026-11-07')).toBe(2054) // 11-01, 11-04, 11-07
+    expect(scaleBmrOn(scale, '2026-11-09')).toBe(2061) // 11-04, 11-07
+  })
+
+  it('falls back to the latest reading within 30 days, then to nothing', () => {
+    expect(scaleBmrOn(scale, '2026-11-20')).toBe(2062)
+    expect(scaleBmrOn(scale, '2026-12-20')).toBeNull()
+    expect(scaleBmrOn(scale, '2026-10-30')).toBeNull()
+  })
+
+  it('prefers the scale and uses Mifflin–St Jeor when there is no reading', () => {
+    expect(restingOn(scale, '2026-11-07', body)).toEqual({ bmr: 2054, source: 'scale' })
+    expect(restingOn([], '2026-11-07', body)).toEqual({ bmr: 1860, source: 'formula' })
+    expect(restingOn([], '2026-11-07', { ...body, heightCm: null })).toBeNull()
+  })
+
+  it('feeds the daily energy balance', () => {
+    const rows = [{ date: '2026-11-07', weight_kg: 96, active_calories: 500 }] as unknown as Parameters<typeof energyBalance>[1]
+    const [day] = energyBalance([], rows, body, null, '2026-11-07', 1, scale)
+    expect(day).toMatchObject({ resting: 2054, restingSource: 'scale', burned: 2554 })
   })
 })

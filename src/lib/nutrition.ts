@@ -206,6 +206,36 @@ export function bmrMifflin({ weightKg, heightCm, age, sex }: BodyStats): number 
   return Math.round(10 * weightKg + 6.25 * heightCm - 5 * age + (sex === 'male' ? 5 : -161))
 }
 
+/** The scale's resting burn on one day (its own estimate, from fat-free mass). */
+export interface ScaleBmr { date: string; bmr: number }
+export type RestingSource = 'scale' | 'formula'
+
+/** Days of scale readings averaged for resting burn; readings swing a little each day. */
+export const SCALE_BMR_WINDOW = 7
+/** Older than this, a scale reading no longer stands for resting burn. */
+export const SCALE_BMR_STALE_DAYS = 30
+
+/**
+ * Resting burn from the scale on `date`: the mean of the daily readings in the
+ * 7 days up to it, else the latest reading in the 30 days before. Null if none.
+ * `days` is oldest first, one reading per day.
+ */
+export function scaleBmrOn(days: ScaleBmr[], date: string): number | null {
+  const from = shiftDay(date, -(SCALE_BMR_WINDOW - 1))
+  const recent = days.filter(d => d.date >= from && d.date <= date)
+  if (recent.length) return Math.round(recent.reduce((a, d) => a + d.bmr, 0) / recent.length)
+  const stale = shiftDay(date, -SCALE_BMR_STALE_DAYS)
+  return days.findLast(d => d.date >= stale && d.date <= date)?.bmr ?? null
+}
+
+/** Resting burn for a day: the scale's figure when there is one, else Mifflin–St Jeor. */
+export function restingOn(scale: ScaleBmr[], date: string, body: BodyStats): { bmr: number; source: RestingSource } | null {
+  const fromScale = scaleBmrOn(scale, date)
+  if (fromScale != null) return { bmr: fromScale, source: 'scale' }
+  const formula = bmrMifflin(body)
+  return formula != null ? { bmr: formula, source: 'formula' } : null
+}
+
 /** Zepp sometimes syncs 0 / single-digit active calories on full days — treat as missing. */
 export const MIN_PLAUSIBLE_ACTIVE_KCAL = 100
 /** Walking cost ≈ 0.04 kcal per step at 70 kg, scaled by bodyweight. */
@@ -246,7 +276,8 @@ export interface BalanceDay {
   date: string
   eaten: number | null          // null = nothing logged that day
   burned: number | null         // null = no body stats for BMR; = resting + active
-  resting: number | null        // BMR (Mifflin–St Jeor)
+  resting: number | null        // BMR: the scale's when available, else Mifflin–St Jeor
+  restingSource: RestingSource | null
   active: number | null         // watch active calories (or steps estimate)
   deficit: number | null        // burned − eaten (positive = deficit); only when both known
   activeSource: ActiveSource
@@ -259,7 +290,7 @@ export interface BalanceDay {
 
 export function energyBalance(
   meals: Meal[], rows: ZeppDailyRow[], body: Omit<BodyStats, 'weightKg'>, fallbackWeight: number | null,
-  today: string, days: number,
+  today: string, days: number, scale: ScaleBmr[] = [],
 ): BalanceDay[] {
   const intake = intakeByDate(meals)
   const byDate = new Map(rows.map(r => [r.date, r]))
@@ -267,14 +298,15 @@ export function energyBalance(
   for (let i = days - 1; i >= 0; i--) {
     const date = shiftDay(today, -i)
     const w = weightOn(rows, date, fallbackWeight)
-    const bmr = bmrMifflin({ ...body, weightKg: w })
-    const burn = bmr != null && w != null ? burnForDay(byDate.get(date), bmr, w) : null
+    const rest = restingOn(scale, date, { ...body, weightKg: w })
+    const burn = rest != null && w != null ? burnForDay(byDate.get(date), rest.bmr, w) : null
     const m = intake.get(date)
     const eaten = m ? Math.round(m.kcal) : null
     out.push({
       date, eaten,
       burned: burn?.total ?? null,
       resting: burn?.bmr ?? null,
+      restingSource: burn ? rest!.source : null,
       active: burn?.active ?? null,
       deficit: burn && eaten != null ? burn.total - eaten : null,
       activeSource: burn?.activeSource ?? 'none',
