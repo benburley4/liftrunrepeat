@@ -163,12 +163,12 @@ export function planSchedule(plan: WeightPlan, actual: TrendWeight[], today: str
   })
 }
 
-/** Days into the plan before loss per week is firm; earlier it's an early estimate, as water swings weigh more. */
-export const MIN_FIT_DAYS = 14
-const MIN_FIT_READINGS = 7
-/** An early estimate needs at least this many readings spanning this many days. */
-const MIN_EARLY_READINGS = 3
-const MIN_EARLY_SPAN_DAYS = 3
+/**
+ * Loss per week is fitted over the last 14 days: two whole weeks, so a weekly
+ * cycle (heavier after weekends) cancels out instead of tilting the line.
+ */
+export const RATE_WINDOW_DAYS = 14
+const MIN_RATE_READINGS = 7
 
 /** Slope in kg per day of a least-squares line through dated readings. */
 function slopePerDay(points: { date: string; kg: number }[]): number {
@@ -179,8 +179,7 @@ function slopePerDay(points: { date: string; kg: number }[]): number {
 }
 
 export interface PlanActuals {
-  perWeekKg: number | null      // fitted loss per week since the start; negative = gaining
-  early: boolean                // perWeekKg is an early estimate (before day 14)
+  perWeekKg: number | null      // fitted loss per week over the last 14 days; negative = gaining
   foodPerWeekKg: number | null  // loss per week the logged deficit implies
   pctPerWeek: number | null
   pace: PlanPace | 'gaining' | null
@@ -193,26 +192,24 @@ export interface PlanActuals {
 
 /**
  * What has actually happened since the plan started, in the same terms as the
- * targets. Loss per week is the slope of a straight line through every daily
- * reading since the start (one per day, morning preferred), so no single heavy
- * or light morning sets it; it waits until day 14. Food averages use finished
- * plan days with meals logged; today is left out until it's over.
+ * targets. Loss per week is the slope of a straight line through the daily
+ * readings (one per day, morning preferred) of the last 14 days, which can reach
+ * back before the plan in its first fortnight. Food averages use finished plan
+ * days with meals logged; today is left out until it's over.
  */
 export function planActuals(plan: WeightPlan, readings: { date: string; kg: number }[], balance: BalanceDay[], today: string): PlanActuals {
   const end = planEndDate(plan)
   const planDay = Math.max(0, daysBetween(plan.startDate, today))
-  const since = readings.filter(r => r.date >= plan.startDate && r.date <= today && r.date < end)
-  const span = since.length ? daysBetween(since[0].date, since[since.length - 1].date) : 0
-  const firm = planDay >= MIN_FIT_DAYS && since.length >= MIN_FIT_READINGS
-  const early = !firm && since.length >= MIN_EARLY_READINGS && span >= MIN_EARLY_SPAN_DAYS
-  const perWeekKg = firm || early ? round(-slopePerDay(since) * 7, 2) : null
+  const windowEnd = today < end ? today : shiftDay(end, -1)
+  const windowStart = shiftDay(windowEnd, -(RATE_WINDOW_DAYS - 1))
+  const recent = readings.filter(r => r.date >= windowStart && r.date <= windowEnd)
+  const perWeekKg = recent.length >= MIN_RATE_READINGS ? round(-slopePerDay(recent) * 7, 2) : null
   const pctPerWeek = perWeekKg != null ? round(perWeekKg / plan.startKg * 100, 2) : null
   const days = balance.filter(d => d.date >= plan.startDate && d.date < today && d.date < end && d.eaten != null)
   const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
   const dailyDeficit = mean(days.flatMap(d => (d.deficit != null ? [d.deficit] : [])))
   return {
     perWeekKg,
-    early,
     foodPerWeekKg: dailyDeficit != null ? round(dailyDeficit * 7 / KCAL_PER_KG, 2) : null,
     pctPerWeek,
     pace: pctPerWeek == null ? null : pctPerWeek < 0 ? 'gaining' : paceFor(pctPerWeek),

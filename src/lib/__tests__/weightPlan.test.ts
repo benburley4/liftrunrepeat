@@ -195,17 +195,27 @@ describe('planActuals', () => {
     kg: 96 + perDay * i + (i % 2 ? 0.4 : -0.4),
   }))
 
-  it('fits loss per week through every reading, ignoring the swings', () => {
+  it('fits loss per week through the last 14 days, ignoring the swings', () => {
     const a = planActuals(plan, noisy(15), [], '2026-11-16')
-    expect(a.perWeekKg).toBeCloseTo(0.7, 1)
-    expect(a).toMatchObject({ pace: 'steady', early: false })
+    expect(a.perWeekKg).toBeGreaterThan(0.6)
+    expect(a.perWeekKg).toBeLessThan(0.85)
+    expect(a.pace).toBe('steady')
   })
 
-  it('gives an early estimate before day 14, and nothing with too few weigh-ins', () => {
-    const a = planActuals(plan, noisy(7), [], '2026-11-08')
-    expect(a).toMatchObject({ early: true, planDay: 6 })
-    expect(a.perWeekKg).not.toBeNull()
-    expect(planActuals(plan, noisy(2), [], '2026-11-08')).toMatchObject({ perWeekKg: null, pace: null, early: false })
+  it('cancels a weekly cycle that a part-week window would catch', () => {
+    // Flat weight, +1.5 kg every Monday easing off through the week; 26 Oct is a Monday.
+    const weekly = Array.from({ length: 14 }, (_, i) => ({
+      date: new Date(Date.UTC(2026, 9, 26 + i)).toISOString().slice(0, 10),
+      kg: 96 + [1.5, 1, 0.6, 0.3, 0, 0, 0.4][i % 7],
+    }))
+    const a = planActuals(plan, weekly, [], '2026-11-08')
+    // A lopsided cycle leaves a little tilt (about 0.36) but far less than a Mon-Fri window (about 2.6).
+    expect(Math.abs(a.perWeekKg!)).toBeLessThan(0.5)
+  })
+
+  it('reaches back before the plan early on, and needs 7 weigh-ins', () => {
+    expect(planActuals(plan, noisy(7), [], '2026-11-08').perWeekKg).not.toBeNull()
+    expect(planActuals(plan, noisy(6), [], '2026-11-08')).toMatchObject({ perWeekKg: null, pace: null })
   })
 
   it('shows gaining', () => {

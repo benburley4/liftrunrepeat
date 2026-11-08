@@ -25,11 +25,10 @@ export function ActualFigures({ a }: { a: PlanActuals }) {
   const kcal = (n: number | null) => (n != null ? Math.abs(n).toLocaleString('en-GB') : '—')
   const gaining = a.perWeekKg != null && a.perWeekKg < 0
   const surplus = a.dailyDeficit != null && a.dailyDeficit < 0
-  const est = a.early ? ' · early estimate' : ''
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <StatTile value={a.perWeekKg != null ? Math.abs(a.perWeekKg).toFixed(2) : '—'} label={`${gaining ? 'Gain' : 'Loss'} per week (kg)${est}`} animate={false} />
-      <StatTile value={a.pace ? PACE_LABEL[a.pace] : '—'} label={a.pctPerWeek != null ? `Pace · ${a.pctPerWeek.toFixed(1)}% a week${est}` : 'Pace'} animate={false} />
+      <StatTile value={a.perWeekKg != null ? Math.abs(a.perWeekKg).toFixed(2) : '—'} label={`${gaining ? 'Gain' : 'Loss'} per week (kg) · last 14 days`} animate={false} />
+      <StatTile value={a.pace ? PACE_LABEL[a.pace] : '—'} label={a.pctPerWeek != null ? `Pace · ${a.pctPerWeek.toFixed(1)}% a week` : 'Pace'} animate={false} />
       <StatTile value={kcal(a.dailyDeficit)} label={surplus ? 'Daily surplus (kcal)' : 'Daily deficit (kcal)'} animate={false} />
       <StatTile value={kcal(a.eaten)} label="Eaten per day (kcal)" animate={false} />
       <StatTile value={a.protein ?? '—'} label="Protein per day (g)" animate={false} />

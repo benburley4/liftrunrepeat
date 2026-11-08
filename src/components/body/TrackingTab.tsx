@@ -8,7 +8,7 @@ import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/char
 import { compChange, dailyBody } from '@/lib/bodyComp'
 import { proteinTarget, weightTrend, type BalanceDay } from '@/lib/nutrition'
 import type { BodyReading } from '@/lib/renpho'
-import { MIN_FIT_DAYS, planActuals, planEndDate, planNumbers, planProgress, planSchedule, recentBurn, type WeightPlan } from '@/lib/weightPlan'
+import { RATE_WINDOW_DAYS, planActuals, planEndDate, planNumbers, planProgress, planSchedule, recentBurn, type WeightPlan } from '@/lib/weightPlan'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import { ActualFigures, BurnNote, PlanFigures, PlanWarnings, sub } from './PlanFigures'
 
@@ -107,9 +107,10 @@ export default function TrackingTab({ plan, loaded, rows, readings, balance, bmr
         {heading('Your daily actuals')}
         <ActualFigures a={actuals} />
         <p className="text-xs" style={{ color: sub }}>
-          Since the plan started on {fmtDay(plan.startDate)}. Loss per week is a straight line fitted through every daily weigh-in since then, so one heavy or light morning barely moves it
-          {actuals.early ? `. Until day ${MIN_FIT_DAYS} (today is day ${actuals.planDay}) it's an early estimate, because water swings still weigh a lot` : ''}
-          {actuals.perWeekKg == null ? `. It needs a few weigh-ins over at least 3 days first` : ''}.
+          Loss per week is a straight line fitted through your daily weigh-ins over the last {RATE_WINDOW_DAYS} days: two whole weeks, so the usual after-the-weekend bump cancels out and one heavy or light morning barely moves it
+          {actuals.planDay < RATE_WINDOW_DAYS ? ` (in the plan's first fortnight that includes days from before ${fmtDay(plan.startDate)})` : ''}
+          {actuals.perWeekKg == null ? `. It needs at least 7 weigh-ins in that time` : ''}.
+          {' '}Food figures are averages since the plan started on {fmtDay(plan.startDate)}.
           {actuals.foodPerWeekKg != null && ` Your logged deficit points to about ${Math.abs(actuals.foodPerWeekKg).toFixed(2)} kg a week ${actuals.foodPerWeekKg < 0 ? 'gained' : 'lost'}; if the scale is well behind that, meals are probably under-logged.`}
           {' '}{actuals.loggedDays
             ? `Food figures cover ${actuals.loggedDays} finished day${actuals.loggedDays === 1 ? '' : 's'} with meals logged; days with nothing logged and today are left out.`
