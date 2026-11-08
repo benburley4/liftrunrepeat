@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parsePlan, planActiveOn, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, recentBurn, weekBudget, type WeightPlan } from '../weightPlan'
+import { parsePlan, planActiveOn, planEndDate, planIssue, planNumbers, planProgress, planSchedule, planWeight, recentBurn, trendOn, weekBudget, type WeightPlan } from '../weightPlan'
 import type { BalanceDay } from '../nutrition'
 
 const plan: WeightPlan = { startDate: '2026-11-02', startKg: 96, targetKg: 90, weeks: 12 }
@@ -24,7 +24,7 @@ describe('planIssue', () => {
   it('needs a starting weight, a lower target and sensible weeks', () => {
     expect(planIssue(null, 90, 12)).toMatch(/scale reading/)
     expect(planIssue(96, 0, 12)).toMatch(/target weight/)
-    expect(planIssue(96, 97, 12)).toMatch(/below your current 96.0/)
+    expect(planIssue(96, 97, 12)).toMatch(/below your starting 96.0/)
     expect(planIssue(96, 90, 0)).toMatch(/whole number/)
     expect(planIssue(96, 90, 1.5)).toMatch(/whole number/)
     expect(planIssue(96, 90, 105)).toMatch(/whole number/)
@@ -152,5 +152,22 @@ describe('weekBudget', () => {
     const late = { ...plan, startDate: '2026-11-05' }
     const w = weekBudget(late, eaten([['2026-11-02', 9000], ['2026-11-05', 2000]]), '2026-11-06', '2026-11-06', 2200, 1800)
     expect(w).toMatchObject({ loggedDays: 1, balanceKcal: 200, restDays: 3 })
+  })
+})
+
+describe('plan start date', () => {
+  it('allows a past start date but not a future or already-finished one', () => {
+    expect(planIssue(96, 93, 5, '2026-11-02', '2026-11-08')).toBeNull()
+    expect(planIssue(96, 93, 5, '2026-11-09', '2026-11-08')).toMatch(/future/)
+    expect(planIssue(96, 93, 1, '2026-10-01', '2026-11-08')).toMatch(/already have finished/)
+    expect(planIssue(96, 93, 5, '', '2026-11-08')).toMatch(/start date/)
+  })
+
+  it('takes the smoothed weight on the start date, or the first one after it', () => {
+    const actual = [{ date: '2026-11-01', trendKg: 96.4 }, { date: '2026-11-03', trendKg: 96.1 }, { date: '2026-11-07', trendKg: 95.6 }]
+    expect(trendOn(actual, '2026-11-02')?.trendKg).toBe(96.4)
+    expect(trendOn(actual, '2026-11-03')?.trendKg).toBe(96.1)
+    expect(trendOn(actual, '2026-10-20')?.trendKg).toBe(96.4)
+    expect(trendOn([], '2026-11-02')).toBeNull()
   })
 })

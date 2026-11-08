@@ -24,12 +24,22 @@ export function parsePlan(value: string | null): WeightPlan | null {
 }
 
 /** Why these inputs can't make a plan, or null if they can. */
-export function planIssue(startKg: number | null, targetKg: number, weeks: number): string | null {
+export function planIssue(startKg: number | null, targetKg: number, weeks: number, startDate?: string, today?: string): string | null {
+  if (startDate != null && today != null) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return 'Pick a start date.'
+    if (startDate > today) return 'The start date can’t be in the future.'
+  }
   if (startKg == null) return 'A plan needs a scale reading to start from. Sync your scale first.'
   if (!(targetKg > 0)) return 'Enter your target weight.'
-  if (targetKg >= startKg) return `Your target needs to be below your current ${startKg.toFixed(1)} kg.`
+  if (targetKg >= startKg) return `Your target needs to be below your starting ${startKg.toFixed(1)} kg.`
   if (!Number.isInteger(weeks) || weeks < 1 || weeks > MAX_PLAN_WEEKS) return `Enter a whole number of weeks, from 1 to ${MAX_PLAN_WEEKS}.`
+  if (startDate != null && today != null && shiftDay(startDate, weeks * 7) <= today) return 'That plan would already have finished. Add weeks or pick a later start date.'
   return null
+}
+
+/** Smoothed weight on a date: the latest reading up to it, or the first one after if there's none before. */
+export function trendOn<T extends { date: string }>(actual: T[], date: string): T | null {
+  return actual.findLast(a => a.date <= date) ?? actual.find(a => a.date > date) ?? null
 }
 
 export type PlanPace = 'gentle' | 'steady' | 'fast'

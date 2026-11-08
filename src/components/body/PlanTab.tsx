@@ -8,7 +8,7 @@ import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/char
 import { upsertSetting } from '@/lib/db'
 import { proteinTarget, weightTrend, type BalanceDay } from '@/lib/nutrition'
 import {
-  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planEndDate, planIssue, planNumbers, planProgress, planSchedule, recentBurn,
+  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planEndDate, planIssue, planNumbers, planProgress, planSchedule, recentBurn, trendOn,
   type PlanNumbers, type PlanPace, type WeightPlan,
 } from '@/lib/weightPlan'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
@@ -70,6 +70,7 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
   const [editing, setEditing] = useState(false)
   const [target, setTarget] = useState('')
   const [weeks, setWeeks] = useState('12')
+  const [startDate, setStartDate] = useState(today)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -85,12 +86,15 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
 
   const targetKg = Number(target)
   const weekCount = Number(weeks)
-  const issue = planIssue(currentKg, targetKg, weekCount)
-  const draft = !issue && currentKg != null ? planNumbers({ startKg: currentKg, targetKg, weeks: weekCount }, burn, bmr) : null
+  // The plan starts from the smoothed weight on its start date, which can be in the past.
+  const startPoint = trendOn(actual, startDate)
+  const startKg = startPoint?.trendKg ?? null
+  const issue = planIssue(startKg, targetKg, weekCount, startDate, today)
+  const draft = !issue && startKg != null ? planNumbers({ startKg, targetKg, weeks: weekCount }, burn, bmr) : null
 
   async function save() {
-    if (issue || currentKg == null) return
-    const next: WeightPlan = { startDate: today, startKg: currentKg, targetKg, weeks: weekCount }
+    if (issue || startKg == null) return
+    const next: WeightPlan = { startDate, startKg, targetKg, weeks: weekCount }
     setSaving(true)
     setError('')
     try {
@@ -110,7 +114,7 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
   }
 
   function startEdit() {
-    if (plan) { setTarget(String(plan.targetKg)); setWeeks(String(plan.weeks)) }
+    if (plan) { setTarget(String(plan.targetKg)); setWeeks(String(plan.weeks)); setStartDate(plan.startDate) }
     setEditing(true)
   }
 
@@ -127,10 +131,17 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
         <Card hover={false}>
           <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{plan ? 'Change your plan' : 'Set a weight-loss plan'}</p>
           <p className="text-xs mb-4" style={{ color: sub }}>
-            {currentKg != null ? `Starts from your current trend weight, ${currentKg.toFixed(1)} kg.` : 'Needs a scale reading to start from.'}
-            {plan ? ' Saving restarts the plan from today.' : ''}
+            {startPoint
+              ? `Starts from your trend weight on ${fmtDay(startPoint.date)}, ${startPoint.trendKg.toFixed(1)} kg.`
+              : 'Needs a scale reading to start from.'}
+            {plan ? ' Saving restarts the plan from the start date.' : ''}
           </p>
-          <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:max-w-xl">
+            <label className="text-xs col-span-2 sm:col-span-1" style={{ color: sub }}>
+              Start date
+              <input type="date" value={startDate} max={today} onChange={e => setStartDate(e.target.value)}
+                className="mt-1 w-full rounded-lg px-3 py-2 text-base sm:text-sm" style={inputStyle} />
+            </label>
             <label className="text-xs" style={{ color: sub }}>
               Target weight (kg)
               <input type="number" inputMode="decimal" step="0.1" min={1} value={target} onChange={e => setTarget(e.target.value)}
