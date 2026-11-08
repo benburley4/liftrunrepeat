@@ -150,26 +150,43 @@ export function planSchedule(plan: WeightPlan, actual: TrendWeight[], today: str
   })
 }
 
+/** Days into the plan before loss per week is shown; earlier, water swings dominate. */
+export const MIN_FIT_DAYS = 14
+const MIN_FIT_READINGS = 7
+
+/** Slope in kg per day of a least-squares line through dated readings. */
+function slopePerDay(points: { date: string; kg: number }[]): number {
+  const pts = points.map(p => ({ x: Date.parse(`${p.date}T00:00:00Z`) / 86_400_000, y: p.kg }))
+  const mx = pts.reduce((a, p) => a + p.x, 0) / pts.length
+  const my = pts.reduce((a, p) => a + p.y, 0) / pts.length
+  return pts.reduce((a, p) => a + (p.x - mx) * (p.y - my), 0) / pts.reduce((a, p) => a + (p.x - mx) ** 2, 0)
+}
+
 export interface PlanActuals {
-  perWeekKg: number | null      // trend-weight loss per week since the start; negative = gaining
+  perWeekKg: number | null      // fitted loss per week since the start; negative = gaining; null before day 14
   pctPerWeek: number | null
   pace: PlanPace | 'gaining' | null
   dailyDeficit: number | null   // mean burned - eaten over logged plan days
   eaten: number | null          // mean kcal over logged plan days
   protein: number | null        // mean grams over logged plan days
   loggedDays: number            // finished plan days with meals logged
+  planDay: number               // days since the plan started
 }
 
 /**
  * What has actually happened since the plan started, in the same terms as the
- * targets. Food averages use finished plan days with meals logged; today is
- * left out until it's over.
+ * targets. Loss per week is the slope of a straight line through every daily
+ * reading since the start (one per day, morning preferred), so no single heavy
+ * or light morning sets it; it waits until day 14. Food averages use finished
+ * plan days with meals logged; today is left out until it's over.
  */
-export function planActuals(plan: WeightPlan, latest: TrendWeight | null, balance: BalanceDay[], today: string): PlanActuals {
-  const elapsed = latest ? daysBetween(plan.startDate, latest.date) : 0
-  const perWeekKg = latest && elapsed >= 1 ? round((plan.startKg - latest.trendKg) / elapsed * 7, 2) : null
-  const pctPerWeek = perWeekKg != null ? round(perWeekKg / plan.startKg * 100, 2) : null
+export function planActuals(plan: WeightPlan, readings: { date: string; kg: number }[], balance: BalanceDay[], today: string): PlanActuals {
   const end = planEndDate(plan)
+  const planDay = Math.max(0, daysBetween(plan.startDate, today))
+  const since = readings.filter(r => r.date >= plan.startDate && r.date <= today && r.date < end)
+  const fit = planDay >= MIN_FIT_DAYS && since.length >= MIN_FIT_READINGS
+  const perWeekKg = fit ? round(-slopePerDay(since) * 7, 2) : null
+  const pctPerWeek = perWeekKg != null ? round(perWeekKg / plan.startKg * 100, 2) : null
   const days = balance.filter(d => d.date >= plan.startDate && d.date < today && d.date < end && d.eaten != null)
   const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
   return {
@@ -180,6 +197,7 @@ export function planActuals(plan: WeightPlan, latest: TrendWeight | null, balanc
     eaten: mean(days.map(d => d.eaten!)),
     protein: mean(days.flatMap(d => (d.protein != null ? [d.protein] : []))),
     loggedDays: days.length,
+    planDay,
   }
 }
 

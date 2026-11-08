@@ -177,7 +177,7 @@ describe('planActuals', () => {
   const day = (date: string, eaten: number | null, deficit: number | null, protein: number | null) =>
     ({ date, eaten, deficit, protein }) as BalanceDay
 
-  it('averages loss since the start and food over finished logged plan days', () => {
+  it('averages food over finished logged plan days', () => {
     const balance = [
       day('2026-11-01', 3000, -500, 100), // before the plan
       day('2026-11-02', 2400, 700, 170),
@@ -185,12 +185,24 @@ describe('planActuals', () => {
       day('2026-11-04', 2200, 900, 180),
       day('2026-11-08', 500, 2500, 30), // today, still in progress
     ]
-    const a = planActuals(plan, { date: '2026-11-07', trendKg: 95.5 }, balance, '2026-11-08')
-    expect(a).toMatchObject({ perWeekKg: 0.7, pace: 'steady', dailyDeficit: 800, eaten: 2300, protein: 175, loggedDays: 2 })
+    const a = planActuals(plan, [], balance, '2026-11-08')
+    expect(a).toMatchObject({ dailyDeficit: 800, eaten: 2300, protein: 175, loggedDays: 2, planDay: 6 })
   })
 
-  it('shows gaining, and nothing before there is data', () => {
-    expect(planActuals(plan, { date: '2026-11-09', trendKg: 96.7 }, [], '2026-11-09').pace).toBe('gaining')
-    expect(planActuals(plan, { date: '2026-11-02', trendKg: 96 }, [], '2026-11-02')).toMatchObject({ perWeekKg: null, pace: null, eaten: null, loggedDays: 0 })
+  // 0.1 kg a day down, with ±0.4 kg water swings on alternate days.
+  const noisy = (days: number, perDay = -0.1) => Array.from({ length: days }, (_, i) => ({
+    date: new Date(Date.UTC(2026, 10, 2 + i)).toISOString().slice(0, 10),
+    kg: 96 + perDay * i + (i % 2 ? 0.4 : -0.4),
+  }))
+
+  it('fits loss per week through every reading, ignoring the swings', () => {
+    const a = planActuals(plan, noisy(15), [], '2026-11-16')
+    expect(a.perWeekKg).toBeCloseTo(0.7, 1)
+    expect(a.pace).toBe('steady')
+  })
+
+  it('waits until day 14, and shows gaining', () => {
+    expect(planActuals(plan, noisy(13), [], '2026-11-14')).toMatchObject({ perWeekKg: null, pace: null, planDay: 12 })
+    expect(planActuals(plan, noisy(15, 0.05), [], '2026-11-16').pace).toBe('gaining')
   })
 })

@@ -8,7 +8,7 @@ import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/char
 import { compChange, dailyBody } from '@/lib/bodyComp'
 import { proteinTarget, weightTrend, type BalanceDay } from '@/lib/nutrition'
 import type { BodyReading } from '@/lib/renpho'
-import { planActuals, planEndDate, planNumbers, planProgress, planSchedule, recentBurn, type WeightPlan } from '@/lib/weightPlan'
+import { MIN_FIT_DAYS, planActuals, planEndDate, planNumbers, planProgress, planSchedule, recentBurn, type WeightPlan } from '@/lib/weightPlan'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
 import { ActualFigures, BurnNote, PlanFigures, PlanWarnings, sub } from './PlanFigures'
 
@@ -34,6 +34,11 @@ export default function TrackingTab({ plan, loaded, rows, readings, balance, bmr
     rows.filter(r => r.date <= today).map(r => ({ date: r.date, weightKg: r.weight_kg, morningKg: r.weight_am_kg })),
   ), [rows, today])
   const latest = actual[actual.length - 1] ?? null
+  // One reading per day for the fitted loss rate: the lowest morning one when there is one.
+  const dailyKg = useMemo(() => rows.flatMap(r => {
+    const kg = r.weight_am_kg ?? r.weight_kg
+    return kg != null ? [{ date: r.date, kg }] : []
+  }), [rows])
   const bodyDays = useMemo(() => dailyBody(readings), [readings])
 
   const schedule = useMemo(() => (plan ? planSchedule(plan, actual, today) : []), [plan, actual, today])
@@ -56,7 +61,7 @@ export default function TrackingTab({ plan, loaded, rows, readings, balance, bmr
 
   const burn = recentBurn(balance, today)
   const numbers = planNumbers(plan, burn, bmr)
-  const actuals = planActuals(plan, latest, balance, today)
+  const actuals = planActuals(plan, dailyKg, balance, today)
   const progress = planProgress(plan, latest, today)
   const comp = compChange(bodyDays, plan.startDate, today)
   const end = planEndDate(plan)
@@ -102,7 +107,8 @@ export default function TrackingTab({ plan, loaded, rows, readings, balance, bmr
         {heading('Your daily actuals')}
         <ActualFigures a={actuals} />
         <p className="text-xs" style={{ color: sub }}>
-          Averages since the plan started on {fmtDay(plan.startDate)}. Weight loss uses your 7-day trend weight, so it lags a few days at first.
+          Since the plan started on {fmtDay(plan.startDate)}. Loss per week is a straight line fitted through every daily weigh-in since then, so one heavy or light morning barely moves it
+          {actuals.perWeekKg == null ? `; it appears on day ${MIN_FIT_DAYS} (today is day ${actuals.planDay}), before then water swings outweigh the real change` : ''}.
           {' '}{actuals.loggedDays
             ? `Food figures cover ${actuals.loggedDays} finished day${actuals.loggedDays === 1 ? '' : 's'} with meals logged; days with nothing logged and today are left out.`
             : 'Food figures appear once a finished plan day has meals logged.'}
