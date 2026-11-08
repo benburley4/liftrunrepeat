@@ -84,7 +84,7 @@ function MetricChart({ metric, data, days, size, trend }: {
           <Line dataKey={metric.key} name={metric.label} stroke={BODY_COLORS.fatFree} strokeWidth={2} dot={data.length <= 31 ? { r: 2.5, strokeWidth: 0, fill: BODY_COLORS.fatFree } : false}
             activeDot={{ r: 4, strokeWidth: 2, stroke: '#141414', fill: BODY_COLORS.fatFree }} connectNulls isAnimationActive={false} />
           {trend && (
-            <Line dataKey="fit" name="Trend" stroke="#8A8A8A" strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={false} isAnimationActive={false} />
+            <Line dataKey="fit" name="Trend" stroke="#D4D4D4" strokeWidth={1.5} strokeDasharray="5 4" dot={false} activeDot={false} isAnimationActive={false} />
           )}
         </LineChart>
       </ResponsiveContainer>
