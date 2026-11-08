@@ -1,79 +1,17 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import Card from '@/components/ui/Card'
-import StatTile from '@/components/ui/StatTile'
-import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
+import { fmtDay } from '@/components/recovery/chartStyle'
 import { upsertSetting } from '@/lib/db'
 import { proteinTarget, weightTrend, type BalanceDay } from '@/lib/nutrition'
 import {
-  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planActuals, planEndDate, planIssue, planNumbers, planProgress, planSchedule, recentBurn, trendOn,
-  type PlanActuals, type PlanNumbers, type PlanPace, type WeightPlan,
+  MAX_PLAN_WEEKS, WEIGHT_PLAN_KEY, planEndDate, planIssue, planNumbers, recentBurn, trendOn, type WeightPlan,
 } from '@/lib/weightPlan'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
+import { BurnNote, PlanFigures, PlanWarnings, sub, WARN } from './PlanFigures'
 
-const EATEN_DAYS = 14
-const sub = 'var(--color-text-subtle)'
-const WARN = '#F59E0B'
-
-const PACE_LABEL: Record<PlanPace | 'gaining', string> = { gentle: 'Gentle', steady: 'Steady', fast: 'Fast', gaining: 'Gaining' }
-
-const legendText = (value: string) => <span style={{ color: '#A0A0A0' }}>{value}</span>
-const mean = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : null)
-
-function PlanFigures({ n, proteinG }: { n: PlanNumbers; proteinG: number | null }) {
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <StatTile value={n.perWeekKg.toFixed(2)} label="Loss per week (kg)" animate={false} />
-      <StatTile value={PACE_LABEL[n.pace]} label={`Pace · ${n.pctPerWeek.toFixed(1)}% a week`} animate={false} />
-      <StatTile value={n.dailyDeficit.toLocaleString('en-GB')} label="Daily deficit (kcal)" animate={false} />
-      <StatTile value={n.calorieTarget != null ? n.calorieTarget.toLocaleString('en-GB') : '—'} label="Eat per day (kcal)" animate={false} />
-      <StatTile value={proteinG ?? '—'} label="Protein per day (g)" animate={false} />
-    </div>
-  )
-}
-
-/** Same tiles as the targets, averaged since the plan started, so each sits under its target. */
-function ActualFigures({ a }: { a: PlanActuals }) {
-  const kcal = (n: number | null) => (n != null ? Math.abs(n).toLocaleString('en-GB') : '—')
-  const gaining = a.perWeekKg != null && a.perWeekKg < 0
-  const surplus = a.dailyDeficit != null && a.dailyDeficit < 0
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-      <StatTile value={a.perWeekKg != null ? Math.abs(a.perWeekKg).toFixed(2) : '—'} label={gaining ? 'Gain per week (kg)' : 'Loss per week (kg)'} animate={false} />
-      <StatTile value={a.pace ? PACE_LABEL[a.pace] : '—'} label={a.pctPerWeek != null ? `Pace · ${a.pctPerWeek.toFixed(1)}% a week` : 'Pace'} animate={false} />
-      <StatTile value={kcal(a.dailyDeficit)} label={surplus ? 'Daily surplus (kcal)' : 'Daily deficit (kcal)'} animate={false} />
-      <StatTile value={kcal(a.eaten)} label="Eaten per day (kcal)" animate={false} />
-      <StatTile value={a.protein ?? '—'} label="Protein per day (g)" animate={false} />
-    </div>
-  )
-}
-
-function PlanWarnings({ n, burn }: { n: PlanNumbers; burn: number | null }) {
-  return (
-    <>
-      {n.belowResting && (
-        <p className="text-sm" style={{ color: WARN }}>
-          This pace would mean eating less than your resting burn, so the target above stops there and you&apos;d lose more slowly than planned.
-          {n.weeksAtResting != null && ` About ${n.weeksAtResting} weeks would suit this target.`}
-        </p>
-      )}
-      {!n.belowResting && n.pace === 'fast' && (
-        <p className="text-sm" style={{ color: WARN }}>
-          That&apos;s over 1% of your bodyweight a week, which makes losing muscle more likely. Adding weeks would ease it.
-        </p>
-      )}
-      {burn == null && (
-        <p className="text-sm" style={{ color: sub }}>
-          Add your height, date of birth and sex on the <a href="/profile" className="underline">Profile</a> page to get a calorie target.
-        </p>
-      )}
-    </>
-  )
-}
-
-/** Plan tab: pick a target and a number of weeks; see the rate, calories and schedule. */
+/** Plan tab: set the start date, target and weeks; see the rate and daily targets. Progress is on Tracking. */
 export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr, today }: {
   plan: WeightPlan | null
   loaded: boolean
@@ -97,7 +35,6 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
   const currentKg = latest?.trendKg ?? null
 
   const burn = recentBurn(balance, today)
-  const eaten = mean(balance.filter(d => d.date < today).slice(-EATEN_DAYS).flatMap(d => (d.eaten != null ? [d.eaten] : [])))
   const proteinG = proteinTarget(currentKg)
 
   const targetKg = Number(target)
@@ -133,9 +70,6 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
     if (plan) { setTarget(String(plan.targetKg)); setWeeks(String(plan.weeks)); setStartDate(plan.startDate) }
     setEditing(true)
   }
-
-  const schedule = useMemo(() => (plan ? planSchedule(plan, actual, today) : []), [plan, actual, today])
-  const chartData = useMemo(() => schedule.map(w => ({ ...w, label: fmtDay(w.date) })), [schedule])
 
   if (!loaded) return null
 
@@ -190,11 +124,7 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
           <div className="space-y-3">
             <PlanFigures n={draft} proteinG={proteinG} />
             <PlanWarnings n={draft} burn={burn} />
-            {burn != null && (
-              <p className="text-xs" style={{ color: sub }}>
-                Calories use your average burn of {burn.toLocaleString('en-GB')} kcal a day over the last 28 days, and about 7,700 kcal per kg. These are estimates, not medical advice.
-              </p>
-            )}
+            <BurnNote burn={burn} />
           </div>
         )}
       </div>
@@ -202,28 +132,19 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
   }
 
   const numbers = planNumbers(plan, burn, bmr)
-  const actuals = planActuals(plan, latest, balance, today)
-  const progress = planProgress(plan, latest, today)
-  const finished = today >= planEndDate(plan)
-  const statusWord = !progress ? '' : progress.state === 'ahead' ? 'Ahead of plan' : progress.state === 'behind' ? 'Behind plan' : 'On track'
 
   return (
     <div className="space-y-6">
       <Card hover={false}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>
-              {plan.startKg.toFixed(1)} kg to {plan.targetKg.toFixed(1)} kg · {plan.weeks} week{plan.weeks === 1 ? '' : 's'} · ends {fmtDay(planEndDate(plan))}
+            <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>Your plan</p>
+            <p className="text-2xl font-black mt-1" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>
+              {plan.startKg.toFixed(1)} kg to {plan.targetKg.toFixed(1)} kg
             </p>
-            {progress && (
-              <>
-                <p className="text-2xl font-black mt-1" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>{finished ? 'Plan finished' : statusWord}</p>
-                <p className="text-sm" style={{ color: '#A0A0A0' }}>
-                  Trend weight {progress.actualKg.toFixed(1)} kg, plan says {progress.expectedKg.toFixed(1)} kg
-                  {progress.state !== 'on-track' ? ` (${Math.abs(progress.diffKg).toFixed(1)} kg ${progress.diffKg < 0 ? 'under' : 'over'})` : ''}.
-                </p>
-              </>
-            )}
+            <p className="text-sm" style={{ color: '#A0A0A0' }}>
+              {plan.weeks} week{plan.weeks === 1 ? '' : 's'} · {fmtDay(plan.startDate)} to {fmtDay(planEndDate(plan))}. See how it&apos;s going on the Tracking tab.
+            </p>
           </div>
           <div className="flex gap-2 shrink-0">
             <button type="button" onClick={startEdit} className="px-3 py-2 rounded-lg text-xs font-bold"
@@ -235,84 +156,12 @@ export default function PlanTab({ plan, loaded, onPlanChange, rows, balance, bmr
         {error && <p className="text-sm mt-3" style={{ color: WARN }}>{error}</p>}
       </Card>
 
-      {progress && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatTile value={Math.abs(progress.lostKg).toFixed(1)} label={progress.lostKg < 0 ? 'Gained so far (kg)' : 'Lost so far (kg)'} animate={false} />
-          <StatTile value={progress.remainingKg.toFixed(1)} label="Still to lose (kg)" animate={false} />
-          <StatTile value={Math.ceil(progress.daysLeft / 7)} label="Weeks left" animate={false} />
-          <StatTile value={eaten != null ? eaten.toLocaleString('en-GB') : '—'} label={`Eaten per day, last ${EATEN_DAYS} days`} animate={false} />
-        </div>
-      )}
-
       <div className="space-y-3">
         <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>Your daily targets</p>
         <PlanFigures n={numbers} proteinG={proteinG} />
         <PlanWarnings n={numbers} burn={burn} />
-        {burn != null && (
-          <p className="text-xs" style={{ color: sub }}>
-            Calories update with your average burn over the last 28 days ({burn.toLocaleString('en-GB')} kcal a day), and assume about 7,700 kcal per kg. These are estimates, not medical advice.
-          </p>
-        )}
+        <BurnNote burn={burn} />
       </div>
-
-      <div className="space-y-3">
-        <p className="text-xs uppercase tracking-widest" style={{ color: '#00BFA5' }}>Your daily actuals</p>
-        <ActualFigures a={actuals} />
-        <p className="text-xs" style={{ color: sub }}>
-          Averages since the plan started on {fmtDay(plan.startDate)}. Weight loss uses your 7-day trend weight, so it lags a few days at first.
-          {' '}{actuals.loggedDays
-            ? `Food figures cover ${actuals.loggedDays} finished day${actuals.loggedDays === 1 ? '' : 's'} with meals logged; days with nothing logged and today are left out.`
-            : 'Food figures appear once a finished plan day has meals logged.'}
-        </p>
-      </div>
-
-      <Card hover={false}>
-        <p className="text-sm font-bold" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>Plan vs actual</p>
-        <p className="text-xs mb-4" style={{ color: sub }}>Planned weight each week against your 7-day trend weight, in kg</p>
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 4, right: 4, left: -12, bottom: 0 }}>
-              <CartesianGrid stroke="#1E1E1E" vertical={false} />
-              <XAxis dataKey="label" {...axisProps} minTickGap={24} />
-              <YAxis {...axisProps} width={48} allowDecimals={false}
-                domain={[(min: number) => Math.floor(min - 0.5), (max: number) => Math.ceil(max + 0.5)]} />
-              <Tooltip {...chartTooltipStyle} formatter={(v, name) => [`${Number(v).toFixed(1)} kg`, name]} />
-              <Legend wrapperStyle={{ fontSize: 11 }} formatter={legendText} />
-              <Line dataKey="planKg" name="Plan" stroke="#8A8A8A" strokeWidth={2} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-              <Line dataKey="actualKg" name="Actual" stroke="#00A893" strokeWidth={2} connectNulls isAnimationActive={false}
-                dot={{ r: 3, strokeWidth: 0, fill: '#00A893' }} activeDot={{ r: 4, strokeWidth: 2, stroke: '#141414', fill: '#00A893' }} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
-
-      <Card hover={false}>
-        <p className="text-sm font-bold mb-3" style={{ color: '#F5F5F5', fontFamily: 'var(--font-heading)' }}>Week by week</p>
-        <div className="overflow-auto" style={{ maxHeight: '360px' }}>
-          <table className="w-full text-sm" style={{ fontFamily: 'var(--font-mono)' }}>
-            <thead>
-              <tr>
-                {['Week', 'Date', 'Plan kg', 'Actual kg', 'Difference'].map((h, i) => (
-                  <th key={h} scope="col" className={`${i < 2 ? 'text-left' : 'text-right'} font-medium pb-2 px-2 text-xs whitespace-nowrap`} style={{ color: sub, fontFamily: 'var(--font-sans)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {schedule.map(w => (
-                <tr key={w.week} style={{ borderTop: '1px solid #2E2E2E' }}>
-                  <td className="py-2 px-2" style={{ color: '#F5F5F5' }}>{w.week === 0 ? 'Start' : w.week}</td>
-                  <td className="py-2 px-2 whitespace-nowrap" style={{ color: '#A0A0A0' }}>{fmtDay(w.date)}</td>
-                  <td className="py-2 px-2 text-right" style={{ color: '#A0A0A0' }}>{w.planKg.toFixed(1)}</td>
-                  <td className="py-2 px-2 text-right" style={{ color: '#A0A0A0' }}>{w.actualKg?.toFixed(1) ?? '—'}</td>
-                  <td className="py-2 px-2 text-right" style={{ color: '#A0A0A0' }}>
-                    {w.actualKg != null ? `${w.actualKg - w.planKg > 0 ? '+' : ''}${(w.actualKg - w.planKg).toFixed(1)}` : '—'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
     </div>
   )
 }

@@ -12,6 +12,7 @@ import DrinksCard from '@/components/nutrition/DrinksCard'
 import PlanBudget from '@/components/nutrition/PlanBudget'
 import BodyTab from '@/components/body/BodyTab'
 import PlanTab from '@/components/body/PlanTab'
+import TrackingTab from '@/components/body/TrackingTab'
 import MealEditor, { MealDraft } from '@/components/nutrition/MealEditor'
 import Modal from '@/components/ui/Modal'
 import { getZeppDaily, getRenphoBody, getSetting } from '@/lib/db'
@@ -33,6 +34,7 @@ const TABS = [
   { key: 'nutrition', label: 'Nutrition' },
   { key: 'weight', label: 'Weight & Body' },
   { key: 'plan', label: 'Plan' },
+  { key: 'tracking', label: 'Tracking' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
@@ -178,8 +180,8 @@ export default function NutritionPage() {
 
   // Calorie budget from the active plan, for the Nutrition tab.
   const planTarget = plan ? planNumbers(plan, recentBurn(balance, today), todayBmr).calorieTarget : null
-  const budgetWeek = plan && planTarget != null && planActiveOn(plan, date)
-    ? weekBudget(plan, intakeByDate(meals ?? []), date, today, planTarget, todayBmr)
+  const budgetWeek = plan && planTarget != null && planActiveOn(plan, today)
+    ? weekBudget(plan, intakeByDate(meals ?? []), today, today, planTarget, todayBmr)
     : null
 
   const dayMeals = mealsOnDate(meals ?? [], date)
@@ -213,7 +215,7 @@ export default function NutritionPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-10 space-y-8 sm:space-y-10">
-        <div className="flex gap-2" role="tablist" aria-label="Section">
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1" role="tablist" aria-label="Section">
           {TABS.map(t => (
             <button
               key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
@@ -228,6 +230,20 @@ export default function NutritionPage() {
         {tab === 'weight' && <BodyTab rows={rows} readings={readings} today={today} onSynced={reloadBody} />}
 
         {tab === 'plan' && <PlanTab plan={plan} loaded={planLoaded} onPlanChange={setPlan} rows={rows} balance={balance} bmr={todayBmr} today={today} />}
+
+        {tab === 'tracking' && <>
+          <TrackingTab
+            plan={plan} loaded={planLoaded} rows={rows} readings={readings} balance={balance} bmr={todayBmr} today={today}
+            onSetPlan={() => setTab('plan')}
+            budget={budgetWeek && planTarget != null
+              ? <PlanBudget eaten={todayEaten} target={planTarget} week={budgetWeek} isToday />
+              : null}
+          />
+          <section className="space-y-6">
+            <SectionHeading eyebrow="Energy balance" title="Eaten vs burned" sub="Calories burned = resting burn from your scale (or your profile when there's no recent reading) plus active calories from your watch." />
+            <EnergyBalance days={balance} today={today} todayEaten={todayEaten} todayBurn={todayBurn} restingSource={todayRest?.source ?? null} missingStats={missingStats} />
+          </section>
+        </>}
 
         {tab === 'nutrition' && <>
         {error && (
@@ -276,9 +292,15 @@ export default function NutritionPage() {
           </div>
 
           <div className="min-w-0 space-y-4">
-            {budgetWeek && planTarget != null && (
-              <PlanBudget eaten={dayMacros.kcal} target={planTarget} week={budgetWeek} isToday={date === today} />
-            )}
+            {date === today && budgetWeek && planTarget != null && (() => {
+              const left = planTarget - Math.round(todayEaten)
+              return (
+                <p className="text-sm" style={{ color: '#A0A0A0' }}>
+                  <b style={{ color: left < 0 ? '#E5484D' : '#00BFA5', fontFamily: 'var(--font-mono)' }}>{Math.abs(left).toLocaleString('en-GB')}</b>
+                  {' '}kcal {left < 0 ? 'over' : 'left'} today · plan target {planTarget.toLocaleString('en-GB')}
+                </p>
+              )
+            })()}
             <DaySummary macros={dayMacros} burn={dayBurn} weightKg={dayWeight} inProgress={date === today} />
             {meals === null
               ? <p className="text-sm" style={{ color: 'var(--color-text-subtle)' }}>Loading meals…</p>
@@ -299,11 +321,6 @@ export default function NutritionPage() {
             />
           </Modal>
         )}
-
-        <section className="space-y-6">
-          <SectionHeading eyebrow="Energy balance" title="Eaten vs burned" sub="Calories burned = resting burn from your scale (or your profile when there's no recent reading) plus active calories from your watch." />
-          <EnergyBalance days={balance} today={today} todayEaten={todayEaten} todayBurn={todayBurn} restingSource={todayRest?.source ?? null} missingStats={missingStats} />
-        </section>
 
         <p className="text-xs" style={{ color: 'var(--color-text-subtle)' }}>
           Photo estimates are rough — often ±20–40% on mixed plates. Use S / M / L or type grams to correct them before saving.

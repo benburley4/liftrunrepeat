@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { offsetMinutes, toBodyReading, type BodyReading } from '../renpho'
-import { bucketBody, dailyBody, linearTrend, lowestWeights, weightChanges } from '../bodyComp'
+import { bucketBody, compChange, dailyBody, linearTrend, lowestWeights, weightChanges, type BodyDay } from '../bodyComp'
 
 const ME = '5975813831868809088'
 
@@ -190,5 +190,26 @@ describe('weightChanges', () => {
     expect(weightChanges([{ date: '2026-10-05', weightKg: 100 }, ...points], 'month')).toEqual([
       { date: '2026-11-01', avgKg: 98.88, changeKg: -1.12 },
     ])
+  })
+})
+
+describe('compChange', () => {
+  const d = (date: string, fat: number, fatFree: number) =>
+    ({ date, fat_mass_kg: fat, fat_free_kg: fatFree, body_fat_pct: Math.round(fat / (fat + fatFree) * 1000) / 10 }) as BodyDay
+
+  it('compares the week up to the start with the week up to today', () => {
+    const days = [d('2026-10-28', 18, 78), d('2026-11-01', 18, 78.2), d('2026-11-05', 17.2, 77.8), d('2026-11-07', 17, 77.6)]
+    const c = compChange(days, '2026-11-02', '2026-11-08')!
+    expect(c.from).toMatchObject({ date: '2026-11-01', fatKg: 18, fatFreeKg: 78.1 })
+    expect(c.to).toMatchObject({ date: '2026-11-07', fatKg: 17.1, fatFreeKg: 77.7 })
+    expect(c).toMatchObject({ fatKg: -0.9, fatFreeKg: -0.4 })
+    expect(c.fatShare).toBe(69) // 0.9 of 1.3 kg
+  })
+
+  it('needs readings at both ends and holds back the fat share under 0.5 kg', () => {
+    expect(compChange([d('2026-11-07', 17, 77.6)], '2026-11-07', '2026-11-08')).toBeNull()
+    expect(compChange([], '2026-11-02', '2026-11-08')).toBeNull()
+    const small = compChange([d('2026-11-01', 18, 78), d('2026-11-07', 17.9, 77.9)], '2026-11-02', '2026-11-08')!
+    expect(small.fatShare).toBeNull()
   })
 })

@@ -2,7 +2,7 @@
 // week / month averages for long ranges.
 
 import type { BodyReading } from './renpho'
-import { weekStart, type BucketSize } from './nutrition'
+import { shiftDay, weekStart, type BucketSize } from './nutrition'
 
 export type BodyMetricKey =
   | 'body_fat_pct' | 'fat_mass_kg' | 'fat_free_kg' | 'lean_mass_kg' | 'muscle_pct' | 'visceral_fat'
@@ -157,4 +157,52 @@ export function weightChanges(
   return periods.slice(1)
     .map((p, i) => ({ date: p.date, avgKg: round(p.avgKg, 2), changeKg: round(p.avgKg - periods[i].avgKg, 2) }))
     .filter(p => p.date >= from)
+}
+
+export interface CompPoint { date: string; fatKg: number; fatFreeKg: number; bodyFatPct: number; weightKg: number }
+export interface CompChange {
+  from: CompPoint
+  to: CompPoint
+  fatKg: number          // to − from; negative = lost
+  fatFreeKg: number
+  bodyFatPct: number     // percentage points
+  fatShare: number | null // % of the weight lost that was fat; null under 0.5 kg lost
+}
+
+/** Mean of the composition days in the week up to `date`, or the first day after it if none. */
+function compAround(days: BodyDay[], date: string): CompPoint | null {
+  const from = shiftDay(date, -6)
+  const ok = (d: BodyDay) => d.fat_mass_kg != null && d.fat_free_kg != null && d.body_fat_pct != null
+  let pick = days.filter(d => ok(d) && d.date >= from && d.date <= date)
+  if (!pick.length) {
+    const next = days.find(d => ok(d) && d.date > date)
+    pick = next ? [next] : []
+  }
+  if (!pick.length) return null
+  const avg = (f: (d: BodyDay) => number) => pick.reduce((a, d) => a + f(d), 0) / pick.length
+  const fatKg = avg(d => d.fat_mass_kg!)
+  const fatFreeKg = avg(d => d.fat_free_kg!)
+  return {
+    date: pick[pick.length - 1].date,
+    fatKg: round(fatKg, 1),
+    fatFreeKg: round(fatFreeKg, 1),
+    bodyFatPct: round(avg(d => d.body_fat_pct!), 1),
+    weightKg: round(fatKg + fatFreeKg, 1),
+  }
+}
+
+/** Body composition now against the plan start, from weekly averages at each end. */
+export function compChange(days: BodyDay[], start: string, today: string): CompChange | null {
+  const a = compAround(days, start)
+  const b = compAround(days, today)
+  if (!a || !b || b.date <= a.date) return null
+  const lost = a.weightKg - b.weightKg
+  return {
+    from: a,
+    to: b,
+    fatKg: round(b.fatKg - a.fatKg, 1),
+    fatFreeKg: round(b.fatFreeKg - a.fatFreeKg, 1),
+    bodyFatPct: round(b.bodyFatPct - a.bodyFatPct, 1),
+    fatShare: lost >= 0.5 ? Math.round((a.fatKg - b.fatKg) / lost * 100) : null,
+  }
 }
