@@ -83,12 +83,12 @@ export default function NutritionPage() {
     await commit([...prev, meal], meal.date, prev)
   }
 
-  async function addFavourite(src: Pick<Meal, 'title' | 'items' | 'share' | 'thumb'>) {
+  async function addFavourite(src: Pick<Meal, 'title' | 'items' | 'share' | 'thumb'>): Promise<boolean> {
     const key = src.title.trim().toLowerCase()
-    if (favourites.some(f => f.title.trim().toLowerCase() === key)) return
+    if (favourites.some(f => f.title.trim().toLowerCase() === key)) return true
     const next = [...favourites, { id: newId(), title: src.title, items: src.items, share: src.share, thumb: src.thumb }]
     setFavourites(next)
-    try { await saveFavourites(next) } catch { setFavourites(favourites); setError('Could not save favourite') }
+    try { await saveFavourites(next); return true } catch { setFavourites(favourites); setError('Could not save favourite'); return false }
   }
 
   async function onLogged(m: LoggedMeal, favourite: boolean) {
@@ -100,9 +100,9 @@ export default function NutritionPage() {
     if (favourite) await addFavourite(meal)
   }
 
-  async function onRepeat(src: Pick<Meal, 'title' | 'items' | 'share' | 'thumb'>) {
+  async function onRepeat(src: Pick<Meal, 'title' | 'items' | 'share' | 'thumb'>): Promise<boolean> {
     setBusy(true)
-    try { await addMeal(repeatMeal(src, date, newId(), new Date().toISOString())) } catch { /* error shown */ } finally { setBusy(false) }
+    try { await addMeal(repeatMeal(src, date, newId(), new Date().toISOString())); return true } catch { return false /* error shown */ } finally { setBusy(false) }
   }
 
   async function onDrink(p: DrinkPreset, size: PortionSize) {
@@ -291,7 +291,7 @@ export default function NutritionPage() {
           <div className="min-w-0 space-y-4">
             <MealLogger onSave={onLogged} />
             <DrinksCard onLog={onDrink} fluidsMl={fluidsMl(dayMeals)} busy={busy} />
-            <RepeatMeals favourites={favourites} recent={recent} onLog={onRepeat} onUnfavourite={onUnfavourite} busy={busy} />
+            <RepeatMeals favourites={favourites} recent={recent} onLog={onRepeat} onFavourite={addFavourite} onUnfavourite={onUnfavourite} busy={busy} />
           </div>
 
           <div className="min-w-0 space-y-4">
