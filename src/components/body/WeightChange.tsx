@@ -70,7 +70,7 @@ export default function WeightChange({ weight, fat, fatFree, lowest, highest, ba
           </p>
           <p className="text-xs mb-4" style={{ color: sub }}>
             {period === 'day'
-              ? 'Each day against the same day a week earlier, in kg. Below zero is a loss, above is a gain.'
+              ? 'Each day’s 7-day average against the same day a week earlier, in kg. Below zero is a loss, above is a gain.'
               : `Average weight against the ${period} before, in kg. Below zero is a loss, above is a gain. The latest ${period} may still be in progress.`}
           </p>
           <div className="h-48">

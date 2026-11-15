@@ -21,7 +21,7 @@ import WeightChange, { TrendBadge, signed } from './WeightChange'
 const BODY_COLORS = { fat: '#C7851F', fatFree: '#00A893', reading: '#8A8A8A' }
 
 const RANGES = [
-  { key: 'week', label: 'Week', days: 7 },
+  { key: 'week', label: 'Week', days: 8 },   // 8 days = today back to the same weekday last week
   { key: 'month', label: 'Month', days: 30 },
   { key: '3m', label: '3 months', days: 91 },
   { key: '6m', label: '6 months', days: 182 },
@@ -152,7 +152,9 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
   const period = range === 'week' ? 'day' : size === 'month' ? 'month' : 'week'
   const changeBars = useMemo(
     () => (range === 'week'
-      ? weekOverWeekChanges(weightAll, start, today).map(b => ({ ...b, label: bucketLabel(b.date, 'day') }))
+      // Compare the 7-day average, not one morning's reading, so the week-over-week change is smooth.
+      ? weekOverWeekChanges(weightAll.map(w => ({ date: w.date, weightKg: w.trendKg })), start, today)
+        .map(b => ({ ...b, label: bucketLabel(b.date, 'day') }))
       : weightChanges(weightAll, period === 'month' ? 'month' : 'week', start).map(b => ({ ...b, label: bucketLabel(b.date, period === 'month' ? 'month' : 'week') }))),
     [weightAll, range, period, start, today],
   )
