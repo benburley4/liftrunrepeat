@@ -21,6 +21,7 @@ import WeightChange, { TrendBadge, signed } from './WeightChange'
 const BODY_COLORS = { fat: '#C7851F', fatFree: '#00A893', reading: '#8A8A8A' }
 
 const RANGES = [
+  { key: 'week', label: 'Week', days: 7 },
   { key: 'month', label: 'Month', days: 30 },
   { key: '3m', label: '3 months', days: 91 },
   { key: '6m', label: '6 months', days: 182 },
