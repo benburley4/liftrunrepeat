@@ -10,6 +10,7 @@ import EnergyBalance from '@/components/nutrition/EnergyBalance'
 import DaySummary from '@/components/nutrition/DaySummary'
 import DrinksCard from '@/components/nutrition/DrinksCard'
 import PlanBudget from '@/components/nutrition/PlanBudget'
+import WeeklyTab from '@/components/nutrition/WeeklyTab'
 import BodyTab from '@/components/body/BodyTab'
 import PlanTab from '@/components/body/PlanTab'
 import TrackingTab from '@/components/body/TrackingTab'
@@ -31,6 +32,7 @@ import { loadMeals, saveDay, loadFavourites, saveFavourites, FavouriteMeal } fro
 const newId = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`)
 
 const TABS = [
+  { key: 'weekly', label: 'Weekly' },
   { key: 'nutrition', label: 'Nutrition' },
   { key: 'weight', label: 'Weight & Body' },
   { key: 'plan', label: 'Plan' },
@@ -40,7 +42,7 @@ type TabKey = (typeof TABS)[number]['key']
 
 export default function NutritionPage() {
   const today = localToday()
-  const [tab, setTab] = useState<TabKey>('nutrition')
+  const [tab, setTab] = useState<TabKey>('weekly')
   const [readings, setReadings] = useState<BodyReading[]>([])
   const [plan, setPlan] = useState<WeightPlan | null>(null)
   const [planLoaded, setPlanLoaded] = useState(false)
@@ -229,6 +231,8 @@ export default function NutritionPage() {
             </button>
           ))}
         </div>
+
+        {tab === 'weekly' && <WeeklyTab balance={balance} today={today} />}
 
         {tab === 'weight' && <BodyTab rows={rows} readings={readings} today={today} onSynced={reloadBody} />}
 
