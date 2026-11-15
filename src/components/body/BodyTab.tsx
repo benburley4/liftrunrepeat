@@ -9,7 +9,7 @@ import StatTile from '@/components/ui/StatTile'
 import { chartTooltipStyle, axisProps, fmtDay } from '@/components/recovery/chartStyle'
 import { bucketSizeFor, shiftDay, weightTrend, type BucketSize } from '@/lib/nutrition'
 import {
-  BODY_METRICS, TREND_FLAT, WEIGHT_FLAT_KG, bucketBody, dailyBody, linearFit, linearTrend, lowestWeights, weightChanges,
+  BODY_METRICS, TREND_FLAT, WEIGHT_FLAT_KG, bucketBody, dailyBody, linearFit, linearTrend, lowestWeights, weightChanges, weekOverWeekChanges,
   type BodyDay, type BodyMetric, type BodyMetricKey, type Trend,
 } from '@/lib/bodyComp'
 import type { BodyReading } from '@/lib/renpho'
@@ -148,10 +148,13 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
     [weightData, weightFallback],
   )
   const inRange = weightFallback ? [] : weightData.map(w => w.weightKg)
-  const period = size === 'month' ? 'month' : 'week'
+  // Week range: each day vs the same day last week; otherwise weekly, or monthly for long ranges.
+  const period = range === 'week' ? 'day' : size === 'month' ? 'month' : 'week'
   const changeBars = useMemo(
-    () => weightChanges(weightAll, period, start).map(b => ({ ...b, label: bucketLabel(b.date, period) })),
-    [weightAll, period, start],
+    () => (range === 'week'
+      ? weekOverWeekChanges(weightAll, start, today).map(b => ({ ...b, label: bucketLabel(b.date, 'day') }))
+      : weightChanges(weightAll, period === 'month' ? 'month' : 'week', start).map(b => ({ ...b, label: bucketLabel(b.date, period === 'month' ? 'month' : 'week') }))),
+    [weightAll, range, period, start, today],
   )
   const per = size === 'day' ? `${lowest ? 'lowest' : 'first'} reading ${PER.day}` : `${PER[size]} of ${lowest ? 'lowest' : 'first'} daily readings`
 

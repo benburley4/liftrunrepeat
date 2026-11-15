@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { offsetMinutes, toBodyReading, type BodyReading } from '../renpho'
-import { bucketBody, compChange, dailyBody, linearFit, linearTrend, lowestWeights, weightChanges, type BodyDay } from '../bodyComp'
+import { bucketBody, compChange, dailyBody, linearFit, linearTrend, lowestWeights, weightChanges, weekOverWeekChanges, type BodyDay } from '../bodyComp'
 
 const ME = '5975813831868809088'
 
@@ -190,6 +190,30 @@ describe('weightChanges', () => {
     expect(weightChanges([{ date: '2026-10-05', weightKg: 100 }, ...points], 'month')).toEqual([
       { date: '2026-11-01', avgKg: 98.88, changeKg: -1.12 },
     ])
+  })
+})
+
+describe('weekOverWeekChanges', () => {
+  const points = [
+    { date: '2026-11-01', weightKg: 100 },
+    { date: '2026-11-02', weightKg: 99 },
+    { date: '2026-11-08', weightKg: 98 },   // −2 vs 11-01
+    { date: '2026-11-09', weightKg: 99.5 }, // +0.5 vs 11-02
+  ]
+
+  it('compares each day with the same day a week earlier', () => {
+    expect(weekOverWeekChanges(points)).toEqual([
+      { date: '2026-11-08', changeKg: -2, prevKg: 100 },
+      { date: '2026-11-09', changeKg: 0.5, prevKg: 99 },
+    ])
+  })
+
+  it('skips days with no reading a week before', () => {
+    expect(weekOverWeekChanges([{ date: '2026-11-08', weightKg: 98 }])).toEqual([])
+  })
+
+  it('still compares the first in-range day with its week-ago reading', () => {
+    expect(weekOverWeekChanges(points, '2026-11-08', '2026-11-09')).toHaveLength(2)
   })
 })
 

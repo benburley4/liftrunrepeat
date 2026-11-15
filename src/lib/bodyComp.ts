@@ -173,6 +173,31 @@ export function weightChanges(
     .filter(p => p.date >= from)
 }
 
+/**
+ * For each day in [from, to] with a reading, its change against the same day a
+ * week earlier (that day − the day 7 days before). Takes all readings so days
+ * near the start of the range still have a week-ago reading to compare with.
+ */
+export function weekOverWeekChanges(
+  points: { date: string; weightKg: number }[], from = '', to = '',
+): { date: string; changeKg: number; prevKg: number }[] {
+  const byDate = new Map<string, number[]>()
+  for (const p of points) {
+    if (!byDate.has(p.date)) byDate.set(p.date, [])
+    byDate.get(p.date)!.push(p.weightKg)
+  }
+  const avg = new Map<string, number>()
+  for (const [d, kgs] of byDate) avg.set(d, kgs.reduce((a, b) => a + b, 0) / kgs.length)
+  const out: { date: string; changeKg: number; prevKg: number }[] = []
+  for (const d of [...avg.keys()].sort()) {
+    if ((from && d < from) || (to && d > to)) continue
+    const prev = avg.get(shiftDay(d, -7))
+    if (prev == null) continue
+    out.push({ date: d, changeKg: round(avg.get(d)! - prev, 2), prevKg: round(prev, 2) })
+  }
+  return out
+}
+
 export interface CompPoint { date: string; fatKg: number; fatFreeKg: number; bodyFatPct: number; weightKg: number }
 export interface CompChange {
   from: CompPoint
