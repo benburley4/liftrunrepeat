@@ -148,6 +148,19 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
     [weightData, weightFallback],
   )
   const inRange = weightFallback ? [] : weightData.map(w => w.weightKg)
+
+  // Week range: the headline weight change is today's 7-day average against the same day
+  // last week's — a single heavy or light morning can't swing it, unlike a best-fit over 8 days.
+  const weekWeightTrend = useMemo<Trend | null>(() => {
+    const byDate = new Map(weightAll.map(w => [w.date, w.trendKg]))
+    const now = byDate.get(today)
+    const prior = byDate.get(shiftDay(today, -7))
+    if (now == null || prior == null) return null
+    const total = Math.round((now - prior) * 100) / 100
+    return { total, perWeek: total, direction: Math.abs(total) < WEIGHT_FLAT_KG ? 'flat' : total < 0 ? 'down' : 'up' }
+  }, [weightAll, today])
+  const weightTrendShown = range === 'week' ? (weekWeightTrend ?? weightFit) : weightFit
+
   // Week range: each day vs the same day last week; otherwise weekly, or monthly for long ranges.
   const period = range === 'week' ? 'day' : size === 'month' ? 'month' : 'week'
   const changeBars = useMemo(
@@ -191,7 +204,7 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
       <div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatTile value={lastWeight ? lastWeight.weightKg.toFixed(1) : '—'} animate={false}
-            label={`Weight (kg)${weightFit ? ` · ${signed(weightFit.total, 1)}` : ''}`} />
+            label={`Weight (kg)${weightTrendShown ? ` · ${signed(weightTrendShown.total, 1)}` : ''}`} />
           {TILES.map(t => {
             const latest = days.findLast(d => d[t.key] != null)?.[t.key]
             const fit = metricTrend(days, t.key)
@@ -206,7 +219,7 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
 
       <ChartCard
         title="Bodyweight"
-        badge={<TrendBadge trend={weightFit} unit=" kg" digits={2} />}
+        badge={<TrendBadge trend={weightTrendShown} unit=" kg" digits={2} />}
         sub={!weightData.length ? 'No scale readings yet'
           : weightFallback ? `No reading in this range. Last one ${lastWeight.weightKg} kg on ${lastWeight.label}; showing your latest readings.`
             : lowest ? 'Lowest reading each day (kg) with its 7-day average'
@@ -230,7 +243,7 @@ export default function BodyTab({ rows, readings, today, onSynced }: {
       </ChartCard>
 
       <WeightChange
-        weight={weightFit} fat={metricTrend(days, 'fat_mass_kg')} fatFree={metricTrend(days, 'fat_free_kg')}
+        weight={weightTrendShown} fat={metricTrend(days, 'fat_mass_kg')} fatFree={metricTrend(days, 'fat_free_kg')}
         lowest={inRange.length ? Math.min(...inRange) : null} highest={inRange.length ? Math.max(...inRange) : null}
         bars={changeBars} period={period}
       />
