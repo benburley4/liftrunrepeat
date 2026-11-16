@@ -34,11 +34,10 @@ export default function TrackingTab({ plan, loaded, rows, readings, balance, bmr
     rows.filter(r => r.date <= today).map(r => ({ date: r.date, weightKg: r.weight_kg, morningKg: r.weight_am_kg })),
   ), [rows, today])
   const latest = actual[actual.length - 1] ?? null
-  // One reading per day for the fitted loss rate: the lowest morning one when there is one.
-  const dailyKg = useMemo(() => rows.flatMap(r => {
-    const kg = r.weight_am_kg ?? r.weight_kg
-    return kg != null ? [{ date: r.date, kg }] : []
-  }), [rows])
+  // One point per day for the fitted loss rate: the 7-day trend, the same smoothing
+  // "Lost so far" uses, so the rate agrees with the headline loss and a recent water
+  // swing (e.g. a heavy weekend) can't flatten it.
+  const dailyKg = useMemo(() => actual.map(a => ({ date: a.date, kg: a.trendKg })), [actual])
   const bodyDays = useMemo(() => dailyBody(readings), [readings])
 
   const schedule = useMemo(() => (plan ? planSchedule(plan, actual, today) : []), [plan, actual, today])
