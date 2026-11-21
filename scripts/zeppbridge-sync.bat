@@ -10,7 +10,7 @@ set TRIES=0
 :again
 set /a TRIES+=1
 echo [%date% %time%] try %TRIES% >> logs\zeppbridge-sync.log
-"C:\Users\benbu\AppData\Local\ZeppBridge\zeppbridge-cli.exe" sync --mode history --days 12 --no-reprocess --json >> logs\zeppbridge-sync.log 2>&1
+"C:\Users\BB_Home\AppData\Local\ZeppBridge\zeppbridge-cli.exe" sync --mode history --days 12 --no-reprocess --json >> logs\zeppbridge-sync.log 2>&1
 set CODE=%errorlevel%
 echo exit %CODE% >> logs\zeppbridge-sync.log
 if "%CODE%"=="4" if %TRIES% lss 30 goto again
