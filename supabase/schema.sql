@@ -20,6 +20,19 @@ create table if not exists sessions (
 -- alter table sessions drop constraint sessions_pkey;
 -- alter table sessions add primary key (user_id, saved_at);
 
+-- MIGRATION (2026-11-24, Disk IO): two client queries full-scanned sessions and
+-- detoasted every row's JSONB — getSessionsOnDate() (runs on every save, filters
+-- data->>'date') and getLatestWatchHrZones() (filters data->'zepp'->'hrZones').
+-- These indexes turn those into index lookups.
+--   • The partial hrZones index is tiny and builds fast.
+--   • The data->>'date' expression index must read every row, so build it while
+--     the Disk IO budget has headroom (after the read-cache deploy). If the SQL
+--     editor times out, run it from psql with `set statement_timeout = 0;`, or
+--     `create index concurrently` outside a transaction.
+create index if not exists sessions_hrzones on sessions (saved_at)
+  where data->'zepp'->'hrZones' is not null;
+create index if not exists sessions_date on sessions ((data->>'date'));
+
 -- ─── programmes / templates / custom_exercises / ai_reports ─────────────────
 create table if not exists programmes (
   id         text primary key,
