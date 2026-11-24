@@ -22,19 +22,56 @@ function throwIfError(error: unknown) {
 // PostgREST returns at most 1000 rows per request, so long histories are paged.
 const PAGE = 1000
 
+// ─── Read cache ─────────────────────────────────────────────────────────────
+// These full-history readers pull large JSONB (sessions.data, GPS routes) and
+// are called on almost every page mount. Re-reading them each time is the main
+// Supabase Disk IO cost, so one in-flight read is shared for a short window and
+// writes bust the relevant key. The cache is module-level: it survives SPA
+// navigation and resets on a full page reload.
+const CACHE_TTL_MS = 5 * 60_000
+const readCache = new Map<string, { at: number; p: Promise<unknown> }>()
+
+function cached<T>(key: string, load: () => Promise<T>, ttl = CACHE_TTL_MS): Promise<T> {
+  const hit = readCache.get(key)
+  if (hit && Date.now() - hit.at < ttl) return hit.p as Promise<T>
+  const p = load()
+  readCache.set(key, { at: Date.now(), p })
+  // On failure, drop the entry so the next call retries instead of caching a reject.
+  p.catch(() => { if (readCache.get(key)?.p === p) readCache.delete(key) })
+  return p
+}
+
+/** Drop cached reads whose key starts with `prefix` (after a write). */
+function invalidate(prefix: string) {
+  for (const k of readCache.keys()) if (k === prefix || k.startsWith(`${prefix}:`)) readCache.delete(k)
+}
+
+/**
+ * Bust cached reads so the next call hits Supabase. Pass key prefixes
+ * (`sessions`, `zepp_daily`, `renpho_body`, `zepp_routes`); no args clears all.
+ * Call this after an out-of-band write such as a watch/Renpho sync completing,
+ * so the reload shows fresh data instead of the cached copy.
+ */
+export function clearReadCache(...prefixes: string[]) {
+  if (!prefixes.length) { readCache.clear(); return }
+  for (const p of prefixes) invalidate(p)
+}
+
 export async function getSessions(): Promise<StoredSession[]> {
-  const rows: { data: unknown }[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('sessions')
-      .select('data')
-      .order('saved_at', { ascending: false })
-      .range(from, from + PAGE - 1)
-    throwIfError(error)
-    rows.push(...(data ?? []))
-    if ((data ?? []).length < PAGE) break
-  }
-  return dedupeSessions(rows.map(row => row.data as StoredSession))
+  return cached('sessions', async () => {
+    const rows: { data: unknown }[] = []
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('data')
+        .order('saved_at', { ascending: false })
+        .range(from, from + PAGE - 1)
+      throwIfError(error)
+      rows.push(...(data ?? []))
+      if ((data ?? []).length < PAGE) break
+    }
+    return dedupeSessions(rows.map(row => row.data as StoredSession))
+  })
 }
 
 /** Every saved session on one date, duplicates included (for the save-time check). */
@@ -53,6 +90,7 @@ export async function upsertSession(session: StoredSession): Promise<void> {
     .from('sessions')
     .upsert({ saved_at: session.savedAt, data: session, user_id: user?.id }, { onConflict: 'user_id,saved_at' })
   throwIfError(error)
+  invalidate('sessions')
 }
 
 export async function deleteSession(savedAt: string): Promise<void> {
@@ -61,6 +99,7 @@ export async function deleteSession(savedAt: string): Promise<void> {
     .delete()
     .eq('saved_at', savedAt)
   throwIfError(error)
+  invalidate('sessions')
 }
 
 export async function upsertAllSessions(sessions: StoredSession[]): Promise<void> {
@@ -70,6 +109,7 @@ export async function upsertAllSessions(sessions: StoredSession[]): Promise<void
     .from('sessions')
     .upsert(rows, { onConflict: 'user_id,saved_at' })
   throwIfError(error)
+  invalidate('sessions')
 }
 
 // ─── Programmes ───────────────────────────────────────────────────────────────
@@ -130,34 +170,47 @@ export async function deleteTemplate(id: string): Promise<void> {
 
 /** Every Renpho weigh-in, oldest first. Paged: a reading a day passes the row cap. */
 export async function getRenphoBody(): Promise<BodyReading[]> {
-  const rows: BodyReading[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('renpho_body')
-      .select('*')
-      .order('measured_at', { ascending: true })
-      .range(from, from + PAGE - 1)
-    throwIfError(error)
-    rows.push(...((data ?? []) as BodyReading[]))
-    if ((data ?? []).length < PAGE) break
-  }
-  return rows
+  return cached('renpho_body', async () => {
+    const rows: BodyReading[] = []
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('renpho_body')
+        .select('*')
+        .order('measured_at', { ascending: true })
+        .range(from, from + PAGE - 1)
+      throwIfError(error)
+      rows.push(...((data ?? []) as BodyReading[]))
+      if ((data ?? []).length < PAGE) break
+    }
+    return rows
+  })
 }
 
-export async function getZeppDaily(): Promise<ZeppDailyRow[]> {
-  // Garmin backfill reaches back to 2018 (>1000 days), so page it.
-  const rows: ZeppDailyRow[] = []
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('zepp_daily')
-      .select('*')
-      .order('date', { ascending: true })
-      .range(from, from + PAGE - 1)
-    throwIfError(error)
-    rows.push(...((data ?? []) as ZeppDailyRow[]))
-    if ((data ?? []).length < PAGE) break
-  }
-  return rows
+/**
+ * Daily watch/recovery rows. `sinceDays` limits the read to recent days via the
+ * `(user_id, date)` primary-key index — use it from callers that only need a
+ * recent window (e.g. the AI context) to avoid detoasting the full 2018→now
+ * history. Omit it for the all-time views.
+ */
+export async function getZeppDaily(opts: { sinceDays?: number } = {}): Promise<ZeppDailyRow[]> {
+  const since = opts.sinceDays
+    ? new Date(Date.now() - opts.sinceDays * 86400e3).toISOString().slice(0, 10)
+    : null
+  return cached(since ? `zepp_daily:${since}` : 'zepp_daily', async () => {
+    // Garmin backfill reaches back to 2018 (>1000 days), so page it.
+    const rows: ZeppDailyRow[] = []
+    for (let from = 0; ; from += PAGE) {
+      let q = supabase.from('zepp_daily').select('*')
+      if (since) q = q.gte('date', since)
+      const { data, error } = await q
+        .order('date', { ascending: true })
+        .range(from, from + PAGE - 1)
+      throwIfError(error)
+      rows.push(...((data ?? []) as ZeppDailyRow[]))
+      if ((data ?? []).length < PAGE) break
+    }
+    return rows
+  })
 }
 
 /** Watch-recorded strength sessions still waiting for their sets to be logged. */
@@ -196,19 +249,21 @@ export async function getZeppWorkoutSeries(workoutId: string): Promise<{ points:
 
 /** Every synced GPS route, keyed by watch workout id (empty when the route column or table is missing). */
 export async function getZeppRoutes(): Promise<Record<string, LatLon[]>> {
-  const out: Record<string, LatLon[]> = {}
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabase
-      .from('zepp_workout_series')
-      .select('workout_id, route')
-      .not('route', 'is', null)
-      .range(from, from + PAGE - 1)
-    if (error) return out
-    for (const row of (data ?? []) as { workout_id: string; route: LatLon[] | null }[])
-      if (Array.isArray(row.route) && row.route.length > 1) out[row.workout_id] = row.route
-    if ((data ?? []).length < PAGE) break
-  }
-  return out
+  return cached('zepp_routes', async () => {
+    const out: Record<string, LatLon[]> = {}
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from('zepp_workout_series')
+        .select('workout_id, route')
+        .not('route', 'is', null)
+        .range(from, from + PAGE - 1)
+      if (error) return out
+      for (const row of (data ?? []) as { workout_id: string; route: LatLon[] | null }[])
+        if (Array.isArray(row.route) && row.route.length > 1) out[row.workout_id] = row.route
+      if ((data ?? []).length < PAGE) break
+    }
+    return out
+  })
 }
 
 // ─── User Settings ────────────────────────────────────────────────────────────
@@ -270,14 +325,15 @@ export async function upsertAIReport(id: string, report: unknown): Promise<void>
     .from('ai_reports')
     .upsert({ id, data: report, user_id: user?.id, created_at: new Date().toISOString() }, { onConflict: 'id' })
   throwIfError(error)
-  // Trim to last 10 — delete oldest beyond the limit
-  const { data: rows } = await supabase
+  // Trim to last 10 — fetch only the ids past the newest 10 (ids are tiny; this
+  // skips reading the whole table) and delete them when there are any.
+  const { data: stale } = await supabase
     .from('ai_reports')
     .select('id')
     .order('created_at', { ascending: false })
-  if (rows && rows.length > 10) {
-    const toDelete = rows.slice(10).map((r: { id: string }) => r.id)
-    await supabase.from('ai_reports').delete().in('id', toDelete)
+    .range(10, 10 + PAGE)
+  if (stale && stale.length) {
+    await supabase.from('ai_reports').delete().in('id', stale.map((r: { id: string }) => r.id))
   }
 }
 

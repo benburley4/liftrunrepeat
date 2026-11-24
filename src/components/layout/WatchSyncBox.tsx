@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Watch, RefreshCw } from 'lucide-react'
-import { getSetting, upsertSetting } from '@/lib/db'
+import { getSetting, upsertSetting, clearReadCache } from '@/lib/db'
 import {
   SYNC_REQUEST_KEY, SYNC_STATUS_KEY, syncState, fmtAgo, parseJson,
   type SyncStatus, type SyncRequest,
@@ -50,6 +50,14 @@ export default function WatchSyncBox({ variant = 'popover' }: { variant?: 'popov
     const t = setInterval(() => { load().catch(() => {}) }, POLL_MS)
     return () => clearInterval(t)
   }, [state.kind, load])
+
+  // A sync just finished: the PC wrote new sessions/daily/routes, so drop the
+  // cached reads (pages reload them fresh on their next mount).
+  const wasPending = useRef(false)
+  useEffect(() => {
+    if (wasPending.current && state.kind === 'synced') clearReadCache('sessions', 'zepp_daily', 'zepp_routes')
+    wasPending.current = state.kind === 'pending'
+  }, [state.kind])
 
   async function syncNow() {
     const req = { at: new Date().toISOString() }

@@ -15,7 +15,7 @@ import PlanTab from '@/components/body/PlanTab'
 import TrackingTab from '@/components/body/TrackingTab'
 import MealEditor, { MealDraft } from '@/components/nutrition/MealEditor'
 import Modal from '@/components/ui/Modal'
-import { getZeppDaily, getRenphoBody, getSetting } from '@/lib/db'
+import { getZeppDaily, getRenphoBody, getSetting, clearReadCache } from '@/lib/db'
 import { loadProfile, derivedAge, AthleteProfile } from '@/lib/athleteProfile'
 import { localToday } from '@/lib/recovery'
 import type { ZeppDailyRow } from '@/lib/zeppDaily'
@@ -55,6 +55,7 @@ export default function NutritionPage() {
 
   // After a Renpho sync: new readings, plus the daily weights the other pages use.
   const reloadBody = useCallback(() => {
+    clearReadCache('zepp_daily', 'renpho_body')  // sync just wrote these out-of-band
     getZeppDaily().then(setRows).catch(() => {})
     getRenphoBody().then(setReadings).catch(() => {})
     getSetting('bodyweight_kg').then(v => setScaleKg(v ? Number(v) || null : null)).catch(() => {})

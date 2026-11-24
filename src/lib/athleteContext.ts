@@ -14,9 +14,17 @@ import type { SessionData } from './computeStats'
  */
 export async function loadAthleteContext(opts: { programmeStart?: string } = {}): Promise<string> {
   const today = localToday()
+  // Only the last 4 weeks of watch data is used here (plus, when given, the
+  // weeks since the programme started) — window the read so the AI context
+  // doesn't detoast the full 2018→now daily history.
+  let sinceDays = 28
+  if (opts.programmeStart) {
+    const since = Math.ceil((Date.now() - new Date(opts.programmeStart).getTime()) / 86400e3)
+    if (Number.isFinite(since)) sinceDays = Math.max(sinceDays, since + 1)
+  }
   const [profile, rows, sessions] = await Promise.all([
     loadProfile().catch(() => null),
-    getZeppDaily().catch(() => []),
+    getZeppDaily({ sinceDays }).catch(() => []),
     getSessions().catch(() => []),
   ])
   return [
